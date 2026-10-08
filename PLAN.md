@@ -178,10 +178,27 @@ Principes :
 - Communication simulation → rendu/UI par **signaux** (EventBus).
 - Équilibrage **entièrement dans les ressources de données**.
 
+## 8bis. Version Windows
+Cible prioritaire de distribution : **Windows 10/11 64 bits** (développement sur Linux, export croisé — Godot exporte vers Windows depuis Linux sans machine Windows).
+
+- **Export** : preset « Windows Desktop » dans `export_presets.cfg` (versionné), modèles d'export Godot de la même version que l'éditeur, architecture x86_64.
+- **Rendu** : renderer **Compatibility** (OpenGL 3.3) par défaut pour la compatibilité maximale avec les GPU modestes ; Forward+ (Vulkan/D3D12) en option si besoin.
+- **Livrable** : `Energy.exe` avec le `.pck` intégré (*Embed PCK*) → un seul fichier ; distribué en `.zip`, puis installeur **Inno Setup** (raccourcis menu Démarrer / bureau, désinstallation).
+- **Identité** : icône `.ico`, nom, version et éditeur dans les métadonnées de l'exe (rcedit configuré dans les paramètres de l'éditeur pour l'export depuis Linux).
+- **Sauvegardes et réglages** : `user://` avec `config/use_custom_user_dir` activé → `%APPDATA%\Energy\` (au lieu de `%APPDATA%\Godot\app_userdata\…`).
+- **Points de vigilance** :
+  - chemins : toujours `res://` / `user://`, jamais de chemins absolus ni de séparateurs codés en dur ;
+  - casse des noms de fichiers : Windows est insensible à la casse, Linux non → nommage en minuscules `snake_case` ;
+  - HiDPI : mode d'étirement `canvas_items` + aspect `expand`, testé en 100 %, 150 % et 200 % de mise à l'échelle Windows ;
+  - plein écran / fenêtré / sans bordure dans les options ;
+  - SmartScreen : un exe non signé déclenche un avertissement ; signature de code (certificat) envisageable pour une diffusion publique.
+- **Intégration continue** : workflow **GitHub Actions** qui, à chaque tag `v*`, lance Godot en mode headless (`godot --headless --export-release "Windows Desktop" build/windows/Energy.exe`), exécute les tests GUT et publie le `.zip` dans une Release GitHub.
+- **Tests** : sur une vraie machine Windows ou une VM, à chaque jalon jouable (M4, M8, M9).
+
 ## 9. Étapes de développement
 | # | Étape | Livrable |
 |---|---|---|
-| M0 | Mise en place | Projet Godot 4, autoloads, boucle de jeu à tick fixe, caméra (déplacement, zoom) |
+| M0 | Mise en place | Projet Godot 4, autoloads, boucle de jeu à tick fixe, caméra (déplacement, zoom), preset d'export Windows + premier `.exe` de test |
 | M1 | Carte | Grille isométrique, génération procédurale, terrains, attributs, overlays, sélection de tuile à la souris |
 | M2 | Construction | Placement avec contraintes, coûts, démolition |
 | M3 | Production | Extracteurs, tampons d'entrée/sortie, chaînes bois/charbon → électricité |
@@ -193,13 +210,13 @@ Principes :
 | M7 | Économie et pollution | Marché, taxe carbone, satisfaction, événements |
 | M6b | Fusion | Deutérium, lithium/tritium, tokamak, réacteur de fusion, victoire fusion (après M7) |
 | M8 | Interface et équilibrage | Graphiques de production, info-bulles, tutoriel, jalons du bac à sable, équilibrage sur le rythme cible d'1 h |
-| M9 | Persistance et finitions | Sauvegarde/chargement, options de lancement, sons |
+| M9 | Persistance et finitions | Sauvegarde/chargement, options de lancement, sons, installeur Windows, CI GitHub Actions avec Release |
 | M10 | (plus tard) Scénarios | Mode scénario avec objectifs et conditions de victoire |
 
 **Version jouable minimale** à la fin de M4 : bois et charbon transportés par camion → électricité → vente à une ville.
 
 ## 10. Questions ouvertes
-~~Plateforme~~ : **tranché → application native Godot 4 (GDScript)**.
+~~Plateforme~~ : **tranché → application native Godot 4 (GDScript)**, version **Windows** prévue (section 8bis).
 ~~Style graphique~~ : **tranché → 2D isométrique**.
 ~~Transport~~ : **tranché → transport physique des matières (routes, camions, trains, barges)**.
 ~~Durée / mode~~ : **tranché → bac à sable, partie d'environ 1 h**.
