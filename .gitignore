@@ -1,0 +1,5 @@
+# Godot
+.godot/
+*.translation
+# Exports
+build/

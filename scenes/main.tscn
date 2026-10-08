@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/world/debug_grid.gd" id="1_grid"]
+[ext_resource type="Script" path="res://scenes/world/camera_controller.gd" id="2_cam"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3_hud"]
+
+[node name="Main" type="Node2D"]
+
+[node name="World" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="DebugGrid" type="Node2D" parent="World"]
+script = ExtResource("1_grid")
+
+[node name="Camera" type="Camera2D" parent="."]
+script = ExtResource("2_cam")
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]
