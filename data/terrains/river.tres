@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TerrainDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/terrain_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+type = 4
+display_name = "Rivière"
+color = Color(0.27, 0.58, 0.82, 1)
+buildable = false
+is_water = true
+decor_row = -1

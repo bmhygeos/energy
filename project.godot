@@ -59,6 +59,10 @@ camera_reset={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":4194317)]
 }
+overlay_cycle={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":79)]
+}
 time_toggle_pause={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":32)]

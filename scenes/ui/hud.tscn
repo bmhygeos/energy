@@ -39,6 +39,30 @@ text = "0 €"
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="SeedLabel" type="Label" parent="TopBar/Margin/Row"]
+layout_mode = 2
+text = "Graine"
+
+[node name="SeedEdit" type="LineEdit" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+tooltip_text = "Graine de la carte (nombre ou texte)"
+
+[node name="GenerateButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Générer la carte de cette graine"
+focus_mode = 0
+text = "Générer"
+
+[node name="RandomButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Nouvelle carte aléatoire"
+focus_mode = 0
+text = "Aléatoire"
+
 [node name="Speed" type="HBoxContainer" parent="TopBar/Margin/Row"]
 layout_mode = 2
 
@@ -84,3 +108,47 @@ custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
 horizontal_alignment = 2
 text = "0 FPS"
+
+[node name="OverlayPanel" type="PanelContainer" parent="."]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -12.0
+offset_top = -12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="OverlayPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="OverlayPanel/Margin"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="OverlayPanel/Margin/VBox"]
+layout_mode = 2
+text = "Calque d'information (O)"
+
+[node name="OverlayButtons" type="HBoxContainer" parent="OverlayPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Legend" type="RichTextLabel" parent="OverlayPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="LegendGradient" type="TextureRect" parent="OverlayPanel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+expand_mode = 1

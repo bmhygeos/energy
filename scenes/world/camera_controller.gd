@@ -24,6 +24,8 @@ func reset_view() -> void:
 
 
 func _process(delta: float) -> void:
+	if get_viewport().gui_get_focus_owner() is LineEdit:
+		return  # saisie de texte en cours : le clavier n'est pas pour la caméra
 	var dir := Input.get_vector("camera_left", "camera_right", "camera_up", "camera_down")
 	if dir != Vector2.ZERO:
 		position += dir * pan_speed * delta / zoom.x
