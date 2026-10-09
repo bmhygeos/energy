@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/tech_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"commercial_fusion"
+display_name = "Réacteur de fusion commercial"
+description = "Électricité massive sans CO₂ (étape M6b)."
+era = 7
+cost = 18000
+prerequisites = Array[StringName]([&"tokamak", &"deuterium", &"breeding_blanket"])
+placeholder = true

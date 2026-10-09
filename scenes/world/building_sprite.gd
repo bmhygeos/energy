@@ -14,6 +14,7 @@ const BADGE_COLORS := {
 	Building.Status.OUTPUT_FULL: Color("f0a020"),
 	Building.Status.DEPLETED: Color("8b8d98"),
 	Building.Status.NO_GRID: Color("e0b400"),
+	Building.Status.NO_POWER: Color("e0b400"),
 }
 const DISCONNECTED_COLOR := Color("3b82f6")
 const SMOKE_COLOR := Color(0.85, 0.85, 0.85, 0.45)
@@ -172,7 +173,7 @@ func _draw_badge(pos: Vector2) -> void:
 		Building.Status.NO_INPUT:
 			draw_line(pos + Vector2(0, -5), pos + Vector2(0, 1.5), Color.WHITE, 2.5)
 			draw_circle(pos + Vector2(0, 4.5), 1.4, Color.WHITE)
-		Building.Status.NO_GRID:
+		Building.Status.NO_GRID, Building.Status.NO_POWER:
 			draw_polyline(PackedVector2Array([pos + Vector2(2, -6), pos + Vector2(-3, 1),
 				pos + Vector2(2, 0), pos + Vector2(-2, 6)]), Color.WHITE, 2.0)
 		Building.Status.OUTPUT_FULL:

@@ -137,6 +137,12 @@ func _building_lines(b: Building) -> PackedStringArray:
 			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.output_good).to_lower()])
 		if b.reserved_out > 0.0:
 			lines.append("Promis aux véhicules : %s t" % Format.decimal(b.reserved_out))
+	if def.research_per_hour > 0.0:
+		lines.append("Recherche : %s RP/h" % Format.decimal(
+			def.research_per_hour * GameState.production.research_factor if b.status == Building.Status.RUNNING else 0.0))
+	if def.power_demand_mw > 0.0:
+		lines.append("Électricité : %s MW %s" % [Format.decimal(def.power_demand_mw),
+			"(alimenté)" if b.powered else "(non alimenté)"])
 	if def.storage_capacity > 0.0:
 		lines.append("Stock : %s / %s t" % [Format.decimal(b.stored_total()),
 			Format.thousands(roundi(def.storage_capacity))])
@@ -175,7 +181,7 @@ func _update_actions(b: Building) -> void:
 		var idle := mine.filter(func(v: Vehicle) -> bool: return v.state == Vehicle.State.IDLE)
 		(row[0] as Label).text = "%s : %d" % [def.display_name, mine.size()]
 		var buy: Button = row[1]
-		var error := GameState.logistics.buy_error(depot, def, GameState.money)
+		var error := GameState.vehicle_error(depot, def)
 		buy.disabled = not error.is_empty()
 		buy.tooltip_text = error if not error.is_empty() else _vehicle_tooltip(def)
 		var sell: Button = row[2]

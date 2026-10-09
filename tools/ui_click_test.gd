@@ -1,7 +1,8 @@
 extends SceneTree
 ## Test de fumée de l'interface avec de vrais événements souris : choix d'un
 ## outil dans le menu, construction d'une centrale et d'un bûcheron, tracé
-## d'une ligne HT au glisser, Échap, sélection d'une tuile.
+## d'une ligne HT au glisser, Échap, sélection d'une tuile, bâtiment
+## verrouillé, arbre technologique (T, clic sur une technologie).
 ## Nécessite un affichage (pas --headless) ; déplace le pointeur réel.
 ## Lancer : godot -s res://tools/ui_click_test.gd
 
@@ -50,6 +51,32 @@ func _initialize() -> void:
 	_check(_map_view._mode == 0, "Échap : retour à la sélection")
 	await _click(Vector2(800, 500))
 	_check(_map_view._selected.x >= 0, "tuile sélectionnée au clic")
+
+	var mine_button: Button = null
+	for b in root.get_node("Main/BuildMenu").find_children("*", "Button", true, false):
+		if (b as Button).text.begins_with("Mine de charbon"):
+			mine_button = b
+	_check(mine_button != null and mine_button.disabled, "mine verrouillée sans la technologie")
+
+	var key := InputEventKey.new()
+	key.keycode = KEY_T
+	key.physical_keycode = KEY_T
+	key.pressed = true
+	root.push_input(key)
+	for i in 3:
+		await process_frame
+	var tree: Node = root.get_node("Main/TechTree")
+	_check(tree.is_open(), "T ouvre l'arbre technologique")
+	var tech_button: Button = tree._buttons[&"mining"]
+	await _click(tech_button.get_global_rect().get_center())
+	_check(_gs.research.queue == [&"prospecting", &"mining"], "clic : technologie et prérequis en file (%s)" % [_gs.research.queue])
+	_gs._on_techs_done(_gs.research.add_points(5000.0))
+	for i in 2:
+		await process_frame
+	_check(not mine_button.disabled, "mine déverrouillée après la recherche")
+	root.push_input(esc)
+	await process_frame
+	_check(not tree.is_open(), "Échap ferme l'arbre")
 
 	print("Interface : %s" % ("OK" if _failures == 0 else "%d échec(s)" % _failures))
 	quit(1 if _failures > 0 else 0)

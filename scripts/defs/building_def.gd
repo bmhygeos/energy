@@ -64,6 +64,11 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 ## Puissance électrique à plein régime (MW).
 @export var power_mw := 0.0
 @export var power_source: PowerSource = PowerSource.NONE
+## Points de recherche produits par heure (laboratoires).
+@export var research_per_hour := 0.0
+## Puissance électrique consommée en fonctionnement (MW) : le bâtiment doit
+## être raccordé et alimenté par le réseau.
+@export var power_demand_mw := 0.0
 ## Capacité de chaque tampon (entrée et sortie), en tonnes.
 @export var buffer_capacity := 20.0
 
@@ -105,7 +110,8 @@ func uses_logistics() -> bool:
 
 
 func is_producer() -> bool:
-	return extraction != Extraction.NONE or output_good != Goods.Type.NONE or power_mw > 0.0
+	return extraction != Extraction.NONE or output_good != Goods.Type.NONE or power_mw > 0.0 \
+		or research_per_hour > 0.0
 
 
 ## Production à plein régime, une ligne par flux (vide : aucune).
@@ -123,6 +129,10 @@ func describe_production() -> PackedStringArray:
 			PowerSource.SUN:
 				factor = " × ensoleillement"
 		lines.append("Électricité : %s MW%s" % [_num(power_mw), factor])
+	if research_per_hour > 0.0:
+		lines.append("Recherche : %s RP/h" % _num(research_per_hour))
+	if power_demand_mw > 0.0:
+		lines.append("Consomme : %s MW d'électricité" % _num(power_demand_mw))
 	match extraction:
 		Extraction.FOREST:
 			lines.append("Coupe les forêts à %d tuiles (les épuise)" % harvest_radius)

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/tech_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"woodcutting"
+display_name = "Bûcheronnage"
+description = "Exploitation du bois des forêts."
+era = 1
+cost = 0
+start_known = true

@@ -31,6 +31,8 @@ class Report:
 var registry: BuildingRegistry
 var roads: RoadNetwork
 var vehicles: Array[Vehicle] = []
+## Facteur de vitesse des technologies acquises.
+var speed_factor := 1.0
 var _next_id := 1
 ## Longueur du trajet entre deux bâtiments (Vector2i(id, id) → tuiles, -1 :
 ## injoignable), invalidé à chaque modification des routes.
@@ -286,7 +288,7 @@ func _update(v: Vehicle, report: Report) -> void:
 		Vehicle.State.IDLE:
 			v.prev_grid_pos = v.grid_pos
 		Vehicle.State.TO_SOURCE, Vehicle.State.TO_DESTINATION, Vehicle.State.RETURNING:
-			report.travel_cost += v.move(v.def.speed) * v.def.cost_per_tile
+			report.travel_cost += v.move(v.def.speed * speed_factor) * v.def.cost_per_tile
 			if v.has_arrived():
 				_arrive(v)
 		Vehicle.State.LOADING:

@@ -20,6 +20,7 @@ var _overlay_buttons: Array[Button] = []
 @onready var _upkeep_label: Label = %UpkeepLabel
 @onready var _power_label: Label = %PowerLabel
 @onready var _sales_label: Label = %SalesLabel
+@onready var _research_button: Button = %ResearchButton
 @onready var _fps_label: Label = %FpsLabel
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
@@ -42,6 +43,9 @@ func _ready() -> void:
 	EventBus.game_started.connect(_on_game_started)
 	EventBus.overlay_changed.connect(_on_overlay_changed)
 	EventBus.grid_stepped.connect(_on_grid)
+	EventBus.research_changed.connect(_refresh_research)
+	EventBus.tech_unlocked.connect(func(_t: TechDef) -> void: _refresh_research())
+	_research_button.pressed.connect(func() -> void: get_node("../TechTree").toggle())
 	for sig: Signal in [EventBus.building_completed, EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh_upkeep())
 	for sig: Signal in [EventBus.vehicle_added, EventBus.vehicle_removed]:
@@ -132,6 +136,17 @@ func _on_grid(report: PowerGrid.Report) -> void:
 		Format.decimal(PowerGrid.PRICE_PER_MWH)]
 
 
+func _refresh_research() -> void:
+	var research := GameState.research
+	var current := research.current()
+	if current:
+		_research_button.text = "Recherche %d %%" % roundi(research.progress_of(current.id) * 100.0)
+		_research_button.tooltip_text = "%s (T)\n%s RP/h" % [current.display_name, Format.decimal(GameState.research_rate)]
+	else:
+		_research_button.text = "Recherche (T)"
+		_research_button.tooltip_text = "Aucune recherche en cours (T)\n%s RP en réserve" % Format.thousands(roundi(research.bank))
+
+
 func _refresh_upkeep() -> void:
 	_upkeep_label.text = "Entretien %s €/j" % Format.thousands(GameState.daily_upkeep())
 
@@ -139,6 +154,7 @@ func _refresh_upkeep() -> void:
 func _on_game_started(seed_value: int) -> void:
 	_seed_edit.text = str(seed_value)
 	_refresh_upkeep()
+	_refresh_research()
 	_on_grid(PowerGrid.Report.new())
 
 

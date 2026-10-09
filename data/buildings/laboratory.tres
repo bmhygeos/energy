@@ -6,12 +6,14 @@
 script = ExtResource("1_def")
 id = &"laboratory"
 display_name = "Laboratoire"
-description = "Produit des points de recherche."
+description = "Produit des points de recherche ; doit être raccordé au réseau électrique et alimenté."
 category = 3
 cost = 6000
 build_hours = 48
 upkeep_per_day = 50
 lifetime_years = 40
+research_per_hour = 1.0
+power_demand_mw = 1.0
 color = Color(0.875, 0.902, 0.925, 1)
 roof_color = Color(0.31, 0.498, 0.659, 1)
 height = 26.0

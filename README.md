@@ -30,6 +30,7 @@ modèles d'export).
 | Sélectionner une tuile / un bâtiment | clic gauche (re-clic ou Échap pour désélectionner) |
 | Construire | bouton du menu « Construction » puis clic sur la carte (le fantôme est vert si le placement est valide, sinon le motif s'affiche en bas) ; Échap ou re-clic sur le bouton pour quitter |
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment (rembourse 25 % du coût, 75 % pour un chantier) |
+| Arbre technologique | `T` ou bouton « Recherche » du bandeau ; Échap pour fermer |
 | Calque d'information | `O` (relief, vent, soleil, eau, gisements, réseau) ou boutons en bas à droite |
 | Nouvelle carte | champ « Graine » + Générer, ou Aléatoire |
 
@@ -99,3 +100,23 @@ modèles d'export).
 - **Vente** : 3 €/MWh livré. Le bandeau affiche l'énergie livrée / demandée
   (en rouge en cas de délestage) et les ventes de la veille ; le calque
   « Réseau » colore lignes, villes et centrales selon leur état.
+
+## Recherche (M5)
+
+- **Laboratoire** (6 000 €) : 1 RP/h, à condition d'être raccordé au réseau
+  électrique et alimenté (1 MW, servi avant les villes et non vendu).
+- **Arbre technologique** (`T`) : 31 technologies sur 7 ères, du bois à la
+  fusion. Cliquer une technologie la met en recherche, précédée de ses
+  prérequis manquants ; re-cliquer la retire (avec ce qui en dépend). Les
+  points produits sans recherche en cours sont mis en réserve.
+- **Au départ** : Bûcheronnage et Biomasse (bûcheron, centrale biomasse),
+  plus routes, lignes, dépôt, entrepôt et laboratoire. Le reste est verrouillé
+  (grisé dans le menu) : pépinière (Sylviculture), mine (Mines), camion
+  (Camions), centrale à charbon, éolienne (Éolien), ferme solaire (Solaire PV).
+- **Bonus** : Vapeur −15 % de combustible, Mines +10 % d'extraction,
+  Sylviculture ×2 repousse, Lignes HT et Transformateurs −40 % de pertes
+  chacun, Dispatching et Smart grid −50 % de pénalités, Camions +10 % de
+  vitesse, Physique nucléaire et des plasmas : recherche +10 % / +20 %…
+- Les technologies marquées « contenu à venir » (nucléaire, offshore,
+  stockage, fusion…) font partie de l'arbre mais leurs bâtiments arriveront
+  aux étapes M5b, M6, M7 et M6b.

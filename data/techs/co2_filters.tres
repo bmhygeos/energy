@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/tech_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"co2_filters"
+display_name = "Filtres CO₂"
+description = "Réduction de la pollution (étape M7)."
+era = 6
+cost = 8000
+prerequisites = Array[StringName]([&"coal_plant", &"batteries"])
+placeholder = true

@@ -28,6 +28,8 @@ class Network:
 	var tiles := 0
 	var producers: Array[Building] = []
 	var cities: Array[Building] = []
+	## Bâtiments consommateurs (laboratoires…), servis avant les villes.
+	var loads: Array[Building] = []
 	var supply_mw := 0.0
 	var demand_mw := 0.0
 	var delivered_mw := 0.0
@@ -45,10 +47,16 @@ class Report:
 	var delivered_mw := 0.0
 	var revenue := 0.0
 	var penalty := 0.0
+	## Énergie livrée aux villes (vendue), hors consommation propre.
+	var sold_mw := 0.0
 	var shed_cities := 0
 
 
 var map: WorldMap
+## Facteurs des technologies acquises (Research.modifier).
+var loss_factor := 1.0
+var penalty_factor := 1.0
+var fuel_factor := 1.0
 ## Réseaux de la dernière heure, par identifiant.
 var networks: Dictionary[int, Network] = {}
 var _line: PackedByteArray
@@ -193,6 +201,7 @@ func refresh_topology(registry: BuildingRegistry) -> void:
 		b.grid_id = _component_network[comps[0]] if not comps.is_empty() else 0
 		if b.grid_id == 0:
 			b.power_setpoint = 0.0
+			b.powered = false
 			if b.city:
 				b.city.supply = City.Supply.NOT_CONNECTED
 			continue
@@ -201,8 +210,10 @@ func refresh_topology(registry: BuildingRegistry) -> void:
 			net.cities.append(b)
 		elif b.def.power_mw > 0.0 and b.is_complete():
 			net.producers.append(b)
+		elif b.def.power_demand_mw > 0.0 and b.is_complete():
+			net.loads.append(b)
 	for net: Network in networks.values():
-		net.loss_ratio = minf(MAX_LOSS, net.tiles * LOSS_PER_TILE)
+		net.loss_ratio = minf(MAX_LOSS, net.tiles * LOSS_PER_TILE * loss_factor)
 
 
 static func _find(parent: PackedInt32Array, c: int) -> int:
@@ -222,6 +233,14 @@ func step(tick: int, registry: BuildingRegistry) -> Report:
 		for p in net.producers:
 			net.supply_mw += p.power_mw
 		var available := net.supply_mw * (1.0 - net.loss_ratio)
+		# Bâtiments consommateurs d'abord (consommation propre, non vendue).
+		for b in net.loads:
+			var need := b.def.power_demand_mw
+			net.demand_mw += need
+			b.powered = net.has_supply() and need <= available + 0.0001
+			if b.powered:
+				available -= need
+				net.delivered_mw += need
 		var cities := net.cities.duplicate()
 		cities.sort_custom(func(a: Building, b: Building) -> bool:
 			var da := a.city.demand_at(tick)
@@ -236,18 +255,19 @@ func step(tick: int, registry: BuildingRegistry) -> Report:
 			elif d <= available + 0.0001:
 				available -= d
 				net.delivered_mw += d
+				report.sold_mw += d
 				city.supply = City.Supply.SERVED
 				city.served_hours_today += 1
 			else:
 				city.supply = City.Supply.SHED
 				city.shed_hours_today += 1
 				net.shed += 1
-				report.penalty += d * PENALTY_PER_MWH
+				report.penalty += d * PENALTY_PER_MWH * penalty_factor
 		report.produced_mw += net.supply_mw
 		report.demand_mw += net.demand_mw
 		report.delivered_mw += net.delivered_mw
 		report.shed_cities += net.shed
-	report.revenue = report.delivered_mw * PRICE_PER_MWH
+	report.revenue = report.sold_mw * PRICE_PER_MWH
 	plan_setpoints(tick + 1)
 	return report
 
@@ -259,23 +279,25 @@ func plan_setpoints(tick: int) -> void:
 		var required := 0.0
 		for b in net.cities:
 			required += b.city.demand_at(tick)
+		for b in net.loads:
+			required += b.def.power_demand_mw
 		required *= (1.0 + MARGIN) / (1.0 - net.loss_ratio)
 		var capacity := 0.0
 		var dispatchable: Array[Building] = []
 		for p in net.producers:
 			if p.def.power_source == BuildingDef.PowerSource.FUEL:
 				dispatchable.append(p)
-				capacity += p.def.power_mw * _fuel_fraction(p)
+				capacity += p.def.power_mw * _fuel_fraction(p, fuel_factor)
 			else:
 				required -= p.power_mw
 		var ratio := clampf(required / capacity, 0.0, 1.0) if capacity > 0.0 else 0.0
 		for p in dispatchable:
-			p.power_setpoint = ratio * _fuel_fraction(p)
+			p.power_setpoint = ratio * _fuel_fraction(p, fuel_factor)
 
 
 ## Part de la pleine puissance que le combustible en stock permet pendant
 ## une heure.
-static func _fuel_fraction(b: Building) -> float:
+static func _fuel_fraction(b: Building, fuel_use: float) -> float:
 	if b.def.input_good == Goods.Type.NONE or b.def.input_per_hour <= 0.0:
 		return 1.0
-	return clampf(b.input_stock / b.def.input_per_hour, 0.0, 1.0)
+	return clampf(b.input_stock / (b.def.input_per_hour * fuel_use), 0.0, 1.0)

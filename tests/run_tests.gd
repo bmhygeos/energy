@@ -21,6 +21,9 @@ func _init() -> void:
 	_test_transport_throughput()
 	_test_cities()
 	_test_grid()
+	_test_tech_data()
+	_test_research()
+	_test_laboratory()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -646,3 +649,94 @@ func _test_transport_throughput() -> void:
 	var isolated := _built(reg, &"lumberjack", Vector2i(25, 20))
 	reg.roads.add_cells([Vector2i(26, 20)])
 	_check(lg.diagnose(isolated).contains("joignable"), "diagnostic : route isolée (%s)" % lg.diagnose(isolated))
+
+
+func _test_tech_data() -> void:
+	var ids := {}
+	var errors := PackedStringArray()
+	for def in TechDb.DEFS:
+		if ids.has(def.id):
+			errors.append("doublon " + def.id)
+		ids[def.id] = def
+		if TechDb.get_def(def.id) != def:
+			errors.append("get_def " + def.id)
+		if def.start_known != (def.cost == 0):
+			errors.append("coût / départ incohérents " + def.id)
+		for key in def.modifiers:
+			if not TechDef.MODIFIER_NAMES.has(key):
+				errors.append("modificateur inconnu %s (%s)" % [key, def.id])
+	for def in TechDb.DEFS:
+		for p in def.prerequisites:
+			if not ids.has(p):
+				errors.append("prérequis inconnu %s → %s" % [def.id, p])
+			elif ids[p].era > def.era:
+				errors.append("prérequis d'une ère postérieure %s → %s" % [def.id, p])
+			elif TechDb.DEFS.find(ids[p]) > TechDb.DEFS.find(def):
+				errors.append("ordre : %s avant son prérequis %s" % [def.id, p])
+	for def in BuildingDb.DEFS:
+		if def.required_tech != &"" and not ids.has(def.required_tech):
+			errors.append("bâtiment %s : technologie inconnue %s" % [def.id, def.required_tech])
+	for def in VehicleDb.DEFS:
+		if def.required_tech != &"" and not ids.has(def.required_tech):
+			errors.append("véhicule %s : technologie inconnue %s" % [def.id, def.required_tech])
+	_check(errors.is_empty(), "arbre technologique cohérent %s" % errors)
+	_check(TechDb.DEFS.size() >= 25 and TechDb.DEFS.any(func(d: TechDef) -> bool: return d.era == 7),
+		"arbre complet jusqu'à la fusion")
+	_check(Research.unlocks_of(&"coal_plant") == PackedStringArray(["Centrale à charbon"]), "déblocages listés")
+
+
+func _test_research() -> void:
+	var r := Research.new(TechDb.DEFS)
+	_check(r.is_known(&"woodcutting") and r.is_known(&"biomass") and r.is_known(&""), "technologies de départ")
+	_check(not r.is_known(&"mining") and r.is_available(&"prospecting") and not r.is_available(&"mining"),
+		"disponibilité selon les prérequis")
+	var done := r.add_points(100.0)
+	_check(done.is_empty() and is_equal_approx(r.bank, 100.0), "points en banque sans recherche")
+	r.enqueue(&"steam")
+	_check(r.queue == [&"prospecting", &"mining", &"steam"], "prérequis mis en file (%s)" % [r.queue])
+	_check(is_equal_approx(r.progress, 100.0) and r.bank == 0.0, "banque versée à la tête de file")
+	done = r.add_points(500.0 + 900.0 + 50.0)
+	_check(done.map(func(d: TechDef) -> StringName: return d.id) == [&"prospecting", &"mining"], "deux technologies achevées")
+	_check(is_equal_approx(r.progress, 50.0) and r.current().id == &"steam", "reliquat sur la suivante")
+	_check(is_equal_approx(r.modifier(&"extraction"), 1.1) and r.modifier(&"fuel_use") == 1.0, "modificateurs acquis")
+	r.enqueue(&"coal_plant")
+	r.dequeue(&"steam")
+	_check(r.queue.is_empty() and is_equal_approx(r.bank, 50.0), "retrait : dépendants retirés, points rendus")
+	r.enqueue(&"trucks")
+	_check(r.current().id == &"trucks" and is_equal_approx(r.progress, 50.0), "file reprise avec la banque")
+	r.add_points(10000.0)
+	_check(r.is_known(&"trucks") and r.queue.is_empty() and r.bank > 0.0, "file vidée, surplus en banque")
+	var r2 := Research.new(TechDb.DEFS)
+	for id in [&"hv_lines", &"transformers"]:
+		r2.known[id] = true
+	_check(is_equal_approx(r2.modifier(&"grid_loss"), 0.36), "modificateurs cumulés")
+
+
+func _test_laboratory() -> void:
+	var map := _flat_map(Vector2i(24, 24))
+	var reg := BuildingRegistry.new(map)
+	var grid := reg.grid
+	var prod := Production.new(reg)
+	var lab := _built(reg, &"laboratory", Vector2i(10, 10))
+	var r := prod.step(1)
+	_check(lab.status == Building.Status.NO_POWER and r.research == 0.0, "labo sans électricité")
+	var plant := _built(reg, &"biomass_plant", Vector2i(10, 13))
+	plant.input_stock = plant.def.buffer_capacity
+	grid.add_cells([Vector2i(10, 11)])
+	grid.refresh_topology(reg)
+	_check(lab.grid_id == plant.grid_id and grid.networks[lab.grid_id].loads == [lab], "labo raccordé comme charge")
+	grid.plan_setpoints(2)
+	_check(plant.power_setpoint > 0.0, "la centrale alimente le labo")
+	prod.step(2)
+	var g := grid.step(2, reg)
+	_check(lab.powered and g.revenue == 0.0 and is_equal_approx(g.delivered_mw, lab.def.power_demand_mw),
+		"labo alimenté, consommation propre non vendue")
+	prod.research_factor = 1.5
+	r = prod.step(3)
+	_check(lab.status == Building.Status.RUNNING and is_equal_approx(r.research, lab.def.research_per_hour * 1.5),
+		"labo : points de recherche × modificateur")
+	prod.fuel_factor = 0.5
+	plant.power_setpoint = 1.0
+	var before := plant.input_stock
+	prod.step(4)
+	_check(is_equal_approx(before - plant.input_stock, plant.def.input_per_hour * 0.5), "vapeur : moins de combustible")

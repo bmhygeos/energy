@@ -1,0 +1,60 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/tech_tree.gd" id="1_tree"]
+
+[node name="TechTree" type="CanvasLayer"]
+layer = 2
+script = ExtResource("1_tree")
+
+[node name="Panel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 56.0
+offset_right = -40.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+
+[node name="Header" type="HBoxContainer" parent="Panel/Margin/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/Margin/VBox/Header"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Recherche"
+
+[node name="Status" type="Label" parent="Panel/Margin/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="Panel/Margin/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Fermer (T / Échap)"
+
+[node name="Help" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+modulate = Color(1, 1, 1, 0.7)
+text = "Cliquez sur une technologie pour la rechercher (ses prérequis sont ajoutés à la file) ; re-cliquez pour la retirer. Les laboratoires, raccordés et alimentés, produisent les points de recherche (RP)."
+autowrap_mode = 3
+
+[node name="Graph" type="GraphEdit" parent="Panel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3

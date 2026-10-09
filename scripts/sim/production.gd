@@ -14,6 +14,8 @@ const EPSILON := 0.0001
 ## Bilan d'une heure de production.
 class Report:
 	var power_mw := 0.0
+	## Points de recherche produits.
+	var research := 0.0
 	## Tuiles dont le terrain ou le gisement a changé.
 	var changed_cells: Array[Vector2i] = []
 	var status_changed: Array[Building] = []
@@ -21,6 +23,11 @@ class Report:
 
 var registry: BuildingRegistry
 var map: WorldMap
+## Facteurs des technologies acquises (Research.modifier).
+var fuel_factor := 1.0
+var extraction_factor := 1.0
+var regrowth_factor := 1.0
+var research_factor := 1.0
 ## Tuiles exploitables par bâtiment (id → tuiles triées par distance).
 var _area_cache: Dictionary[int, Array] = {}
 
@@ -39,6 +46,8 @@ func step(tick: int) -> Report:
 		if b.status != old:
 			report.status_changed.append(b)
 		report.power_mw += b.power_mw
+		if b.status == Building.Status.RUNNING:
+			report.research += b.def.research_per_hour * research_factor
 	return report
 
 
@@ -52,21 +61,26 @@ func _run(b: Building, tick: int, report: Report) -> void:
 	if not def.is_producer():
 		b.status = Building.Status.RUNNING if def.uses_logistics() else Building.Status.IDLE
 		return
-	if def.power_mw > 0.0 and b.grid_id == 0:
+	if (def.power_mw > 0.0 or def.power_demand_mw > 0.0) and b.grid_id == 0:
 		b.status = Building.Status.NO_GRID
 		return
+	if def.power_demand_mw > 0.0 and not b.powered:
+		b.status = Building.Status.NO_POWER
+		return
+	var input_rate := input_rate_of(def)
+	var output_rate := def.output_per_hour * (extraction_factor if def.extraction != BuildingDef.Extraction.NONE else 1.0)
 	var fraction := 1.0
 	if def.output_good != Goods.Type.NONE:
 		var room := def.buffer_capacity - b.output_stock
 		if room <= EPSILON:
 			b.status = Building.Status.OUTPUT_FULL
 			return
-		fraction = minf(fraction, room / def.output_per_hour)
+		fraction = minf(fraction, room / output_rate)
 	if def.input_good != Goods.Type.NONE:
 		if b.input_stock <= EPSILON:
 			b.status = Building.Status.NO_INPUT
 			return
-		fraction = minf(fraction, b.input_stock / def.input_per_hour)
+		fraction = minf(fraction, b.input_stock / input_rate)
 	if def.power_source == BuildingDef.PowerSource.FUEL:
 		if b.power_setpoint <= EPSILON:
 			b.status = Building.Status.STANDBY
@@ -74,24 +88,29 @@ func _run(b: Building, tick: int, report: Report) -> void:
 		fraction = minf(fraction, b.power_setpoint)
 	match def.extraction:
 		BuildingDef.Extraction.FOREST:
-			var got := _harvest_forest(b, def.output_per_hour * fraction, report)
+			var got := _harvest_forest(b, output_rate * fraction, report)
 			if got <= EPSILON:
 				b.status = Building.Status.DEPLETED
 				return
-			fraction = got / def.output_per_hour
+			fraction = got / output_rate
 		BuildingDef.Extraction.DEPOSIT:
-			var got := _mine_deposit(b, def.output_per_hour * fraction, report)
+			var got := _mine_deposit(b, output_rate * fraction, report)
 			if got <= EPSILON:
 				b.status = Building.Status.DEPLETED
 				return
-			fraction = got / def.output_per_hour
+			fraction = got / output_rate
 		BuildingDef.Extraction.REFOREST:
 			_reforest(b, tick, report)
-	b.input_stock = maxf(0.0, b.input_stock - def.input_per_hour * fraction)
-	b.output_stock = minf(def.buffer_capacity, b.output_stock + def.output_per_hour * fraction)
+	b.input_stock = maxf(0.0, b.input_stock - input_rate * fraction)
+	b.output_stock = minf(def.buffer_capacity, b.output_stock + output_rate * fraction)
 	b.power_mw = def.power_mw * fraction * _power_factor(b)
 	b.activity = fraction
 	b.status = Building.Status.RUNNING
+
+
+## Consommation horaire de combustible à plein régime, technologies comprises.
+func input_rate_of(def: BuildingDef) -> float:
+	return def.input_per_hour * (fuel_factor if def.power_source == BuildingDef.PowerSource.FUEL else 1.0)
 
 
 ## Facteur de puissance selon la source (vent, soleil moyens de l'emprise).
@@ -205,7 +224,7 @@ func _reforest(b: Building, tick: int, report: Report) -> void:
 	for cell in area_of(b):
 		var i := map.index_of(cell)
 		if map.terrain[i] == TerrainDef.Type.FOREST:
-			map.wood[i] = minf(WorldMap.WOOD_PER_FOREST, map.wood[i] + REGROWTH_PER_HOUR)
+			map.wood[i] = minf(WorldMap.WOOD_PER_FOREST, map.wood[i] + REGROWTH_PER_HOUR * regrowth_factor)
 		elif map.terrain[i] == TerrainDef.Type.PLAIN and registry.building_at(cell) == null \
 				and not registry.roads.has_road(cell) and map.deposit[i] == WorldMap.Deposit.NONE:
 			var n := 0

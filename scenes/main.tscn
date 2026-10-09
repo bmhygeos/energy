@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/tile_info_panel.tscn" id="4_info"]
 [ext_resource type="PackedScene" path="res://scenes/ui/build_menu.tscn" id="5_build"]
+[ext_resource type="PackedScene" path="res://scenes/ui/tech_tree.tscn" id="6_tree"]
 
 [node name="Main" type="Node2D"]
 
@@ -21,3 +22,5 @@ script = ExtResource("2_cam")
 [node name="TileInfoPanel" parent="." instance=ExtResource("4_info")]
 
 [node name="BuildMenu" parent="." instance=ExtResource("5_build")]
+
+[node name="TechTree" parent="." instance=ExtResource("6_tree")]

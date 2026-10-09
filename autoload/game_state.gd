@@ -11,6 +11,9 @@ var production: Production
 var roads: RoadNetwork
 var logistics: Logistics
 var grid: PowerGrid
+var research: Research
+## Points de recherche produits pendant la dernière heure.
+var research_rate := 0.0
 ## Villes de la partie (bâtiments portant une City).
 var cities: Array[Building] = []
 ## Bilan électrique de la dernière heure.
@@ -47,6 +50,9 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	buildings = BuildingRegistry.new(world_map, roads, grid)
 	production = Production.new(buildings)
 	logistics = Logistics.new(buildings)
+	research = Research.new(TechDb.DEFS)
+	research_rate = 0.0
+	_apply_modifiers()
 	cities = CityGenerator.populate(buildings, Rng.fork("cities"))
 	grid.refresh_topology(buildings)
 	power_mw = 0.0
@@ -66,9 +72,52 @@ static func random_seed() -> int:
 	return randi_range(100_000, 999_999)
 
 
-## Vérifie le placement de [param def] en [param anchor] avec l'argent actuel.
+## Vérifie le placement de [param def] en [param anchor] avec l'argent et
+## les technologies actuels.
 func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Placement:
-	return buildings.check_placement(def, anchor, money)
+	var placement := buildings.check_placement(def, anchor, money)
+	if not research.is_known(def.required_tech):
+		placement.error = "Technologie requise : " + research.get_def(def.required_tech).display_name
+	return placement
+
+
+## Motif empêchant l'achat de [param def] pour [param depot] (vide : possible).
+func vehicle_error(depot: Building, def: VehicleDef) -> String:
+	if not research.is_known(def.required_tech):
+		return "Technologie requise : " + research.get_def(def.required_tech).display_name
+	return logistics.buy_error(depot, def, money)
+
+
+## Met une technologie en recherche (avec ses prérequis manquants).
+func enqueue_research(id: StringName) -> void:
+	_on_techs_done(research.enqueue(id))
+	EventBus.research_changed.emit()
+
+
+func dequeue_research(id: StringName) -> void:
+	research.dequeue(id)
+	EventBus.research_changed.emit()
+
+
+func _on_techs_done(done: Array[TechDef]) -> void:
+	if done.is_empty():
+		return
+	_apply_modifiers()
+	for def in done:
+		EventBus.tech_unlocked.emit(def)
+		EventBus.notified.emit("Technologie acquise : " + def.display_name)
+
+
+## Reporte les modificateurs des technologies acquises sur la simulation.
+func _apply_modifiers() -> void:
+	production.fuel_factor = research.modifier(&"fuel_use")
+	production.extraction_factor = research.modifier(&"extraction")
+	production.regrowth_factor = research.modifier(&"regrowth")
+	production.research_factor = research.modifier(&"research")
+	grid.loss_factor = research.modifier(&"grid_loss")
+	grid.penalty_factor = research.modifier(&"penalty")
+	grid.fuel_factor = research.modifier(&"fuel_use")
+	logistics.speed_factor = research.modifier(&"vehicle_speed")
 
 
 ## Lance le chantier de [param def] en [param anchor] et le paie ; renvoie
@@ -166,7 +215,7 @@ func _refresh_grid() -> void:
 ## Achète un véhicule [param def] pour [param depot] ; null (motif notifié)
 ## si impossible.
 func buy_vehicle(depot: Building, def: VehicleDef) -> Vehicle:
-	var error := logistics.buy_error(depot, def, money)
+	var error := vehicle_error(depot, def)
 	if not error.is_empty():
 		EventBus.notified.emit(error)
 		return null
@@ -203,6 +252,10 @@ func _on_tick(tick: int) -> void:
 			EventBus.vehicle_added.emit(logistics.add_vehicle(b, VehicleDb.get_def(id)))
 		EventBus.building_completed.emit(b)
 	var report := production.step(tick)
+	research_rate = report.research
+	if report.research > 0.0:
+		_on_techs_done(research.add_points(report.research))
+		EventBus.research_changed.emit()
 	var transport := logistics.step()
 	last_grid = grid.step(tick, buildings)
 	revenue_today += last_grid.revenue

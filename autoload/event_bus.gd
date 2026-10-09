@@ -42,3 +42,6 @@ signal lines_changed(cells: Array[Vector2i])
 signal grid_changed()
 ## Bilan électrique de l'heure écoulée (PowerGrid.Report).
 signal grid_stepped(report: PowerGrid.Report)
+## File ou progression de la recherche modifiée.
+signal research_changed()
+signal tech_unlocked(tech: TechDef)

@@ -67,6 +67,10 @@ tool_demolish={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":88)]
 }
+tech_tree={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":84)]
+}
 time_toggle_pause={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":32)]

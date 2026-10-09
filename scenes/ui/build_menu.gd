@@ -40,12 +40,15 @@ func _ready() -> void:
 		if _mode == BuildTool.Mode.DEMOLISH:
 			_refresh_hint())
 	EventBus.money_changed.connect(func(_m: int) -> void: _refresh_affordability())
+	EventBus.tech_unlocked.connect(func(_t: TechDef) -> void: _refresh_locks())
+	EventBus.game_started.connect(func(_s: int) -> void: _refresh_locks())
 	EventBus.tile_plan_previewed.connect(func(p: TilePlan) -> void:
 		_trace_plan = p
 		_refresh_hint())
 	EventBus.notified.connect(_show_toast)
 	_toast.modulate.a = 0.0
 	_refresh_affordability()
+	_refresh_locks()
 	_on_tool_changed(BuildTool.Mode.SELECT, null)
 
 
@@ -157,6 +160,21 @@ func _on_tool_changed(mode: int, def: BuildingDef) -> void:
 	_line_button.set_pressed_no_signal(_mode == BuildTool.Mode.LINE)
 	_trace_plan = null
 	_refresh_hint()
+
+
+## Bâtiments dont la technologie n'est pas acquise : grisés et inactifs.
+func _refresh_locks() -> void:
+	for def: BuildingDef in _build_buttons:
+		var button := _build_buttons[def]
+		var known := GameState.research.is_known(def.required_tech)
+		button.disabled = not known
+		button.modulate.a = 1.0 if known else 0.45
+		button.tooltip_text = _tooltip(def)
+		if not known:
+			button.tooltip_text += "\n\nNécessite la technologie : %s (T)" % \
+				GameState.research.get_def(def.required_tech).display_name
+			if _mode == BuildTool.Mode.BUILD and _def == def:
+				EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
 
 
 func _refresh_affordability() -> void:
