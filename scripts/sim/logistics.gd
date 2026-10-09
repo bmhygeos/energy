@@ -26,6 +26,8 @@ class Report:
 	var travel_cost := 0.0
 	## Livraisons terminées (t).
 	var delivered := 0.0
+	## Véhicules à vendre rentrés au dépôt et vendus pendant l'heure.
+	var sold: Array[Vehicle] = []
 
 
 var registry: BuildingRegistry
@@ -56,7 +58,7 @@ func buy_error(depot: Building, def: VehicleDef, money: int = -1) -> String:
 		return "Ce bâtiment n'héberge pas de véhicules"
 	if not depot.is_complete():
 		return "Dépôt en chantier"
-	if vehicles_of(depot).size() >= depot.def.vehicle_slots:
+	if active_vehicles_of(depot).size() >= depot.def.vehicle_slots:
 		return "Dépôt complet (%d véhicules)" % depot.def.vehicle_slots
 	if money >= 0 and money < def.cost:
 		return "Fonds insuffisants (%s € requis)" % Format.thousands(def.cost)
@@ -73,13 +75,26 @@ func add_vehicle(depot: Building, def: VehicleDef) -> Vehicle:
 	return v
 
 
-## Revend un véhicule au dépôt ; renvoie le remboursement (-1 s'il est en
-## mission).
-func sell(v: Vehicle) -> int:
-	if v.state != Vehicle.State.IDLE:
-		return -1
-	vehicles.erase(v)
+## Véhicules du dépôt hors ceux en attente de vente (qui libèrent leur place).
+func active_vehicles_of(depot: Building) -> Array[Vehicle]:
+	return vehicles.filter(func(v: Vehicle) -> bool: return v.depot == depot and not v.retiring)
+
+
+static func refund_of(v: Vehicle) -> int:
 	return floori(v.def.cost * SELL_REFUND)
+
+
+## Revend [param v] : tout de suite s'il est au dépôt (renvoie le
+## remboursement), sinon à son retour (renvoie -1) : vide, il abandonne sa
+## mission ; chargé, il livre d'abord.
+func sell(v: Vehicle) -> int:
+	if v.state == Vehicle.State.IDLE:
+		vehicles.erase(v)
+		return refund_of(v)
+	v.retiring = true
+	if v.state in [Vehicle.State.TO_SOURCE, Vehicle.State.LOADING]:
+		_cancel(v)
+	return -1
 
 
 func daily_upkeep() -> int:
@@ -279,6 +294,10 @@ func step() -> Report:
 	var report := Report.new()
 	for v in vehicles:
 		_update(v, report)
+	for v in vehicles.duplicate():
+		if v.retiring and v.state == Vehicle.State.IDLE:
+			vehicles.erase(v)
+			report.sold.append(v)
 	_dispatch()
 	return report
 

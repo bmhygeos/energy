@@ -45,3 +45,5 @@ signal grid_stepped(report: PowerGrid.Report)
 ## File ou progression de la recherche modifiée.
 signal research_changed()
 signal tech_unlocked(tech: TechDef)
+## État de la flotte modifié sans ajout ni retrait (vente différée…).
+signal vehicles_changed()

@@ -34,6 +34,7 @@ func _ready() -> void:
 			_refresh())
 	for sig: Signal in [EventBus.vehicle_added, EventBus.vehicle_removed]:
 		sig.connect(func(_v: Vehicle) -> void: _refresh())
+	EventBus.vehicles_changed.connect(_refresh)
 	EventBus.grid_stepped.connect(func(_r: PowerGrid.Report) -> void:
 		if _panel.visible:
 			_refresh())
@@ -153,7 +154,10 @@ func _building_lines(b: Building) -> PackedStringArray:
 	if def.vehicle_slots > 0:
 		var fleet := GameState.logistics.vehicles_of(b)
 		var busy := fleet.filter(func(v: Vehicle) -> bool: return v.state != Vehicle.State.IDLE).size()
-		lines.append("Véhicules : %d / %d (%d en mission)" % [fleet.size(), def.vehicle_slots, busy])
+		var for_sale := fleet.filter(func(v: Vehicle) -> bool: return v.retiring).size()
+		lines.append("Véhicules : %d / %d (%d en mission)" % [fleet.size() - for_sale, def.vehicle_slots, busy])
+		if for_sale > 0:
+			lines.append("À vendre au retour : %d" % for_sale)
 		if busy < fleet.size():
 			lines.append("Au dépôt : %d, rien à transporter pour l'instant" % (fleet.size() - busy))
 			lines.append("  (départ quand une source a ≥ %d %% d'un chargement)" % roundi(Logistics.FULL_LOAD_RATIO * 100.0))
@@ -183,16 +187,25 @@ func _update_actions(b: Building) -> void:
 	for def: VehicleDef in _vehicle_rows:
 		var row := _vehicle_rows[def]
 		var mine := fleet.filter(func(v: Vehicle) -> bool: return v.def == def)
-		var idle := mine.filter(func(v: Vehicle) -> bool: return v.state == Vehicle.State.IDLE)
-		(row[0] as Label).text = "%s : %d" % [def.display_name, mine.size()]
+		var for_sale := mine.filter(func(v: Vehicle) -> bool: return v.retiring).size()
+		var sellable := mine.size() - for_sale
+		var idle := mine.filter(func(v: Vehicle) -> bool: return v.state == Vehicle.State.IDLE and not v.retiring)
+		(row[0] as Label).text = "%s : %d" % [def.display_name, sellable]
+		if for_sale > 0:
+			(row[0] as Label).text += " (%d à vendre)" % for_sale
 		var buy: Button = row[1]
 		var error := GameState.vehicle_error(depot, def)
 		buy.disabled = not error.is_empty()
 		buy.tooltip_text = error if not error.is_empty() else _vehicle_tooltip(def)
 		var sell: Button = row[2]
-		sell.disabled = idle.is_empty()
-		sell.tooltip_text = "Revendre un véhicule au dépôt : +%s €" % Format.thousands(
-			floori(def.cost * Logistics.SELL_REFUND)) if not idle.is_empty() else "Aucun véhicule de ce type au dépôt"
+		sell.disabled = sellable == 0
+		var refund := Format.thousands(floori(def.cost * Logistics.SELL_REFUND))
+		if sellable == 0:
+			sell.tooltip_text = "Aucun véhicule de ce type à vendre"
+		elif not idle.is_empty():
+			sell.tooltip_text = "Revendre un véhicule au dépôt : +%s €" % refund
+		else:
+			sell.tooltip_text = "Tous en mission : un véhicule sera vendu à son retour au dépôt (+%s €).\nVide, il abandonne sa mission ; chargé, il livre d'abord." % refund
 
 
 func _build_vehicle_rows(depot: Building) -> void:

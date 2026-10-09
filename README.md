@@ -59,7 +59,10 @@ modèles d'export).
 - **Dépôt de véhicules** (relié à une route, 6 places, livré avec deux
   charrettes) : **indispensable**, sans lui rien ne circule. Sélectionnez-le
   pour acheter ou revendre (50 %) des charrettes (12 t, 1 tuile/h) et des
-  camions (30 t, 1,2 tuile/h). Deux charrettes suffisent pour deux bûcherons
+  camions (30 t, 1,2 tuile/h). Un véhicule en mission peut être vendu : vide,
+  il abandonne sa mission, chargé il livre d'abord, puis il est vendu à son
+  retour au dépôt ; sa place est libérée tout de suite (remplacement de la
+  flotte, par exemple charrettes → camions). Deux charrettes suffisent pour deux bûcherons
   et une centrale biomasse à une dizaine de tuiles.
 - **Dispatcher** : chaque heure, les consommateurs les moins remplis sont servis
   en premier par la source joignable la plus proche ayant une charge correcte

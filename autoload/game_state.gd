@@ -232,19 +232,39 @@ func buy_vehicle(depot: Building, def: VehicleDef) -> Vehicle:
 	return v
 
 
-## Revend un véhicule disponible de [param depot] (de préférence du type
-## [param def]) ; renvoie le remboursement, -1 si aucun n'est au dépôt.
+## Revend un véhicule de [param depot] (du type [param def] si donné) :
+## de préférence un véhicule au dépôt, sinon un véhicule en mission, vendu
+## à son retour (le moins avancé : vide d'abord). Renvoie le remboursement
+## immédiat, 0 si la vente est différée, -1 s'il n'y a rien à vendre.
 func sell_vehicle(depot: Building, def: VehicleDef = null) -> int:
-	var idle := logistics.vehicles_of(depot).filter(func(v: Vehicle) -> bool:
-		return v.state == Vehicle.State.IDLE and (def == null or v.def == def))
-	if idle.is_empty():
-		EventBus.notified.emit("Aucun véhicule de ce type au dépôt")
+	var candidates := logistics.active_vehicles_of(depot).filter(func(v: Vehicle) -> bool:
+		return def == null or v.def == def)
+	if candidates.is_empty():
+		EventBus.notified.emit("Aucun véhicule de ce type à vendre")
 		return -1
-	var v: Vehicle = idle[0]
+	candidates.sort_custom(func(a: Vehicle, b: Vehicle) -> bool:
+		return _sale_rank(a) < _sale_rank(b))
+	var v: Vehicle = candidates[0]
 	var refund := logistics.sell(v)
-	money += refund
-	EventBus.vehicle_removed.emit(v)
-	return refund
+	if refund >= 0:
+		money += refund
+		EventBus.vehicle_removed.emit(v)
+		return refund
+	EventBus.notified.emit("%s vendu à son retour au dépôt" % v.def.display_name)
+	EventBus.vehicles_changed.emit()
+	return 0
+
+
+## Ordre de préférence pour la revente : au dépôt, puis vide, puis chargé.
+static func _sale_rank(v: Vehicle) -> int:
+	match v.state:
+		Vehicle.State.IDLE:
+			return 0
+		Vehicle.State.RETURNING, Vehicle.State.TO_SOURCE:
+			return 1
+		Vehicle.State.LOADING:
+			return 2
+	return 3
 
 
 ## Entretien journalier total : bâtiments, routes, véhicules.
@@ -264,6 +284,10 @@ func _on_tick(tick: int) -> void:
 		_on_techs_done(research.add_points(report.research))
 		EventBus.research_changed.emit()
 	var transport := logistics.step()
+	for v in transport.sold:
+		money += Logistics.refund_of(v)
+		EventBus.vehicle_removed.emit(v)
+		EventBus.notified.emit("%s vendu : +%s €" % [v.def.display_name, Format.thousands(Logistics.refund_of(v))])
 	last_grid = grid.step(tick, buildings)
 	revenue_today += last_grid.revenue
 	penalty_today += last_grid.penalty

@@ -28,6 +28,8 @@ var amount := 0.0
 var source: Building
 var destination: Building
 var cargo := 0.0
+## Vendu dès son retour au dépôt ; ne prend plus de mission.
+var retiring := false
 
 
 func _init(p_id: int, p_def: VehicleDef, p_depot: Building) -> void:
@@ -37,7 +39,7 @@ func _init(p_id: int, p_def: VehicleDef, p_depot: Building) -> void:
 
 
 func is_available() -> bool:
-	return state == State.IDLE or state == State.RETURNING
+	return not retiring and (state == State.IDLE or state == State.RETURNING)
 
 
 ## Tuile de route où se trouve le véhicule (sur la route).

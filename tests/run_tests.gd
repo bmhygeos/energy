@@ -19,6 +19,7 @@ func _init() -> void:
 	_test_roads()
 	_test_logistics()
 	_test_transport_throughput()
+	_test_vehicle_sale()
 	_test_cities()
 	_test_grid()
 	_test_tech_data()
@@ -480,10 +481,17 @@ func _test_logistics() -> void:
 		_check(lg.sell(idle[0]) == floori(idle[0].def.cost * Logistics.SELL_REFUND), "revente")
 	var busy := lg.vehicles.filter(func(v: Vehicle) -> bool: return v.state != Vehicle.State.IDLE)
 	if not busy.is_empty():
-		_check(lg.sell(busy[0]) == -1, "pas de revente en mission")
+		var v: Vehicle = busy[0]
+		_check(lg.sell(v) == -1 and v.retiring and not v.is_available(), "en mission : vente différée")
+		var sold := false
+		for i in 200:
+			tick += 1
+			prod.step(tick)
+			sold = sold or v in lg.step().sold
+		_check(sold and v not in lg.vehicles, "vendu à son retour au dépôt")
 	reg.remove(depot)
-	var removed := lg.on_building_removed(depot)
-	_check(lg.vehicles.is_empty() and not removed.is_empty(), "véhicules du dépôt démoli supprimés")
+	lg.on_building_removed(depot)
+	_check(lg.vehicles.is_empty(), "véhicules du dépôt démoli supprimés")
 	_check(is_zero_approx(plant2.reserved_in) and is_zero_approx(warehouse.reserved_in)
 		and is_zero_approx(lumberjack.reserved_out), "réservations libérées à la démolition")
 	_check(v1 != v2, "deux véhicules distincts")
@@ -740,3 +748,55 @@ func _test_laboratory() -> void:
 	var before := plant.input_stock
 	prod.step(4)
 	_check(is_equal_approx(before - plant.input_stock, plant.def.input_per_hour * 0.5), "vapeur : moins de combustible")
+
+
+## Revente de véhicules en mission (remplacement de la flotte).
+func _test_vehicle_sale() -> void:
+	var map := _flat_map(Vector2i(32, 32))
+	var reg := BuildingRegistry.new(map)
+	var prod := Production.new(reg)
+	var lg := Logistics.new(reg)
+	var s := _logistics_setup(map, reg)
+	var lumberjack: Building = s.lumberjack
+	var plant: Building = s.plant
+	var depot: Building = s.depot
+	var cart := VehicleDb.get_def(&"cart")
+	for i in depot.def.vehicle_slots:
+		lg.add_vehicle(depot, cart)
+	_check(not lg.buy_error(depot, cart).is_empty(), "dépôt complet")
+	lumberjack.output_stock = lumberjack.def.buffer_capacity
+	var tick := 0
+	# Un véhicule part livrer ; on avance jusqu'à ce qu'il soit chargé.
+	var loaded_v: Vehicle = lg.vehicles[0]
+	_check(lg._start(loaded_v, lumberjack, plant, Goods.Type.WOOD, 5.0), "mission lancée")
+	for i in 100:
+		tick += 1
+		lg.step()
+		if loaded_v.state == Vehicle.State.TO_DESTINATION:
+			break
+	# Un autre part tout juste, à vide.
+	var empty_v: Vehicle = null
+	for v in lg.vehicles:
+		if empty_v == null and v.is_available():
+			empty_v = v
+	lumberjack.output_stock = lumberjack.def.buffer_capacity
+	_check(empty_v != null and lg._start(empty_v, lumberjack, plant, Goods.Type.WOOD, 5.0), "seconde mission lancée")
+	_check(empty_v != null and loaded_v != null, "un véhicule vide et un chargé en mission")
+	var reserved := lumberjack.reserved_out
+	_check(lg.sell(empty_v) == -1 and empty_v.state == Vehicle.State.RETURNING and empty_v.source == null,
+		"vide : mission abandonnée, retour au dépôt")
+	_check(lumberjack.reserved_out < reserved, "réservation libérée")
+	_check(lg.buy_error(depot, cart).is_empty(), "la place du véhicule à vendre est libérée")
+	var cargo := loaded_v.cargo
+	_check(lg.sell(loaded_v) == -1 and loaded_v.state == Vehicle.State.TO_DESTINATION, "chargé : il livre d'abord")
+	var before := plant.input_stock
+	var sold: Array[Vehicle] = []
+	var delivered := 0.0
+	for i in 300:
+		tick += 1
+		var r := lg.step()
+		delivered += r.delivered
+		sold.append_array(r.sold)
+	_check(empty_v in sold and loaded_v in sold, "les deux vendus à leur retour")
+	_check(delivered >= cargo and plant.input_stock > before, "chargement livré avant la vente")
+	_check(lg.vehicles.size() == depot.def.vehicle_slots - 2, "flotte réduite de deux")
