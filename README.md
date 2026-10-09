@@ -8,6 +8,7 @@ Jeu de gestion énergétique (Godot 4.7, GDScript) — voir [PLAN.md](PLAN.md).
 godot -e                                   # ouvrir l'éditeur
 godot                                      # lancer le jeu
 godot --headless -s res://tests/run_tests.gd   # tests de la simulation
+godot -s res://tools/ui_click_test.gd          # test de l'interface (vrais clics ; déplace le pointeur)
 godot --headless --export-release "Windows Desktop" build/windows/Energy.exe
 
 # Outils

@@ -46,6 +46,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_zoom_at(1.0 / zoom_step, mb.position)
 			MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT:
 				_dragging = mb.pressed
+			_:
+				return  # clic gauche : laissé à la carte (sélection, construction)
 	elif event is InputEventMouseMotion and _dragging:
 		position -= (event as InputEventMouseMotion).relative / zoom.x
 		_clamp_position()
