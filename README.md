@@ -31,7 +31,7 @@ modèles d'export).
 | Construire | bouton du menu « Construction » puis clic sur la carte (le fantôme est vert si le placement est valide, sinon le motif s'affiche en bas) ; Échap ou re-clic sur le bouton pour quitter |
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment (rembourse 25 % du coût, 75 % pour un chantier) |
 | Arbre technologique | `T` ou bouton « Recherche » du bandeau ; Échap pour fermer |
-| Calque d'information | `O` (relief, vent, soleil, eau, gisements, réseau) ou boutons en bas à droite |
+| Calque d'information | `O` (relief, vent, soleil, eau, gisements, réseau) ou boutons en bas à droite ; les gisements ne sont visibles qu'après la technologie Prospection |
 | Nouvelle carte | champ « Graine » + Générer, ou Aléatoire |
 
 ## Production (M3)

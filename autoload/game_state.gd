@@ -3,6 +3,8 @@ extends Node
 
 const DEFAULT_MAP_SIZE := Vector2i(64, 64)
 const DEFAULT_START_MONEY := 50_000
+## Technologie qui révèle les gisements.
+const PROSPECTING_TECH := &"prospecting"
 
 var map_size: Vector2i = DEFAULT_MAP_SIZE
 var world_map: WorldMap
@@ -86,6 +88,11 @@ func vehicle_error(depot: Building, def: VehicleDef) -> String:
 	if not research.is_known(def.required_tech):
 		return "Technologie requise : " + research.get_def(def.required_tech).display_name
 	return logistics.buy_error(depot, def, money)
+
+
+## Les gisements ne sont connus qu'après la technologie Prospection.
+func deposits_revealed() -> bool:
+	return research != null and research.is_known(PROSPECTING_TECH)
 
 
 ## Met une technologie en recherche (avec ses prérequis manquants).

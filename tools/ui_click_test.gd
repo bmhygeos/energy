@@ -52,6 +52,21 @@ func _initialize() -> void:
 	await _click(Vector2(800, 500))
 	_check(_map_view._selected.x >= 0, "tuile sélectionnée au clic")
 
+	var hud: Node = root.get_node("Main/HUD")
+	# Indices de OverlayLayer.Mode (non référençable ici : le script est compilé
+	# avant les autoloads).
+	var deposits_mode := 5
+	var deposits_button: Button = hud._overlay_buttons[deposits_mode]
+	_check(deposits_button.disabled, "calque Gisements verrouillé avant Prospection")
+	var o_key := InputEventKey.new()
+	o_key.keycode = KEY_O
+	o_key.physical_keycode = KEY_O
+	o_key.pressed = true
+	_check(deposits_button.text == "Gisements", "bouton du calque Gisements")
+	for i in hud._overlay_buttons.size():
+		root.push_input(o_key)
+		await process_frame
+		_check(hud._overlay_mode != deposits_mode, "O saute le calque Gisements")
 	var mine_button: Button = null
 	for b in root.get_node("Main/BuildMenu").find_children("*", "Button", true, false):
 		if (b as Button).text.begins_with("Mine de charbon"):
@@ -81,6 +96,7 @@ func _initialize() -> void:
 	for i in 2:
 		await process_frame
 	_check(not mine_button.disabled, "mine déverrouillée après la recherche")
+	_check(not deposits_button.disabled, "calque Gisements disponible après Prospection")
 	root.push_input(esc)
 	await process_frame
 	_check(not tree.is_open(), "Échap ferme l'arbre")

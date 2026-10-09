@@ -6,7 +6,7 @@
 script = ExtResource("1_def")
 id = &"prospecting"
 display_name = "Prospection"
-description = "Repérage des gisements, préalable aux mines."
+description = "Révèle les gisements (calque Gisements, panneau d'information) ; préalable aux mines."
 era = 2
 cost = 600
 prerequisites = Array[StringName]([&"woodcutting"])

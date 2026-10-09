@@ -44,7 +44,9 @@ func _ready() -> void:
 	EventBus.overlay_changed.connect(_on_overlay_changed)
 	EventBus.grid_stepped.connect(_on_grid)
 	EventBus.research_changed.connect(_refresh_research)
-	EventBus.tech_unlocked.connect(func(_t: TechDef) -> void: _refresh_research())
+	EventBus.tech_unlocked.connect(func(_t: TechDef) -> void:
+		_refresh_research()
+		_refresh_overlay_locks())
 	_research_button.pressed.connect(func() -> void: get_node("../TechTree").toggle())
 	for sig: Signal in [EventBus.building_completed, EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh_upkeep())
@@ -66,8 +68,25 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("overlay_cycle"):
 		var next := (_overlay_mode + 1) % OverlayLayer.Mode.size()
+		if _overlay_locked(next):
+			next = (next + 1) % OverlayLayer.Mode.size()
 		EventBus.overlay_changed.emit(next)
 		get_viewport().set_input_as_handled()
+
+
+## Calque inaccessible faute de technologie (gisements avant Prospection).
+func _overlay_locked(mode: int) -> bool:
+	return mode == OverlayLayer.Mode.DEPOSITS and not GameState.deposits_revealed()
+
+
+func _refresh_overlay_locks() -> void:
+	for mode in _overlay_buttons.size():
+		var locked := _overlay_locked(mode)
+		_overlay_buttons[mode].disabled = locked
+		_overlay_buttons[mode].tooltip_text = "Nécessite la technologie : %s (T)" % \
+			TechDb.get_def(GameState.PROSPECTING_TECH).display_name if locked else ""
+	if _overlay_locked(_overlay_mode):
+		EventBus.overlay_changed.emit(OverlayLayer.Mode.NONE)
 
 
 func _build_overlay_buttons() -> void:
@@ -153,6 +172,8 @@ func _refresh_upkeep() -> void:
 
 func _on_game_started(seed_value: int) -> void:
 	_seed_edit.text = str(seed_value)
+	if not _overlay_buttons.is_empty():
+		_refresh_overlay_locks()
 	_refresh_upkeep()
 	_refresh_research()
 	_on_grid(PowerGrid.Report.new())

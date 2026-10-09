@@ -68,6 +68,8 @@ func _cell_color(i: int, gradient: Gradient) -> Color:
 		Mode.GRID:
 			return _grid_color(map.cell_of(i))
 		Mode.DEPOSITS:
+			if not GameState.deposits_revealed():
+				return Color.TRANSPARENT
 			var kind := map.deposit[i]
 			if kind == WorldMap.Deposit.NONE:
 				return Color(0, 0, 0, 0.25) if not water else Color.TRANSPARENT

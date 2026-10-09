@@ -76,7 +76,7 @@ func _refresh() -> void:
 	if map.terrain[i] == TerrainDef.Type.FOREST:
 		lines.append("Bois sur pied : %s t" % Format.thousands(roundi(map.wood[i])))
 	var kind := map.deposit[i]
-	if kind != WorldMap.Deposit.NONE:
+	if kind != WorldMap.Deposit.NONE and GameState.deposits_revealed():
 		lines.append("Gisement : %s, %s t" % [
 			WorldMap.DEPOSIT_NAMES[kind], Format.thousands(roundi(map.deposit_amount[i]))])
 	if GameState.roads.has_road(cell):
