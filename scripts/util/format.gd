@@ -17,3 +17,8 @@ static func thousands(value: int) -> String:
 ## Durée en heures de jeu : "36 h", "3 j".
 static func duration_hours(hours: int) -> String:
 	return "%d j" % (hours / 24) if hours >= 24 and hours % 24 == 0 else "%d h" % hours
+
+
+## Nombre à [param digits] décimales avec virgule : 12.34 → "12,3".
+static func decimal(value: float, digits: int = 1) -> String:
+	return ("%.*f" % [digits, value]).replace(".", ",")

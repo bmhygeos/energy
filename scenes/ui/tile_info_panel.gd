@@ -20,9 +20,8 @@ func _ready() -> void:
 			EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh())
 	EventBus.tiles_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
-	EventBus.tick_advanced.connect(func(_t: int) -> void:
-		var b := _shown_building()
-		if b and not b.is_complete():
+	EventBus.production_stepped.connect(func(_r: Production.Report) -> void:
+		if _panel.visible:
 			_refresh())
 	_refresh()
 
@@ -60,15 +59,47 @@ func _refresh() -> void:
 			water = "oui"
 		lines.append("Accès à l'eau : " + water)
 		lines.append("Constructible : " + ("oui" if def.buildable else "non"))
+	if map.terrain[i] == TerrainDef.Type.FOREST:
+		lines.append("Bois sur pied : %s t" % Format.thousands(roundi(map.wood[i])))
 	var kind := map.deposit[i]
 	if kind != WorldMap.Deposit.NONE:
 		lines.append("Gisement : %s, %s t" % [
-			WorldMap.DEPOSIT_NAMES[kind], Format.thousands(map.deposit_amount[i])])
+			WorldMap.DEPOSIT_NAMES[kind], Format.thousands(roundi(map.deposit_amount[i]))])
 	var b := _shown_building()
 	if b:
 		_title.text = "%s  (%d, %d)" % [b.def.display_name, cell.x, cell.y]
-		var state := "en service" if b.is_complete() else "chantier %d %%" % roundi(b.progress_ratio() * 100.0)
-		lines.insert(0, "Sur : %s · %s" % [def.display_name.to_lower(), state])
-		lines.insert(1, "Entretien : %s €/jour" % Format.thousands(b.def.upkeep_per_day))
-		lines.insert(2, "")
+		var head := _building_lines(b)
+		head.append("Sur : " + def.display_name.to_lower())
+		head.append("")
+		head.append_array(lines)
+		lines = head
 	_body.text = "\n".join(lines)
+
+
+func _building_lines(b: Building) -> PackedStringArray:
+	var def := b.def
+	var lines := PackedStringArray()
+	if not b.is_complete():
+		lines.append("Chantier : %d %%" % roundi(b.progress_ratio() * 100.0))
+		lines.append("Entretien : %s €/jour" % Format.thousands(def.upkeep_per_day))
+		return lines
+	var state := Building.STATUS_NAMES[b.status]
+	if b.status == Building.Status.RUNNING and def.input_good != Goods.Type.NONE and b.activity < 0.999:
+		state += " (%d %%)" % roundi(b.activity * 100.0)
+	lines.append(state)
+	if def.power_mw > 0.0:
+		lines.append("Électricité : %s MW" % Format.decimal(b.power_mw))
+	if def.input_good != Goods.Type.NONE:
+		lines.append("Entrée : %s / %s t de %s" % [Format.decimal(b.input_stock),
+			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.input_good).to_lower()])
+		var n := GameState.production.suppliers_of(b).size()
+		lines.append("Fournisseurs à portée : %d" % n)
+	if def.output_good != Goods.Type.NONE:
+		lines.append("Sortie : %s / %s t de %s" % [Format.decimal(b.output_stock),
+			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.output_good).to_lower()])
+		lines.append("Clients à portée : %d" % GameState.production.customers_of(b).size())
+	var available := Production.resource_available(GameState.world_map, def, b.anchor)
+	if available >= 0.0:
+		lines.append("Ressource à portée : %s t" % Format.thousands(roundi(available)))
+	lines.append("Entretien : %s €/jour" % Format.thousands(def.upkeep_per_day))
+	return lines

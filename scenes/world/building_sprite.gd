@@ -8,6 +8,13 @@ const INSET := 0.8
 const SCAFFOLD_COLOR := Color("e8c547")
 const BAR_SIZE := Vector2(44, 6)
 const BLADE_SPEED := 2.0  ## Radians par seconde.
+## Couleur de la pastille d'alerte par statut (absent : pas d'alerte).
+const BADGE_COLORS := {
+	Building.Status.NO_INPUT: Color("e5484d"),
+	Building.Status.OUTPUT_FULL: Color("f0a020"),
+	Building.Status.DEPLETED: Color("8b8d98"),
+}
+const SMOKE_COLOR := Color(0.85, 0.85, 0.85, 0.45)
 
 var def: BuildingDef
 var anchor: Vector2i
@@ -15,7 +22,13 @@ var anchor: Vector2i
 var progress := 1.0:
 	set(value):
 		progress = value
-		set_process(def.style == BuildingDef.Style.TURBINE and progress >= 1.0)
+		_update_process()
+		queue_redraw()
+## Building.Status ; RUNNING par défaut (fantôme).
+var status := Building.Status.RUNNING:
+	set(value):
+		status = value
+		_update_process()
 		queue_redraw()
 
 var _blade_angle := 0.0
@@ -27,6 +40,13 @@ func setup(p_def: BuildingDef, p_anchor: Vector2i, p_progress: float = 1.0) -> v
 	position = Iso.map_to_world(Vector2(anchor))
 	_blade_angle = float(hash(anchor) % 628) / 100.0
 	progress = p_progress
+
+
+## Animation (rotor, fumée) seulement pour un bâtiment en service.
+func _update_process() -> void:
+	if def:
+		set_process(status == Building.Status.RUNNING and progress >= 1.0
+			and (def.style == BuildingDef.Style.TURBINE or def.has_chimney))
 
 
 func _process(delta: float) -> void:
@@ -61,6 +81,10 @@ func _draw() -> void:
 					foot + Vector2(0, half.y), foot + Vector2(-half.x, 0)])
 				var h := def.height * 0.7 * clampf((progress - 0.6) / 0.4, 0.0, 1.0)
 				_draw_box(c, h, def.roof_color.lightened(0.15), def.roof_color.darkened(0.4))
+				if built and status == Building.Status.RUNNING:
+					_draw_smoke(foot + Vector2(0, -h))
+	if built and BADGE_COLORS.has(status):
+		_draw_badge(Vector2(center.x, inner[0].y - def.height - 14.0))
 	if not built:
 		_draw_scaffold(inner, def.height)
 		var bar_pos := Vector2(center.x - BAR_SIZE.x / 2.0, inner[0].y - def.height - 16.0)
@@ -112,3 +136,28 @@ func _draw_panels(d: PackedVector2Array, h: float) -> void:
 	for j in range(1, cols):
 		var t := float(j) / cols
 		draw_line(d[0].lerp(d[1], t) + up, d[3].lerp(d[2], t) + up, def.roof_color, 1.0)
+
+
+## Panaches de fumée montant de [param top], animés par l'angle du rotor.
+func _draw_smoke(top: Vector2) -> void:
+	for k in 3:
+		var t := fmod(_blade_angle / TAU + k / 3.0, 1.0)
+		var r := 4.0 + 7.0 * t
+		draw_circle(top + Vector2(6.0 * t, -6.0 - 30.0 * t), r, SMOKE_COLOR * Color(1, 1, 1, 1.0 - t))
+
+
+## Pastille dessinée en formes simples : « ! » (manque), barre pleine
+## (sortie pleine), « × » (épuisé).
+func _draw_badge(pos: Vector2) -> void:
+	draw_circle(pos, 10.0, Color(0, 0, 0, 0.5))
+	draw_circle(pos, 8.5, BADGE_COLORS[status])
+	match status:
+		Building.Status.NO_INPUT:
+			draw_line(pos + Vector2(0, -5), pos + Vector2(0, 1.5), Color.WHITE, 2.5)
+			draw_circle(pos + Vector2(0, 4.5), 1.4, Color.WHITE)
+		Building.Status.OUTPUT_FULL:
+			draw_rect(Rect2(pos - Vector2(4.5, 4.5), Vector2(9, 9)), Color.WHITE, false, 1.5)
+			draw_rect(Rect2(pos + Vector2(-4.5, -1), Vector2(9, 5.5)), Color.WHITE)
+		_:
+			draw_line(pos + Vector2(-4, -4), pos + Vector2(4, 4), Color.WHITE, 2.0)
+			draw_line(pos + Vector2(4, -4), pos + Vector2(-4, 4), Color.WHITE, 2.0)

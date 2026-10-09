@@ -4,6 +4,10 @@ extends Resource
 ## et apparence provisoire. Équilibrage dans data/buildings/*.tres.
 
 enum Category { RESOURCES, ENERGY, LOGISTICS, OTHER }
+## Ressource naturelle exploitée par un extracteur.
+enum Extraction { NONE, FOREST, DEPOSIT, REFOREST }
+## Ce qui module la puissance électrique produite.
+enum PowerSource { NONE, FUEL, WIND, SUN }
 ## Forme du dessin provisoire (scenes/world/building_sprite.gd).
 enum Style { BOX, TURBINE, PANELS }
 
@@ -42,6 +46,23 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 @export_range(0.0, 1.0) var min_wind := 0.0
 @export_range(0.0, 1.0) var min_sun := 0.0
 
+@export_group("Production")
+## Extraction : bois des forêts / gisement dans [member harvest_radius] tuiles
+## autour de l'emprise ; REFOREST : la pépinière replante et fait repousser.
+@export var extraction: Extraction = Extraction.NONE
+@export var harvest_radius := 1
+@export var input_good: Goods.Type = Goods.Type.NONE
+## Consommation à plein régime (t/h).
+@export var input_per_hour := 0.0
+@export var output_good: Goods.Type = Goods.Type.NONE
+## Production à plein régime (t/h).
+@export var output_per_hour := 0.0
+## Puissance électrique à plein régime (MW).
+@export var power_mw := 0.0
+@export var power_source: PowerSource = PowerSource.NONE
+## Capacité de chaque tampon (entrée et sortie), en tonnes.
+@export var buffer_capacity := 20.0
+
 @export_group("Apparence")
 @export var style: Style = Style.BOX
 @export var color := Color.GRAY
@@ -63,6 +84,39 @@ func footprint(anchor: Vector2i) -> Array[Vector2i]:
 		for x in size.x:
 			cells.append(origin + Vector2i(x, y))
 	return cells
+
+
+func is_producer() -> bool:
+	return extraction != Extraction.NONE or output_good != Goods.Type.NONE or power_mw > 0.0
+
+
+## Production à plein régime, une ligne par flux (vide : aucune).
+func describe_production() -> PackedStringArray:
+	var lines := PackedStringArray()
+	if input_good != Goods.Type.NONE:
+		lines.append("Consomme : %s t/h de %s" % [_num(input_per_hour), Goods.display_name(input_good).to_lower()])
+	if output_good != Goods.Type.NONE:
+		lines.append("Produit : %s t/h de %s" % [_num(output_per_hour), Goods.display_name(output_good).to_lower()])
+	if power_mw > 0.0:
+		var factor := ""
+		match power_source:
+			PowerSource.WIND:
+				factor = " × vent"
+			PowerSource.SUN:
+				factor = " × ensoleillement"
+		lines.append("Électricité : %s MW%s" % [_num(power_mw), factor])
+	match extraction:
+		Extraction.FOREST:
+			lines.append("Coupe les forêts à %d tuiles (les épuise)" % harvest_radius)
+		Extraction.DEPOSIT:
+			lines.append("Exploite le gisement à %d tuile%s" % [harvest_radius, "s" if harvest_radius > 1 else ""])
+		Extraction.REFOREST:
+			lines.append("Replante et régénère les forêts à %d tuiles" % harvest_radius)
+	return lines
+
+
+static func _num(value: float) -> String:
+	return str(roundi(value)) if is_equal_approx(value, roundf(value)) else "%.1f" % value
 
 
 ## Contraintes de placement lisibles, une par ligne (vide : aucune).

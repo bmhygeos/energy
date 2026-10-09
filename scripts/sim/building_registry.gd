@@ -133,6 +133,7 @@ func place(p: Placement) -> Building:
 		_occupancy[map.index_of(cell)] = b.id
 	for cell in p.cleared:
 		map.terrain[map.index_of(cell)] = TerrainDef.Type.PLAIN
+		map.wood[map.index_of(cell)] = 0.0
 	return b
 
 

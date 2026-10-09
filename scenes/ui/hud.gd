@@ -17,6 +17,7 @@ var _overlay_buttons: Array[Button] = []
 @onready var _date_label: Label = %DateLabel
 @onready var _money_label: Label = %MoneyLabel
 @onready var _upkeep_label: Label = %UpkeepLabel
+@onready var _power_label: Label = %PowerLabel
 @onready var _fps_label: Label = %FpsLabel
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
@@ -38,6 +39,7 @@ func _ready() -> void:
 	EventBus.money_changed.connect(_on_money_changed)
 	EventBus.game_started.connect(_on_game_started)
 	EventBus.overlay_changed.connect(_on_overlay_changed)
+	EventBus.production_stepped.connect(_on_production)
 	for sig: Signal in [EventBus.building_completed, EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh_upkeep())
 	_on_tick(GameClock.tick)
@@ -93,6 +95,20 @@ func _on_money_changed(money: int) -> void:
 	_money_label.text = "%s €" % Format.thousands(money)
 
 
+func _on_production(report: Production.Report) -> void:
+	_power_label.text = "Production %s MW" % Format.decimal(report.power_mw)
+	var stocks := {}
+	for b in GameState.buildings.all():
+		if b.def.input_good != Goods.Type.NONE:
+			stocks[b.def.input_good] = stocks.get(b.def.input_good, 0.0) + b.input_stock
+		if b.def.output_good != Goods.Type.NONE:
+			stocks[b.def.output_good] = stocks.get(b.def.output_good, 0.0) + b.output_stock
+	var lines := PackedStringArray(["Puissance produite pendant la dernière heure"])
+	for good: int in stocks:
+		lines.append("%s en stock : %s t" % [Goods.display_name(good), Format.decimal(stocks[good])])
+	_power_label.tooltip_text = "\n".join(lines)
+
+
 func _refresh_upkeep() -> void:
 	_upkeep_label.text = "Entretien %s €/j" % Format.thousands(GameState.buildings.daily_upkeep())
 
@@ -100,6 +116,7 @@ func _refresh_upkeep() -> void:
 func _on_game_started(seed_value: int) -> void:
 	_seed_edit.text = str(seed_value)
 	_refresh_upkeep()
+	_power_label.text = "Production 0 MW"
 
 
 func _on_overlay_changed(mode: int) -> void:

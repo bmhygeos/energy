@@ -7,6 +7,9 @@ const DEFAULT_START_MONEY := 50_000
 var map_size: Vector2i = DEFAULT_MAP_SIZE
 var world_map: WorldMap
 var buildings: BuildingRegistry
+var production: Production
+## Puissance électrique produite pendant la dernière heure (MW).
+var power_mw := 0.0
 var money: int = DEFAULT_START_MONEY:
 	set(value):
 		money = value
@@ -25,6 +28,8 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	map_size = size
 	world_map = MapGenerator.generate(size, seed_value)
 	buildings = BuildingRegistry.new(world_map)
+	production = Production.new(buildings)
+	power_mw = 0.0
 	money = start_money
 	GameClock.reset()
 	EventBus.game_started.emit(seed_value)
@@ -68,9 +73,16 @@ func demolish(cell: Vector2i) -> int:
 	return refund
 
 
-func _on_tick(_tick: int) -> void:
+func _on_tick(tick: int) -> void:
 	for b in buildings.advance():
 		EventBus.building_completed.emit(b)
+	var report := production.step(tick)
+	power_mw = report.power_mw
+	if not report.changed_cells.is_empty():
+		EventBus.tiles_changed.emit(report.changed_cells)
+	for b in report.status_changed:
+		EventBus.building_status_changed.emit(b)
+	EventBus.production_stepped.emit(report)
 
 
 func _on_day(_day: int) -> void:

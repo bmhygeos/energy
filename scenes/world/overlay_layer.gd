@@ -21,6 +21,7 @@ func _ready() -> void:
 		mode = m as Mode
 		visible = mode != Mode.NONE
 		queue_redraw())
+	EventBus.tiles_changed.connect(func(_cells: Array[Vector2i]) -> void: queue_redraw())
 	visible = false
 
 

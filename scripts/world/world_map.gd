@@ -6,6 +6,8 @@ extends RefCounted
 enum Deposit { NONE, COAL, URANIUM, LITHIUM }
 
 const DEPOSIT_NAMES: PackedStringArray = ["Aucun", "Charbon", "Uranium", "Lithium"]
+## Bois sur pied d'une forêt mature (tonnes).
+const WOOD_PER_FOREST := 120.0
 const NEIGHBORS_4: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
 ]
@@ -32,7 +34,9 @@ var water_access: PackedByteArray
 var coastal: PackedByteArray
 ## Deposit par tuile, et quantité restante (tonnes).
 var deposit: PackedByteArray
-var deposit_amount: PackedInt32Array
+var deposit_amount: PackedFloat32Array
+## Bois sur pied par tuile de forêt (tonnes) ; la forêt disparaît à 0.
+var wood: PackedFloat32Array
 
 
 func _init(p_size: Vector2i, p_seed: int = 0) -> void:
@@ -48,6 +52,7 @@ func _init(p_size: Vector2i, p_seed: int = 0) -> void:
 	coastal.resize(n)
 	deposit.resize(n)
 	deposit_amount.resize(n)
+	wood.resize(n)
 
 
 func cell_count() -> int:

@@ -31,3 +31,20 @@ modèles d'export).
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment (rembourse 25 % du coût, 75 % pour un chantier) |
 | Calque d'information | `O` (relief, vent, soleil, eau, gisements) ou boutons en bas à droite |
 | Nouvelle carte | champ « Graine » + Générer, ou Aléatoire |
+
+## Production (M3)
+
+- **Bûcheron** : coupe le bois des forêts à 2 tuiles (les plus proches d'abord) ;
+  une forêt vidée redevient plaine. **Pépinière** : fait repousser les forêts à
+  2 tuiles et en plante une nouvelle par jour.
+- **Mine de charbon** : vide le gisement sous elle et autour (1 tuile).
+- **Centrales** biomasse / charbon : brûlent le combustible reçu ; puissance
+  proportionnelle au combustible disponible. Éolienne et ferme solaire : puissance
+  × vent / ensoleillement de la tuile.
+- Chaque bâtiment a un tampon d'entrée et de sortie : sortie pleine → arrêt
+  (pastille orange), entrée vide → arrêt (pastille rouge), ressource épuisée →
+  pastille grise. Détails (stocks, fournisseurs, ressource restante) dans le
+  panneau d'information ; puissance totale dans le bandeau.
+- **Livraison directe provisoire** : en attendant les routes et camions (M3b),
+  les marchandises passent instantanément d'un producteur à un consommateur à
+  10 tuiles au plus (le plus proche d'abord, 10 t/h maximum par bâtiment).

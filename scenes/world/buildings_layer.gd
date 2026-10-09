@@ -19,6 +19,9 @@ func _ready() -> void:
 	EventBus.building_completed.connect(func(b: Building) -> void:
 		if _sprites.has(b.id):
 			_sprites[b.id].progress = 1.0)
+	EventBus.building_status_changed.connect(func(b: Building) -> void:
+		if _sprites.has(b.id):
+			_sprites[b.id].status = b.status)
 	EventBus.tick_advanced.connect(_on_tick)
 	reload()
 
@@ -52,6 +55,7 @@ func hide_ghost() -> void:
 func _add(b: Building) -> void:
 	var sprite := BuildingSprite.new()
 	sprite.setup(b.def, b.anchor, b.progress_ratio())
+	sprite.status = b.status
 	add_child(sprite)
 	_sprites[b.id] = sprite
 

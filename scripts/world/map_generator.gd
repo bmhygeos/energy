@@ -41,6 +41,8 @@ static func generate(size: Vector2i, seed_value: int) -> WorldMap:
 	_place_deposits(map, rng)
 	for i in map.cell_count():
 		map.variant[i] = rng.randi_range(0, 3)
+		if map.terrain[i] == TerrainDef.Type.FOREST:
+			map.wood[i] = WorldMap.WOOD_PER_FOREST
 	return map
 
 

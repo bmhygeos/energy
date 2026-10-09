@@ -94,6 +94,10 @@ func _tooltip(def: BuildingDef) -> String:
 	lines.append("Entretien : %s €/jour" % Format.thousands(def.upkeep_per_day))
 	if def.lifetime_years > 0:
 		lines.append("Durée de vie : %d ans" % def.lifetime_years)
+	var production := def.describe_production()
+	if not production.is_empty():
+		lines.append("")
+		lines.append_array(production)
 	var constraints := def.describe_constraints()
 	if not constraints.is_empty():
 		lines.append("")
@@ -136,6 +140,9 @@ func _refresh_hint() -> void:
 				if not _placement.cleared.is_empty():
 					extra = " (défrichement de %d tuile%s)" % [
 						_placement.cleared.size(), "s" if _placement.cleared.size() > 1 else ""]
+				var available := Production.resource_available(GameState.world_map, _def, _placement.anchor)
+				if available >= 0.0:
+					extra += " · ressource à portée : %s t" % Format.thousands(roundi(available))
 				text += "\n[color=%s]Clic : construire%s[/color] · Échap : annuler" % [OK_COLOR, extra]
 			else:
 				text += "\n[color=%s]%s[/color] · Échap : annuler" % [ERROR_COLOR, _placement.error]

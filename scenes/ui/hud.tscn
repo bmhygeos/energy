@@ -43,6 +43,14 @@ mouse_filter = 1
 tooltip_text = "Entretien journalier des bâtiments en service"
 text = "Entretien 0 €/j"
 
+[node name="PowerLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+mouse_filter = 1
+tooltip_text = "Puissance électrique produite pendant la dernière heure"
+text = "Production 0 MW"
+
 [node name="Spacer" type="Control" parent="TopBar/Margin/Row"]
 layout_mode = 2
 size_flags_horizontal = 3

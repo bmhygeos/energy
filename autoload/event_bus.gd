@@ -26,3 +26,7 @@ signal building_removed(building: Building)
 signal tiles_changed(cells: Array[Vector2i])
 ## Message bref pour le joueur (erreur de construction…).
 signal notified(message: String)
+## Bilan de l'heure de production écoulée (Production.Report).
+signal production_stepped(report: Production.Report)
+## Statut d'un bâtiment (Building.Status) modifié.
+signal building_status_changed(building: Building)

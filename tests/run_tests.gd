@@ -15,6 +15,7 @@ func _init() -> void:
 	_test_building_defs()
 	_test_placement()
 	_test_construction()
+	_test_production()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -108,9 +109,9 @@ func _test_format() -> void:
 	_check(Format.duration_hours(48) == "2 j" and Format.duration_hours(36) == "36 h", "durées")
 
 
-## Petite carte de plaine 8×8 aux attributs contrôlés.
-func _flat_map() -> WorldMap:
-	var map := WorldMap.new(Vector2i(8, 8))
+## Petite carte de plaine aux attributs contrôlés.
+func _flat_map(size := Vector2i(8, 8)) -> WorldMap:
+	var map := WorldMap.new(size)
 	map.terrain.fill(TerrainDef.Type.PLAIN)
 	map.wind.fill(0.3)
 	map.sun.fill(0.5)
@@ -212,3 +213,105 @@ func _test_construction() -> void:
 	reg.advance(plant.build_hours)
 	_check(b.is_complete() and b.build_progress == plant.build_hours, "progression plafonnée")
 	_check(reg.daily_upkeep() == lab.upkeep_per_day + plant.upkeep_per_day, "entretien cumulé")
+
+
+## Pose et termine immédiatement un bâtiment (placement supposé valide).
+func _built(reg: BuildingRegistry, id: StringName, anchor: Vector2i) -> Building:
+	var p := reg.check_placement(BuildingDb.get_def(id), anchor)
+	_check(p.is_valid(), "placement de %s en %s : %s" % [id, anchor, p.error])
+	var b := reg.place(p)
+	b.build_progress = b.def.build_hours
+	return b
+
+
+func _test_production() -> void:
+	var map := _flat_map(Vector2i(32, 32))
+	var reg := BuildingRegistry.new(map)
+	var prod := Production.new(reg)
+	var tick := 0
+
+	# Chaîne bois : deux forêts, un bûcheron, une centrale biomasse.
+	for c in [Vector2i(2, 1), Vector2i(3, 1)]:
+		map.terrain[map.index_of(c)] = TerrainDef.Type.FOREST
+		map.wood[map.index_of(c)] = 30.0
+	var lumberjack := _built(reg, &"lumberjack", Vector2i(2, 2))
+	var plant := _built(reg, &"biomass_plant", Vector2i(6, 6))
+	var site := reg.place(reg.check_placement(BuildingDb.get_def(&"laboratory"), Vector2i(10, 10)))
+	tick += 1
+	var r := prod.step(tick)
+	_check(lumberjack.status == Building.Status.RUNNING and is_equal_approx(lumberjack.output_stock, 1.5),
+		"bûcheron : 1,5 t la première heure")
+	_check(plant.status == Building.Status.NO_INPUT and r.power_mw == 0.0, "centrale sans bois à l'arrêt")
+	_check(site.status == Building.Status.CONSTRUCTION, "chantier signalé")
+	_check(is_equal_approx(map.wood[map.index_of(Vector2i(2, 1))], 28.5), "forêt la plus proche coupée d'abord")
+	tick += 1
+	r = prod.step(tick)
+	_check(is_equal_approx(plant.input_stock, 1.5 - 0.5 * 3.0) and plant.status == Building.Status.RUNNING,
+		"livraison directe puis combustion partielle")
+	_check(is_equal_approx(r.power_mw, 8.0 * 0.5), "puissance proportionnelle au combustible")
+	var depleted := false
+	while tick < 200:
+		tick += 1
+		r = prod.step(tick)
+		depleted = depleted or Vector2i(2, 1) in r.changed_cells
+	_check(depleted and map.get_terrain(Vector2i(2, 1)) == TerrainDef.Type.PLAIN, "forêt épuisée → plaine")
+	_check(lumberjack.status == Building.Status.DEPLETED, "bûcheron sans forêt : ressource épuisée")
+	_check(map.wood[map.index_of(Vector2i(3, 1))] == 0.0, "les deux forêts coupées")
+	_check(plant.status == Building.Status.NO_INPUT and plant.input_stock == 0.0, "centrale à court de bois")
+	_check(lumberjack.output_stock == 0.0, "tout le bois livré")
+
+	# Stock de sortie plein sans client à portée.
+	map.terrain[map.index_of(Vector2i(25, 1))] = TerrainDef.Type.FOREST
+	map.wood[map.index_of(Vector2i(25, 1))] = WorldMap.WOOD_PER_FOREST
+	var lonely := _built(reg, &"lumberjack", Vector2i(25, 2))
+	_check(Production.footprint_distance(lonely, plant) > Production.DELIVERY_RADIUS, "hors de portée")
+	for i in 20:
+		tick += 1
+		prod.step(tick)
+	_check(lonely.status == Building.Status.OUTPUT_FULL
+		and is_equal_approx(lonely.output_stock, lonely.def.buffer_capacity), "sortie pleine → arrêt")
+
+	# Chaîne charbon : gisement, mine, centrale près de l'eau.
+	var coal := Vector2i(20, 20)
+	map.deposit[map.index_of(coal)] = WorldMap.Deposit.COAL
+	map.deposit_amount[map.index_of(coal)] = 10.0
+	map.deposit[map.index_of(Vector2i(21, 20))] = WorldMap.Deposit.COAL
+	map.deposit_amount[map.index_of(Vector2i(21, 20))] = 2.0
+	map.water_access[map.index_of(Vector2i(24, 24))] = 1
+	var mine := _built(reg, &"coal_mine", coal)
+	var coal_plant := _built(reg, &"coal_plant", Vector2i(24, 24))
+	_check(prod.suppliers_of(coal_plant) == [mine], "mine fournisseur de la centrale")
+	_check(prod.suppliers_of(plant) == [lumberjack], "bûcheron lointain exclu des fournisseurs")
+	var gone := false
+	for i in 10:
+		tick += 1
+		r = prod.step(tick)
+		gone = gone or coal in r.changed_cells
+	_check(gone and map.deposit[map.index_of(coal)] == WorldMap.Deposit.NONE, "gisement épuisé")
+	_check(map.deposit[map.index_of(Vector2i(21, 20))] == WorldMap.Deposit.NONE, "gisement voisin exploité")
+	_check(mine.status == Building.Status.DEPLETED, "mine épuisée")
+	_check(coal_plant.status == Building.Status.NO_INPUT, "centrale à charbon à court")
+
+	# Éolienne : puissance × vent.
+	map.wind[map.index_of(Vector2i(15, 28))] = 0.8
+	var turbine := _built(reg, &"wind_turbine", Vector2i(15, 28))
+	tick += 1
+	prod.step(tick)
+	_check(is_equal_approx(turbine.power_mw, turbine.def.power_mw * 0.8), "éolienne × vent")
+
+	# Pépinière : repousse et plantation quotidienne.
+	map.terrain[map.index_of(Vector2i(5, 25))] = TerrainDef.Type.FOREST
+	map.wood[map.index_of(Vector2i(5, 25))] = 50.0
+	var nursery := _built(reg, &"nursery", Vector2i(5, 27))
+	var forests_before := 0
+	for i in map.cell_count():
+		forests_before += 1 if map.terrain[i] == TerrainDef.Type.FOREST else 0
+	for i in Production.PLANT_INTERVAL_HOURS:
+		tick += 1
+		prod.step(tick)
+	var forests_after := 0
+	for i in map.cell_count():
+		forests_after += 1 if map.terrain[i] == TerrainDef.Type.FOREST else 0
+	_check(forests_after == forests_before + 1, "une plantation par jour")
+	_check(map.wood[map.index_of(Vector2i(5, 25))] > 50.0, "repousse des forêts")
+	_check(nursery.status == Building.Status.RUNNING, "pépinière en service")
