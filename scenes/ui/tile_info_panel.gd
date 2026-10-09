@@ -154,6 +154,11 @@ func _building_lines(b: Building) -> PackedStringArray:
 		var fleet := GameState.logistics.vehicles_of(b)
 		var busy := fleet.filter(func(v: Vehicle) -> bool: return v.state != Vehicle.State.IDLE).size()
 		lines.append("Véhicules : %d / %d (%d en mission)" % [fleet.size(), def.vehicle_slots, busy])
+		if busy < fleet.size():
+			lines.append("Au dépôt : %d, rien à transporter pour l'instant" % (fleet.size() - busy))
+			lines.append("  (départ quand une source a ≥ %d %% d'un chargement)" % roundi(Logistics.FULL_LOAD_RATIO * 100.0))
+		if b != _actions_for:
+			lines.append("Cliquez sur le dépôt pour acheter des véhicules")
 	var available := Production.resource_available(GameState.world_map, def, b.anchor)
 	if available >= 0.0:
 		lines.append("Ressource à portée : %s t" % Format.thousands(roundi(available)))
