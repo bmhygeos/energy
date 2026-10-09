@@ -17,6 +17,8 @@ var _hovered := Vector2i(-1, -1)
 var _group := ButtonGroup.new()
 var _build_buttons: Dictionary[BuildingDef, Button] = {}
 var _demolish_button: Button
+var _road_button: Button
+var _road_plan: RoadNetwork.Plan
 var _toast_tween: Tween
 
 @onready var _list: VBoxContainer = %List
@@ -37,6 +39,9 @@ func _ready() -> void:
 		if _mode == BuildTool.Mode.DEMOLISH:
 			_refresh_hint())
 	EventBus.money_changed.connect(func(_m: int) -> void: _refresh_affordability())
+	EventBus.road_previewed.connect(func(p: RoadNetwork.Plan) -> void:
+		_road_plan = p
+		_refresh_hint())
 	EventBus.notified.connect(_show_toast)
 	_toast.modulate.a = 0.0
 	_refresh_affordability()
@@ -52,6 +57,11 @@ func _build_list() -> void:
 		header.text = BuildingDef.CATEGORY_NAMES[category]
 		header.modulate = Color(1, 1, 1, 0.6)
 		_list.add_child(header)
+		if category == BuildingDef.Category.LOGISTICS:
+			_road_button = _tool_button("Route   %d €/tuile" % RoadNetwork.COST_PER_TILE)
+			_road_button.tooltip_text = _road_tooltip()
+			_road_button.pressed.connect(func() -> void:
+				_select_tool(_road_button, BuildTool.Mode.ROAD, null))
 		for def: BuildingDef in defs:
 			var button := _tool_button("%s   %s €" % [def.display_name, Format.thousands(def.cost)])
 			button.tooltip_text = _tooltip(def)
@@ -105,6 +115,17 @@ func _tooltip(def: BuildingDef) -> String:
 	return "\n".join(lines)
 
 
+func _road_tooltip() -> String:
+	return "\n".join(PackedStringArray([
+		"Route", "Support des charrettes et camions. Glisser pour tracer en L.", "",
+		"Plaine, désert : %d €/tuile" % RoadNetwork.COST_PER_TILE,
+		"Forêt (défrichée) : %d €/tuile" % (RoadNetwork.COST_PER_TILE + RoadNetwork.FOREST_EXTRA_COST),
+		"Colline : %d €/tuile" % roundi(RoadNetwork.COST_PER_TILE * RoadNetwork.HILL_COST_FACTOR),
+		"Pont sur rivière : %d €" % RoadNetwork.BRIDGE_COST,
+		"Entretien : %d €/tuile/jour" % RoadNetwork.UPKEEP_PER_TILE_PER_DAY,
+	]))
+
+
 func _on_tool_changed(mode: int, def: BuildingDef) -> void:
 	_mode = mode as BuildTool.Mode
 	_def = def
@@ -113,6 +134,8 @@ func _on_tool_changed(mode: int, def: BuildingDef) -> void:
 	for d: BuildingDef in _build_buttons:
 		_build_buttons[d].set_pressed_no_signal(_mode == BuildTool.Mode.BUILD and d == def)
 	_demolish_button.set_pressed_no_signal(_mode == BuildTool.Mode.DEMOLISH)
+	_road_button.set_pressed_no_signal(_mode == BuildTool.Mode.ROAD)
+	_road_plan = null
 	_refresh_hint()
 
 
@@ -147,12 +170,28 @@ func _refresh_hint() -> void:
 			else:
 				text += "\n[color=%s]%s[/color] · Échap : annuler" % [ERROR_COLOR, _placement.error]
 		BuildTool.Mode.DEMOLISH:
-			text = "[b]Démolition[/b] — cliquez sur un bâtiment · Échap : annuler"
+			text = "[b]Démolition[/b] — cliquez sur un bâtiment ou une route · Échap : annuler"
 			var b := GameState.buildings.building_at(_hovered) if _hovered.x >= 0 else null
 			if b:
-				text += "\n[color=%s]%s %s : +%s €[/color]" % [
+				var refund := BuildingRegistry.refund_for(b)
+				var fleet := GameState.logistics.vehicles_of(b)
+				for v in fleet:
+					refund += floori(v.def.cost * Logistics.SELL_REFUND)
+				text += "\n[color=%s]%s %s%s : +%s €[/color]" % [
 					ERROR_COLOR, "Annuler le chantier" if not b.is_complete() else "Démolir",
-					b.def.display_name, Format.thousands(BuildingRegistry.refund_for(b))]
+					b.def.display_name, " et ses %d véhicules" % fleet.size() if fleet.size() > 0 else "",
+					Format.thousands(refund)]
+			elif _hovered.x >= 0 and GameState.roads.has_road(_hovered):
+				text += "\n[color=%s]Supprimer la route (sans remboursement)[/color]" % ERROR_COLOR
+		BuildTool.Mode.ROAD:
+			text = "[b]Route[/b] — glisser pour tracer · Échap : annuler"
+			if _road_plan:
+				if _road_plan.is_valid():
+					var n := _road_plan.new_cells.size()
+					text += "\n[color=%s]%d tuile%s : %s €[/color]" % [
+						OK_COLOR, n, "s" if n > 1 else "", Format.thousands(_road_plan.cost)]
+				else:
+					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, _road_plan.error]
 	_hint.text = text
 	_hint_panel.visible = not text.is_empty()
 

@@ -7,6 +7,12 @@ var _selected := Vector2i(-1, -1)
 @onready var _panel: PanelContainer = $Panel
 @onready var _title: Label = %Title
 @onready var _body: Label = %Body
+@onready var _actions: VBoxContainer = %Actions
+
+## Dépôt dont les boutons d'achat sont affichés.
+var _actions_for: Building
+## Lignes d'achat/revente par type de véhicule : [libellé, acheter, vendre].
+var _vehicle_rows: Dictionary[VehicleDef, Array] = {}
 
 
 func _ready() -> void:
@@ -20,6 +26,12 @@ func _ready() -> void:
 			EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh())
 	EventBus.tiles_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
+	EventBus.roads_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
+	EventBus.money_changed.connect(func(_m: int) -> void:
+		if _actions_for:
+			_refresh())
+	for sig: Signal in [EventBus.vehicle_added, EventBus.vehicle_removed]:
+		sig.connect(func(_v: Vehicle) -> void: _refresh())
 	EventBus.production_stepped.connect(func(_r: Production.Report) -> void:
 		if _panel.visible:
 			_refresh())
@@ -65,7 +77,16 @@ func _refresh() -> void:
 	if kind != WorldMap.Deposit.NONE:
 		lines.append("Gisement : %s, %s t" % [
 			WorldMap.DEPOSIT_NAMES[kind], Format.thousands(roundi(map.deposit_amount[i]))])
+	if GameState.roads.has_road(cell):
+		var bridge := map.terrain[i] == TerrainDef.Type.RIVER
+		_title.text = "%s  (%d, %d)" % ["Pont" if bridge else "Route", cell.x, cell.y]
+		var head := PackedStringArray([
+			"Sur : " + def.display_name.to_lower(),
+			"Entretien : %d €/jour" % RoadNetwork.UPKEEP_PER_TILE_PER_DAY, ""])
+		head.append_array(lines)
+		lines = head
 	var b := _shown_building()
+	_update_actions(b if b and cell == _selected else null)
 	if b:
 		_title.text = "%s  (%d, %d)" % [b.def.display_name, cell.x, cell.y]
 		var head := _building_lines(b)
@@ -83,6 +104,8 @@ func _building_lines(b: Building) -> PackedStringArray:
 		lines.append("Chantier : %d %%" % roundi(b.progress_ratio() * 100.0))
 		lines.append("Entretien : %s €/jour" % Format.thousands(def.upkeep_per_day))
 		return lines
+	if def.uses_logistics() and not GameState.roads.is_connected_building(b):
+		lines.append("Non relié à une route !")
 	var state := Building.STATUS_NAMES[b.status]
 	if b.status == Building.Status.RUNNING and def.input_good != Goods.Type.NONE and b.activity < 0.999:
 		state += " (%d %%)" % roundi(b.activity * 100.0)
@@ -92,14 +115,86 @@ func _building_lines(b: Building) -> PackedStringArray:
 	if def.input_good != Goods.Type.NONE:
 		lines.append("Entrée : %s / %s t de %s" % [Format.decimal(b.input_stock),
 			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.input_good).to_lower()])
-		var n := GameState.production.suppliers_of(b).size()
-		lines.append("Fournisseurs à portée : %d" % n)
+		if b.reserved_in > 0.0:
+			lines.append("En route : %s t" % Format.decimal(b.reserved_in))
 	if def.output_good != Goods.Type.NONE:
 		lines.append("Sortie : %s / %s t de %s" % [Format.decimal(b.output_stock),
 			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.output_good).to_lower()])
-		lines.append("Clients à portée : %d" % GameState.production.customers_of(b).size())
+		if b.reserved_out > 0.0:
+			lines.append("Promis aux véhicules : %s t" % Format.decimal(b.reserved_out))
+	if def.storage_capacity > 0.0:
+		lines.append("Stock : %s / %s t" % [Format.decimal(b.stored_total()),
+			Format.thousands(roundi(def.storage_capacity))])
+		for good: int in b.store:
+			lines.append("  %s : %s t" % [Goods.display_name(good), Format.decimal(b.store[good])])
+		if b.reserved_in > 0.0:
+			lines.append("En route : %s t" % Format.decimal(b.reserved_in))
+	if def.vehicle_slots > 0:
+		var fleet := GameState.logistics.vehicles_of(b)
+		var busy := fleet.filter(func(v: Vehicle) -> bool: return v.state != Vehicle.State.IDLE).size()
+		lines.append("Véhicules : %d / %d (%d en mission)" % [fleet.size(), def.vehicle_slots, busy])
 	var available := Production.resource_available(GameState.world_map, def, b.anchor)
 	if available >= 0.0:
 		lines.append("Ressource à portée : %s t" % Format.thousands(roundi(available)))
 	lines.append("Entretien : %s €/jour" % Format.thousands(def.upkeep_per_day))
 	return lines
+
+
+## Boutons d'achat/revente de véhicules pour le dépôt sélectionné.
+func _update_actions(b: Building) -> void:
+	var depot := b if b and b.def.vehicle_slots > 0 and b.is_complete() else null
+	if depot != _actions_for:
+		_actions_for = depot
+		for child in _actions.get_children():
+			child.queue_free()
+		_vehicle_rows.clear()
+		if depot:
+			_build_vehicle_rows(depot)
+	_actions.visible = depot != null
+	if depot == null:
+		return
+	var fleet := GameState.logistics.vehicles_of(depot)
+	for def: VehicleDef in _vehicle_rows:
+		var row := _vehicle_rows[def]
+		var mine := fleet.filter(func(v: Vehicle) -> bool: return v.def == def)
+		var idle := mine.filter(func(v: Vehicle) -> bool: return v.state == Vehicle.State.IDLE)
+		(row[0] as Label).text = "%s : %d" % [def.display_name, mine.size()]
+		var buy: Button = row[1]
+		var error := GameState.logistics.buy_error(depot, def, GameState.money)
+		buy.disabled = not error.is_empty()
+		buy.tooltip_text = error if not error.is_empty() else _vehicle_tooltip(def)
+		var sell: Button = row[2]
+		sell.disabled = idle.is_empty()
+		sell.tooltip_text = "Revendre un véhicule au dépôt : +%s €" % Format.thousands(
+			floori(def.cost * Logistics.SELL_REFUND)) if not idle.is_empty() else "Aucun véhicule de ce type au dépôt"
+
+
+func _build_vehicle_rows(depot: Building) -> void:
+	_actions.add_child(HSeparator.new())
+	for def in VehicleDb.DEFS:
+		var row := HBoxContainer.new()
+		var label := Label.new()
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		var buy := Button.new()
+		buy.text = "+ %s €" % Format.thousands(def.cost)
+		buy.focus_mode = Control.FOCUS_NONE
+		buy.pressed.connect(func() -> void: GameState.buy_vehicle(depot, def))
+		row.add_child(buy)
+		var sell := Button.new()
+		sell.text = "Vendre"
+		sell.focus_mode = Control.FOCUS_NONE
+		sell.pressed.connect(func() -> void: GameState.sell_vehicle(depot, def))
+		row.add_child(sell)
+		_actions.add_child(row)
+		_vehicle_rows[def] = [label, buy, sell]
+
+
+func _vehicle_tooltip(def: VehicleDef) -> String:
+	return "\n".join(PackedStringArray([
+		def.display_name,
+		"Charge : %s t" % Format.decimal(def.capacity, 0),
+		"Vitesse : %s tuile/h" % Format.decimal(def.speed),
+		"Entretien : %d €/jour" % def.upkeep_per_day,
+		"Usage : %s €/tuile" % Format.decimal(def.cost_per_tile),
+	]))

@@ -16,6 +16,8 @@ func _init() -> void:
 	_test_placement()
 	_test_construction()
 	_test_production()
+	_test_roads()
+	_test_logistics()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -148,7 +150,12 @@ func _test_placement() -> void:
 	_check(reg.check_placement(lab, Vector2i(2, 2), lab.cost).is_valid(), "fonds tout juste suffisants")
 	_check(not reg.check_placement(plant, Vector2i(0, 3)).is_valid(), "emprise hors carte")
 	_check(not reg.check_placement(warehouse, Vector2i(0, 3)).is_valid(), "entrepôt 2×1 hors carte à x=0")
-	_check(reg.check_placement(warehouse, Vector2i(1, 0)).is_valid(), "entrepôt 2×1 en (0..1, 0)")
+	_check(reg.check_placement(warehouse, Vector2i(1, 0)).error == "Doit être relié à une route",
+		"entrepôt sans route")
+	reg.roads.add_cells([Vector2i(0, 1)])
+	_check(reg.check_placement(warehouse, Vector2i(1, 0)).is_valid(), "entrepôt 2×1 en (0..1, 0) relié")
+	_check(reg.check_placement(lab, Vector2i(0, 1)).error == "Route présente", "pas de bâtiment sur une route")
+	reg.roads.remove(Vector2i(0, 1))
 
 	map.terrain[map.index_of(Vector2i(3, 3))] = TerrainDef.Type.MOUNTAIN
 	_check(not reg.check_placement(lab, Vector2i(3, 3)).is_valid(), "montagne non constructible")
@@ -230,67 +237,66 @@ func _test_production() -> void:
 	var prod := Production.new(reg)
 	var tick := 0
 
-	# Chaîne bois : deux forêts, un bûcheron, une centrale biomasse.
+	# Chaîne bois : deux forêts, un bûcheron, une centrale biomasse (le
+	# transport est simulé ici à la main, cf. _test_logistics).
 	for c in [Vector2i(2, 1), Vector2i(3, 1)]:
 		map.terrain[map.index_of(c)] = TerrainDef.Type.FOREST
 		map.wood[map.index_of(c)] = 30.0
 	var lumberjack := _built(reg, &"lumberjack", Vector2i(2, 2))
+	var rate := lumberjack.def.output_per_hour
 	var plant := _built(reg, &"biomass_plant", Vector2i(6, 6))
+	var burn := plant.def.input_per_hour
 	var site := reg.place(reg.check_placement(BuildingDb.get_def(&"laboratory"), Vector2i(10, 10)))
 	tick += 1
 	var r := prod.step(tick)
-	_check(lumberjack.status == Building.Status.RUNNING and is_equal_approx(lumberjack.output_stock, 1.5),
-		"bûcheron : 1,5 t la première heure")
+	_check(lumberjack.status == Building.Status.RUNNING and is_equal_approx(lumberjack.output_stock, rate),
+		"bûcheron : une heure de production")
 	_check(plant.status == Building.Status.NO_INPUT and r.power_mw == 0.0, "centrale sans bois à l'arrêt")
 	_check(site.status == Building.Status.CONSTRUCTION, "chantier signalé")
-	_check(is_equal_approx(map.wood[map.index_of(Vector2i(2, 1))], 28.5), "forêt la plus proche coupée d'abord")
+	_check(is_equal_approx(map.wood[map.index_of(Vector2i(2, 1))], 30.0 - rate), "forêt la plus proche coupée d'abord")
+	plant.input_stock = burn / 2.0
 	tick += 1
 	r = prod.step(tick)
-	_check(is_equal_approx(plant.input_stock, 1.5 - 0.5 * 3.0) and plant.status == Building.Status.RUNNING,
-		"livraison directe puis combustion partielle")
-	_check(is_equal_approx(r.power_mw, 8.0 * 0.5), "puissance proportionnelle au combustible")
+	_check(is_equal_approx(plant.input_stock, 0.0) and plant.status == Building.Status.RUNNING
+		and is_equal_approx(plant.activity, 0.5), "combustion partielle")
+	_check(is_equal_approx(r.power_mw, plant.def.power_mw * 0.5), "puissance proportionnelle au combustible")
 	var depleted := false
-	while tick < 200:
+	for i in ceili(60.0 / rate) + 5:
 		tick += 1
 		r = prod.step(tick)
+		plant.input_stock += lumberjack.output_stock
+		lumberjack.output_stock = 0.0
 		depleted = depleted or Vector2i(2, 1) in r.changed_cells
 	_check(depleted and map.get_terrain(Vector2i(2, 1)) == TerrainDef.Type.PLAIN, "forêt épuisée → plaine")
 	_check(lumberjack.status == Building.Status.DEPLETED, "bûcheron sans forêt : ressource épuisée")
 	_check(map.wood[map.index_of(Vector2i(3, 1))] == 0.0, "les deux forêts coupées")
 	_check(plant.status == Building.Status.NO_INPUT and plant.input_stock == 0.0, "centrale à court de bois")
-	_check(lumberjack.output_stock == 0.0, "tout le bois livré")
 
-	# Stock de sortie plein sans client à portée.
+	# Stock de sortie plein faute d'enlèvement.
 	map.terrain[map.index_of(Vector2i(25, 1))] = TerrainDef.Type.FOREST
 	map.wood[map.index_of(Vector2i(25, 1))] = WorldMap.WOOD_PER_FOREST
 	var lonely := _built(reg, &"lumberjack", Vector2i(25, 2))
-	_check(Production.footprint_distance(lonely, plant) > Production.DELIVERY_RADIUS, "hors de portée")
-	for i in 20:
+	for i in ceili(lonely.def.buffer_capacity / rate) + 2:
 		tick += 1
 		prod.step(tick)
 	_check(lonely.status == Building.Status.OUTPUT_FULL
 		and is_equal_approx(lonely.output_stock, lonely.def.buffer_capacity), "sortie pleine → arrêt")
 
-	# Chaîne charbon : gisement, mine, centrale près de l'eau.
+	# Gisements : la mine vide sa tuile puis la voisine.
 	var coal := Vector2i(20, 20)
 	map.deposit[map.index_of(coal)] = WorldMap.Deposit.COAL
-	map.deposit_amount[map.index_of(coal)] = 10.0
+	map.deposit_amount[map.index_of(coal)] = 2.0
 	map.deposit[map.index_of(Vector2i(21, 20))] = WorldMap.Deposit.COAL
-	map.deposit_amount[map.index_of(Vector2i(21, 20))] = 2.0
-	map.water_access[map.index_of(Vector2i(24, 24))] = 1
+	map.deposit_amount[map.index_of(Vector2i(21, 20))] = 1.0
 	var mine := _built(reg, &"coal_mine", coal)
-	var coal_plant := _built(reg, &"coal_plant", Vector2i(24, 24))
-	_check(prod.suppliers_of(coal_plant) == [mine], "mine fournisseur de la centrale")
-	_check(prod.suppliers_of(plant) == [lumberjack], "bûcheron lointain exclu des fournisseurs")
 	var gone := false
-	for i in 10:
+	for i in ceili(3.0 / mine.def.output_per_hour) + 2:
 		tick += 1
 		r = prod.step(tick)
 		gone = gone or coal in r.changed_cells
 	_check(gone and map.deposit[map.index_of(coal)] == WorldMap.Deposit.NONE, "gisement épuisé")
 	_check(map.deposit[map.index_of(Vector2i(21, 20))] == WorldMap.Deposit.NONE, "gisement voisin exploité")
-	_check(mine.status == Building.Status.DEPLETED, "mine épuisée")
-	_check(coal_plant.status == Building.Status.NO_INPUT, "centrale à charbon à court")
+	_check(mine.status == Building.Status.DEPLETED and is_equal_approx(mine.output_stock, 3.0), "mine épuisée")
 
 	# Éolienne : puissance × vent.
 	map.wind[map.index_of(Vector2i(15, 28))] = 0.8
@@ -315,3 +321,159 @@ func _test_production() -> void:
 	_check(forests_after == forests_before + 1, "une plantation par jour")
 	_check(map.wood[map.index_of(Vector2i(5, 25))] > 50.0, "repousse des forêts")
 	_check(nursery.status == Building.Status.RUNNING, "pépinière en service")
+
+
+func _road_line(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	return RoadNetwork.l_path(from, to)
+
+
+func _test_roads() -> void:
+	_check(RoadNetwork.l_path(Vector2i(0, 0), Vector2i(3, 1))
+		== [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(3, 1)], "tracé en L, x d'abord")
+	_check(RoadNetwork.l_path(Vector2i(2, 2), Vector2i(1, 5))
+		== [Vector2i(2, 2), Vector2i(2, 3), Vector2i(2, 4), Vector2i(2, 5), Vector2i(1, 5)], "tracé en L, y d'abord")
+	_check(RoadNetwork.l_path(Vector2i(4, 4), Vector2i(4, 4)) == [Vector2i(4, 4)], "tracé d'une tuile")
+
+	var map := _flat_map(Vector2i(16, 16))
+	var reg := BuildingRegistry.new(map)
+	var roads := reg.roads
+	map.terrain[map.index_of(Vector2i(2, 0))] = TerrainDef.Type.HILL
+	map.terrain[map.index_of(Vector2i(3, 0))] = TerrainDef.Type.FOREST
+	map.wood[map.index_of(Vector2i(3, 0))] = 50.0
+	map.terrain[map.index_of(Vector2i(4, 0))] = TerrainDef.Type.RIVER
+	var p := roads.plan(_road_line(Vector2i(0, 0), Vector2i(5, 0)), reg)
+	var expected := 3 * RoadNetwork.COST_PER_TILE + roundi(RoadNetwork.COST_PER_TILE * RoadNetwork.HILL_COST_FACTOR) \
+		+ RoadNetwork.COST_PER_TILE + RoadNetwork.FOREST_EXTRA_COST + RoadNetwork.BRIDGE_COST
+	_check(p.is_valid() and p.cost == expected, "coûts : plaine, colline, forêt, pont (%d)" % p.cost)
+	_check(p.cleared == [Vector2i(3, 0)], "forêt à défricher")
+	_check(not roads.plan(_road_line(Vector2i(0, 0), Vector2i(5, 0)), reg, p.cost - 1).is_valid(), "fonds insuffisants")
+	roads.build(p)
+	_check(roads.has_road(Vector2i(4, 0)) and roads.tile_count() == 6, "route construite")
+	_check(map.get_terrain(Vector2i(3, 0)) == TerrainDef.Type.PLAIN and map.wood[map.index_of(Vector2i(3, 0))] == 0.0,
+		"défrichement")
+	var again := roads.plan(_road_line(Vector2i(0, 0), Vector2i(6, 0)), reg)
+	_check(again.new_cells == [Vector2i(6, 0)] and again.cost == RoadNetwork.COST_PER_TILE, "routes existantes gratuites")
+	_check(roads.plan(_road_line(Vector2i(0, 0), Vector2i(3, 0)), reg).error == "Route déjà construite", "rien à construire")
+	map.terrain[map.index_of(Vector2i(8, 8))] = TerrainDef.Type.SEA
+	_check(not roads.plan(_road_line(Vector2i(7, 8), Vector2i(9, 8)), reg).is_valid(), "mer infranchissable")
+	var lab := reg.place(reg.check_placement(BuildingDb.get_def(&"laboratory"), Vector2i(10, 2)))
+	_check(not roads.plan(_road_line(Vector2i(9, 2), Vector2i(11, 2)), reg).is_valid(), "bâtiment sur le tracé")
+
+	roads.add_cells(_road_line(Vector2i(0, 5), Vector2i(5, 5)))
+	_check(roads.component_of(Vector2i(0, 0)) != roads.component_of(Vector2i(0, 5)), "deux réseaux séparés")
+	_check(roads.path_between([Vector2i(0, 0)], [Vector2i(5, 5)]).is_empty(), "pas de chemin entre réseaux")
+	roads.add_cells(_road_line(Vector2i(5, 1), Vector2i(5, 4)))
+	_check(roads.component_of(Vector2i(0, 0)) == roads.component_of(Vector2i(0, 5)), "réseaux reliés")
+	var path := roads.path_between([Vector2i(0, 0)], [Vector2i(0, 5)])
+	_check(path.size() == 16 and path[0] == Vector2i(0, 0) and path[-1] == Vector2i(0, 5), "plus court chemin (%d)" % path.size())
+	roads.remove(Vector2i(5, 3))
+	_check(roads.component_of(Vector2i(0, 0)) != roads.component_of(Vector2i(0, 5)), "suppression → coupure")
+	_check(roads.access_cells(lab).is_empty() and not roads.is_connected_building(lab), "labo non relié")
+	roads.add_cells([Vector2i(10, 3)])
+	_check(roads.access_cells(lab) == [Vector2i(10, 3)], "accès du labo")
+
+
+## Petite région : forêts, bûcheron, centrale biomasse et dépôt le long
+## d'une route (y = 4).
+func _logistics_setup(map: WorldMap, reg: BuildingRegistry) -> Dictionary:
+	reg.roads.add_cells(_road_line(Vector2i(0, 4), Vector2i(20, 4)))
+	for x in range(0, 5):
+		map.terrain[map.index_of(Vector2i(x, 2))] = TerrainDef.Type.FOREST
+		map.wood[map.index_of(Vector2i(x, 2))] = WorldMap.WOOD_PER_FOREST
+	return {
+		lumberjack = _built(reg, &"lumberjack", Vector2i(2, 3)),
+		plant = _built(reg, &"biomass_plant", Vector2i(14, 3)),
+		depot = _built(reg, &"depot", Vector2i(8, 6)),
+	}
+
+
+func _test_logistics() -> void:
+	var map := _flat_map(Vector2i(32, 32))
+	var reg := BuildingRegistry.new(map)
+	var prod := Production.new(reg)
+	var lg := Logistics.new(reg)
+	var s := _logistics_setup(map, reg)
+	var lumberjack: Building = s.lumberjack
+	var plant: Building = s.plant
+	var depot: Building = s.depot
+	var cart := VehicleDb.get_def(&"cart")
+	var truck := VehicleDb.get_def(&"truck")
+	_check(lg.distance(lumberjack, plant) == 11, "distance routière (%d)" % lg.distance(lumberjack, plant))
+	_check(lg.buy_error(depot, cart).is_empty(), "achat possible")
+	var v1 := lg.add_vehicle(depot, cart)
+	var v2 := lg.add_vehicle(depot, truck)
+
+	var tick := 0
+	var delivered := 0.0
+	var cost := 0.0
+	var ran := false
+	var seen_states := {}
+	var consistent := true
+	for i in 600:
+		tick += 1
+		prod.step(tick)
+		var r := lg.step()
+		delivered += r.delivered
+		cost += r.travel_cost
+		ran = ran or plant.status == Building.Status.RUNNING
+		for v in lg.vehicles:
+			seen_states[v.state] = true
+		consistent = consistent and lumberjack.output_stock >= -0.0001 \
+			and lumberjack.reserved_out <= lumberjack.output_stock + 0.0001 \
+			and plant.input_stock + plant.reserved_in <= plant.def.buffer_capacity + 0.0001
+	_check(delivered > 0.0 and ran, "bois livré, centrale en service (%s t)" % delivered)
+	_check(cost > 0.0, "coût d'usage des véhicules")
+	_check(seen_states.size() == Vehicle.State.size(), "toutes les étapes de mission parcourues")
+	_check(consistent, "réservations cohérentes")
+	_check(lg.daily_upkeep() == cart.upkeep_per_day + truck.upkeep_per_day, "entretien des véhicules")
+
+	# Coupure de la route entre le bûcheron et la centrale.
+	reg.roads.remove(Vector2i(10, 4))
+	lg.on_roads_changed()
+	_check(lg.distance(lumberjack, plant) == -1, "route coupée : injoignable")
+	for i in 60:
+		tick += 1
+		prod.step(tick)
+		lg.step()
+	var before := plant.input_stock + plant.reserved_in
+	var received := 0.0
+	for i in 100:
+		tick += 1
+		prod.step(tick)
+		received += lg.step().delivered
+	_check(received == 0.0 and plant.reserved_in == 0.0, "plus de livraison vers la centrale isolée")
+	_check(lumberjack.reserved_out == 0.0, "réservations libérées (%s)" % lumberjack.reserved_out)
+
+	# Surplus vers l'entrepôt.
+	var warehouse := _built(reg, &"warehouse", Vector2i(4, 5))
+	var stored := 0.0
+	for i in 200:
+		tick += 1
+		prod.step(tick)
+		lg.step()
+		stored = maxf(stored, warehouse.stored_total())
+	_check(stored > 0.0 and warehouse.store.has(Goods.Type.WOOD), "surplus stocké en entrepôt")
+
+	# L'entrepôt approvisionne une centrale.
+	var plant2 := _built(reg, &"biomass_plant", Vector2i(7, 3))
+	var fed := false
+	for i in 200:
+		tick += 1
+		prod.step(tick)
+		lg.step()
+		fed = fed or plant2.input_stock > 0.0
+	_check(fed, "centrale approvisionnée")
+
+	# Revente et démolition du dépôt.
+	var idle := lg.vehicles.filter(func(v: Vehicle) -> bool: return v.state == Vehicle.State.IDLE)
+	if not idle.is_empty():
+		_check(lg.sell(idle[0]) == floori(idle[0].def.cost * Logistics.SELL_REFUND), "revente")
+	var busy := lg.vehicles.filter(func(v: Vehicle) -> bool: return v.state != Vehicle.State.IDLE)
+	if not busy.is_empty():
+		_check(lg.sell(busy[0]) == -1, "pas de revente en mission")
+	reg.remove(depot)
+	var removed := lg.on_building_removed(depot)
+	_check(lg.vehicles.is_empty() and not removed.is_empty(), "véhicules du dépôt démoli supprimés")
+	_check(is_zero_approx(plant2.reserved_in) and is_zero_approx(warehouse.reserved_in)
+		and is_zero_approx(lumberjack.reserved_out), "réservations libérées à la démolition")
+	_check(v1 != v2, "deux véhicules distincts")

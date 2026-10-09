@@ -45,6 +45,26 @@ modèles d'export).
   (pastille orange), entrée vide → arrêt (pastille rouge), ressource épuisée →
   pastille grise. Détails (stocks, fournisseurs, ressource restante) dans le
   panneau d'information ; puissance totale dans le bandeau.
-- **Livraison directe provisoire** : en attendant les routes et camions (M3b),
-  les marchandises passent instantanément d'un producteur à un consommateur à
-  10 tuiles au plus (le plus proche d'abord, 10 t/h maximum par bâtiment).
+- Débits de départ : bûcheron 0,3 t/h, mine 0,6 t/h ; centrale biomasse
+  0,6 t/h de bois → 8 MW, centrale à charbon 1,2 t/h → 40 MW.
+
+## Transport routier (M3b)
+
+- **Routes** : outil « Route » puis glisser sur la carte (tracé en L). 50 €/tuile,
+  75 € en forêt (défrichée), 100 € en colline, pont de 400 € sur rivière ; mer,
+  lac et montagne infranchissables. Entretien 1 €/tuile/jour. Démolition
+  (`X`) d'une tuile de route sans remboursement.
+- **Dépôt de véhicules** (relié à une route, 6 places, livré avec une
+  charrette) : sélectionnez-le pour acheter ou revendre (50 %) des charrettes
+  (5 t, lente) et des camions (15 t, plus rapides).
+- **Dispatcher** : chaque heure, les consommateurs les moins remplis sont servis
+  en premier par la source joignable la plus proche ; on attend une charge
+  correcte (60 % du camion ou du besoin) sauf si la source est presque pleine.
+  Le véhicule libre le plus proche va charger, livre, puis rentre au dépôt ou
+  enchaîne une autre mission. Coût d'usage par tuile parcourue.
+- **Entrepôt** (relié à une route, 200 t toutes marchandises) : reçoit le
+  surplus des producteurs dont la sortie dépasse 50 % sans client, et
+  approvisionne ensuite les consommateurs.
+- Un bâtiment qui échange des marchandises sans route affiche une pastille bleue.
+- Couper une route recalcule les trajets ; une mission impossible est annulée
+  (chargement perdu) et le véhicule rentre.

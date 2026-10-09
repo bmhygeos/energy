@@ -42,6 +42,9 @@ func _ready() -> void:
 	EventBus.production_stepped.connect(_on_production)
 	for sig: Signal in [EventBus.building_completed, EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh_upkeep())
+	for sig: Signal in [EventBus.vehicle_added, EventBus.vehicle_removed]:
+		sig.connect(func(_v: Vehicle) -> void: _refresh_upkeep())
+	EventBus.roads_changed.connect(func(_c: Array[Vector2i]) -> void: _refresh_upkeep())
 	_on_tick(GameClock.tick)
 	_on_speed_changed(GameClock.speed)
 	_on_money_changed(GameState.money)
@@ -99,6 +102,8 @@ func _on_production(report: Production.Report) -> void:
 	_power_label.text = "Production %s MW" % Format.decimal(report.power_mw)
 	var stocks := {}
 	for b in GameState.buildings.all():
+		for good: int in b.store:
+			stocks[good] = stocks.get(good, 0.0) + b.store[good]
 		if b.def.input_good != Goods.Type.NONE:
 			stocks[b.def.input_good] = stocks.get(b.def.input_good, 0.0) + b.input_stock
 		if b.def.output_good != Goods.Type.NONE:
@@ -110,7 +115,7 @@ func _on_production(report: Production.Report) -> void:
 
 
 func _refresh_upkeep() -> void:
-	_upkeep_label.text = "Entretien %s €/j" % Format.thousands(GameState.buildings.daily_upkeep())
+	_upkeep_label.text = "Entretien %s €/j" % Format.thousands(GameState.daily_upkeep())
 
 
 func _on_game_started(seed_value: int) -> void:

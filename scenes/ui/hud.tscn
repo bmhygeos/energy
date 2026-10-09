@@ -40,7 +40,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(170, 0)
 layout_mode = 2
 mouse_filter = 1
-tooltip_text = "Entretien journalier des bâtiments en service"
+tooltip_text = "Entretien journalier : bâtiments en service, routes, véhicules"
 text = "Entretien 0 €/j"
 
 [node name="PowerLabel" type="Label" parent="TopBar/Margin/Row"]

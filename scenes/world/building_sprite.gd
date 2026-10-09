@@ -14,6 +14,7 @@ const BADGE_COLORS := {
 	Building.Status.OUTPUT_FULL: Color("f0a020"),
 	Building.Status.DEPLETED: Color("8b8d98"),
 }
+const DISCONNECTED_COLOR := Color("3b82f6")
 const SMOKE_COLOR := Color(0.85, 0.85, 0.85, 0.45)
 
 var def: BuildingDef
@@ -30,6 +31,13 @@ var status := Building.Status.RUNNING:
 		status = value
 		_update_process()
 		queue_redraw()
+
+## Bâtiment logistique sans route : pastille bleue prioritaire.
+var disconnected := false:
+	set(value):
+		if value != disconnected:
+			disconnected = value
+			queue_redraw()
 
 var _blade_angle := 0.0
 
@@ -83,8 +91,11 @@ func _draw() -> void:
 				_draw_box(c, h, def.roof_color.lightened(0.15), def.roof_color.darkened(0.4))
 				if built and status == Building.Status.RUNNING:
 					_draw_smoke(foot + Vector2(0, -h))
-	if built and BADGE_COLORS.has(status):
-		_draw_badge(Vector2(center.x, inner[0].y - def.height - 14.0))
+	var badge_pos := Vector2(center.x, inner[0].y - def.height - 14.0)
+	if built and disconnected:
+		_draw_road_badge(badge_pos)
+	elif built and BADGE_COLORS.has(status):
+		_draw_badge(badge_pos)
 	if not built:
 		_draw_scaffold(inner, def.height)
 		var bar_pos := Vector2(center.x - BAR_SIZE.x / 2.0, inner[0].y - def.height - 16.0)
@@ -161,3 +172,12 @@ func _draw_badge(pos: Vector2) -> void:
 		_:
 			draw_line(pos + Vector2(-4, -4), pos + Vector2(4, 4), Color.WHITE, 2.0)
 			draw_line(pos + Vector2(4, -4), pos + Vector2(-4, 4), Color.WHITE, 2.0)
+
+
+## Pastille « non relié à une route » : deux bords de route barrés.
+func _draw_road_badge(pos: Vector2) -> void:
+	draw_circle(pos, 10.0, Color(0, 0, 0, 0.5))
+	draw_circle(pos, 8.5, DISCONNECTED_COLOR)
+	draw_line(pos + Vector2(-3, -5), pos + Vector2(-4, 5), Color.WHITE, 1.5)
+	draw_line(pos + Vector2(3, -5), pos + Vector2(4, 5), Color.WHITE, 1.5)
+	draw_line(pos + Vector2(-6, 4), pos + Vector2(6, -4), Color.WHITE, 2.0)

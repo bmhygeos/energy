@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="VehicleDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/vehicle_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"truck"
+display_name = "Camion"
+capacity = 15.0
+speed = 0.5
+cost = 3000
+upkeep_per_day = 25
+cost_per_tile = 2.0
+required_tech = &"trucks"
+color = Color(0.8, 0.22, 0.18, 1)
+length = 22.0

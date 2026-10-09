@@ -1,14 +1,9 @@
 class_name Production
 extends RefCounted
 ## Production horaire des bâtiments terminés : extraction (forêts, gisements),
-## transformation (combustible → électricité), reboisement ; et livraison
-## directe provisoire des marchandises entre bâtiments proches, en attendant
-## le transport routier (M3b). Pure donnée.
+## transformation (combustible → électricité), reboisement. Les marchandises
+## circulent par la route (Logistics). Pure donnée.
 
-## Livraison directe provisoire : portée (tuiles entre emprises) et débit
-## maximal reçu par un bâtiment.
-const DELIVERY_RADIUS := 10
-const DELIVERY_PER_HOUR := 10.0
 ## Pépinière : repousse des forêts du rayon, et une plantation par jour.
 const REGROWTH_PER_HOUR := 0.25
 const PLANT_INTERVAL_HOURS := 24
@@ -38,9 +33,7 @@ func _init(p_registry: BuildingRegistry) -> void:
 ## Exécute une heure de production (tick [param tick]).
 func step(tick: int) -> Report:
 	var report := Report.new()
-	var buildings := registry.all()
-	_deliver(buildings)
-	for b in buildings:
+	for b in registry.all():
 		var old := b.status
 		_run(b, tick, report)
 		if b.status != old:
@@ -57,7 +50,7 @@ func _run(b: Building, tick: int, report: Report) -> void:
 		b.status = Building.Status.CONSTRUCTION
 		return
 	if not def.is_producer():
-		b.status = Building.Status.IDLE
+		b.status = Building.Status.RUNNING if def.uses_logistics() else Building.Status.IDLE
 		return
 	var fraction := 1.0
 	if def.output_good != Goods.Type.NONE:
@@ -206,7 +199,7 @@ func _reforest(b: Building, tick: int, report: Report) -> void:
 		if map.terrain[i] == TerrainDef.Type.FOREST:
 			map.wood[i] = minf(WorldMap.WOOD_PER_FOREST, map.wood[i] + REGROWTH_PER_HOUR)
 		elif map.terrain[i] == TerrainDef.Type.PLAIN and registry.building_at(cell) == null \
-				and map.deposit[i] == WorldMap.Deposit.NONE:
+				and not registry.roads.has_road(cell) and map.deposit[i] == WorldMap.Deposit.NONE:
 			var n := 0
 			for o in map.neighbors(cell, WorldMap.NEIGHBORS_4):
 				if map.terrain[map.index_of(o)] == TerrainDef.Type.FOREST:
@@ -219,57 +212,6 @@ func _reforest(b: Building, tick: int, report: Report) -> void:
 		map.terrain[i] = TerrainDef.Type.FOREST
 		map.wood[i] = SAPLING_WOOD
 		report.changed_cells.append(candidate)
-
-
-## Livraison directe provisoire : chaque bâtiment à approvisionner reçoit des
-## fournisseurs les plus proches à portée, dans la limite du débit.
-func _deliver(buildings: Array[Building]) -> void:
-	for consumer in buildings:
-		var good := consumer.def.input_good
-		if good == Goods.Type.NONE or not consumer.is_complete():
-			continue
-		var need := minf(consumer.def.buffer_capacity - consumer.input_stock, DELIVERY_PER_HOUR)
-		if need <= EPSILON:
-			continue
-		for supplier in suppliers_of(consumer, buildings):
-			var qty := minf(need, supplier.output_stock)
-			supplier.output_stock -= qty
-			consumer.input_stock += qty
-			need -= qty
-			if need <= EPSILON:
-				break
-
-
-## Fournisseurs terminés de la marchandise d'entrée de [param consumer], à
-## portée de livraison, du plus proche au plus lointain.
-func suppliers_of(consumer: Building, buildings: Array[Building] = registry.all()) -> Array[Building]:
-	var good := consumer.def.input_good
-	var result: Array[Building] = []
-	if good == Goods.Type.NONE:
-		return result
-	for b in buildings:
-		if b.def.output_good == good and b.is_complete() \
-				and footprint_distance(b, consumer) <= DELIVERY_RADIUS:
-			result.append(b)
-	result.sort_custom(func(a: Building, c: Building) -> bool:
-		var da := footprint_distance(a, consumer)
-		var dc := footprint_distance(c, consumer)
-		return da < dc if da != dc else a.id < c.id)
-	return result
-
-
-## Clients terminés à portée de livraison qui consomment la production de
-## [param supplier].
-func customers_of(supplier: Building) -> Array[Building]:
-	var good := supplier.def.output_good
-	var result: Array[Building] = []
-	if good == Goods.Type.NONE:
-		return result
-	for b in registry.all():
-		if b.def.input_good == good and b.is_complete() \
-				and footprint_distance(b, supplier) <= DELIVERY_RADIUS:
-			result.append(b)
-	return result
 
 
 ## Distance de Tchebychev entre les emprises de deux bâtiments (1 : voisines).

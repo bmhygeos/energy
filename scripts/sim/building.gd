@@ -20,6 +20,13 @@ var status: Status = Status.CONSTRUCTION
 ## Tampons (tonnes) : marchandise d'entrée reçue, de sortie à expédier.
 var input_stock := 0.0
 var output_stock := 0.0
+## Quantités promises par des missions en cours : à livrer ici (entrée ou
+## entrepôt), à enlever d'ici (sortie ; par marchandise pour un entrepôt).
+var reserved_in := 0.0
+var reserved_out := 0.0
+var store_reserved_out: Dictionary[int, float] = {}
+## Entrepôt : stock par marchandise (Goods.Type → t).
+var store: Dictionary[int, float] = {}
 ## Taux de fonctionnement (0–1) et puissance électrique de la dernière heure.
 var activity := 0.0
 var power_mw := 0.0
@@ -39,3 +46,11 @@ func is_complete() -> bool:
 ## Avancement du chantier, 0–1.
 func progress_ratio() -> float:
 	return 1.0 if def.build_hours <= 0 else clampf(float(build_progress) / def.build_hours, 0.0, 1.0)
+
+
+## Entrepôt : stock total, toutes marchandises.
+func stored_total() -> float:
+	var total := 0.0
+	for good in store:
+		total += store[good]
+	return total

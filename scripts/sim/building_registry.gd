@@ -25,14 +25,16 @@ class Placement:
 
 
 var map: WorldMap
+var roads: RoadNetwork
 var _buildings: Dictionary[int, Building] = {}
 ## Identifiant du bâtiment par tuile (0 : libre).
 var _occupancy: PackedInt32Array
 var _next_id := 1
 
 
-func _init(p_map: WorldMap) -> void:
+func _init(p_map: WorldMap, p_roads: RoadNetwork = null) -> void:
 	map = p_map
+	roads = p_roads if p_roads else RoadNetwork.new(map)
 	_occupancy.resize(map.cell_count())
 
 
@@ -81,6 +83,8 @@ func _placement_error(p: Placement) -> String:
 		var i := map.index_of(cell)
 		if _occupancy[i] != 0:
 			return "Emplacement occupé (%s)" % _buildings[_occupancy[i]].def.display_name
+		if roads.has_road(cell):
+			return "Route présente"
 		var t := map.terrain[i]
 		var terrain := TerrainDb.get_def(t)
 		if not terrain.buildable:
@@ -96,6 +100,8 @@ func _placement_error(p: Placement) -> String:
 		sun += map.sun[i]
 	if def.required_deposit != WorldMap.Deposit.NONE and not deposit_found:
 		return "Nécessite un gisement de %s" % WorldMap.DEPOSIT_NAMES[def.required_deposit].to_lower()
+	if def.needs_road and not _touches_road(p.cells):
+		return "Doit être relié à une route"
 	if def.needs_water_access and not water_found:
 		return "Nécessite un accès à l'eau"
 	if def.needs_coast and not coast_found:
@@ -111,6 +117,14 @@ func _placement_error(p: Placement) -> String:
 	if sun / n < def.min_sun:
 		return "Ensoleillement insuffisant (%d %% < %d %%)" % [roundi(sun / n * 100.0), roundi(def.min_sun * 100.0)]
 	return ""
+
+
+func _touches_road(cells: Array[Vector2i]) -> bool:
+	for cell in cells:
+		for n in map.neighbors(cell):
+			if roads.has_road(n):
+				return true
+	return false
 
 
 ## Une tuile voisine (8-connexité) hors de l'emprise est-elle d'un de ces

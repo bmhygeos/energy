@@ -11,6 +11,7 @@ var hovered := Vector2i(-1, -1)
 var selected := Vector2i(-1, -1)
 var mode := BuildTool.Mode.SELECT
 var placement: BuildingRegistry.Placement
+var road_plan: RoadNetwork.Plan
 
 
 func _ready() -> void:
@@ -26,6 +27,10 @@ func _ready() -> void:
 	EventBus.placement_previewed.connect(func(p: BuildingRegistry.Placement) -> void:
 		placement = p
 		queue_redraw())
+	EventBus.road_previewed.connect(func(p: RoadNetwork.Plan) -> void:
+		road_plan = p
+		queue_redraw())
+	EventBus.roads_changed.connect(func(_c: Array[Vector2i]) -> void: queue_redraw())
 	for s: Signal in [EventBus.building_placed, EventBus.building_removed]:
 		s.connect(func(_b: Building) -> void: queue_redraw())
 
@@ -45,8 +50,23 @@ func _draw() -> void:
 				var d := _building_diamond(b)
 				draw_colored_polygon(d, INVALID_COLOR * Color(1, 1, 1, 0.35))
 				_outline(d, INVALID_COLOR, 3.0)
+			elif hovered.x >= 0 and GameState.roads.has_road(hovered):
+				draw_colored_polygon(Iso.diamond(hovered), INVALID_COLOR * Color(1, 1, 1, 0.35))
+				_outline(Iso.diamond(hovered), INVALID_COLOR, 3.0)
 			elif hovered.x >= 0:
 				_outline(Iso.diamond(hovered), INVALID_COLOR * Color(1, 1, 1, 0.6), 2.0)
+		BuildTool.Mode.ROAD:
+			if road_plan:
+				for cell in road_plan.cells:
+					if not GameState.world_map.has_cell(cell):
+						continue
+					var color := HOVER_COLOR
+					if cell in road_plan.blocked:
+						color = INVALID_COLOR
+					elif cell in road_plan.new_cells:
+						color = VALID_COLOR if road_plan.is_valid() else INVALID_COLOR
+					draw_colored_polygon(Iso.diamond(cell), color * Color(1, 1, 1, 0.3))
+					_outline(Iso.diamond(cell), color, 1.5)
 		_:
 			if hovered.x >= 0 and hovered != selected:
 				_outline(_shape_at(hovered), HOVER_COLOR, 2.0)

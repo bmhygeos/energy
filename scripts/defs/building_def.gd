@@ -36,6 +36,8 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 @export var allowed_terrains: Array[TerrainDef.Type] = []
 ## Gisement requis sous au moins une tuile de l'emprise.
 @export var required_deposit: WorldMap.Deposit = WorldMap.Deposit.NONE
+## Une route doit border l'emprise.
+@export var needs_road := false
 ## Au moins une tuile de l'emprise doit avoir accès à l'eau.
 @export var needs_water_access := false
 ## Au moins une tuile de l'emprise doit toucher la mer.
@@ -63,6 +65,14 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 ## Capacité de chaque tampon (entrée et sortie), en tonnes.
 @export var buffer_capacity := 20.0
 
+@export_group("Logistique")
+## Entrepôt : capacité totale de stockage, toutes marchandises (t).
+@export var storage_capacity := 0.0
+## Dépôt : nombre maximal de véhicules.
+@export var vehicle_slots := 0
+## Véhicules offerts à la construction (identifiants de VehicleDef).
+@export var starting_vehicles: Array[StringName] = []
+
 @export_group("Apparence")
 @export var style: Style = Style.BOX
 @export var color := Color.GRAY
@@ -84,6 +94,12 @@ func footprint(anchor: Vector2i) -> Array[Vector2i]:
 		for x in size.x:
 			cells.append(origin + Vector2i(x, y))
 	return cells
+
+
+## Bâtiment qui échange des marchandises par la route.
+func uses_logistics() -> bool:
+	return input_good != Goods.Type.NONE or output_good != Goods.Type.NONE \
+		or storage_capacity > 0.0 or vehicle_slots > 0
 
 
 func is_producer() -> bool:
@@ -129,6 +145,8 @@ func describe_constraints() -> PackedStringArray:
 		lines.append("Sur : " + ", ".join(names))
 	if required_deposit != WorldMap.Deposit.NONE:
 		lines.append("Sur un gisement de " + WorldMap.DEPOSIT_NAMES[required_deposit].to_lower())
+	if needs_road:
+		lines.append("Relié à une route")
 	if needs_water_access:
 		lines.append("Près de l'eau")
 	if needs_coast:

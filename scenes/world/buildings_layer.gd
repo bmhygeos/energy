@@ -23,6 +23,7 @@ func _ready() -> void:
 		if _sprites.has(b.id):
 			_sprites[b.id].status = b.status)
 	EventBus.tick_advanced.connect(_on_tick)
+	EventBus.roads_changed.connect(func(_c: Array[Vector2i]) -> void: _refresh_connections())
 	reload()
 
 
@@ -58,6 +59,17 @@ func _add(b: Building) -> void:
 	sprite.status = b.status
 	add_child(sprite)
 	_sprites[b.id] = sprite
+	_refresh_connection(b)
+
+
+func _refresh_connections() -> void:
+	for b in GameState.buildings.all():
+		_refresh_connection(b)
+
+
+func _refresh_connection(b: Building) -> void:
+	_sprites[b.id].disconnected = b.def.uses_logistics() \
+		and not GameState.roads.is_connected_building(b)
 
 
 func _on_tick(_tick: int) -> void:

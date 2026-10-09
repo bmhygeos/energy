@@ -30,3 +30,9 @@ signal notified(message: String)
 signal production_stepped(report: Production.Report)
 ## Statut d'un bâtiment (Building.Status) modifié.
 signal building_status_changed(building: Building)
+## Routes construites ou supprimées sur ces tuiles.
+signal roads_changed(cells: Array[Vector2i])
+signal vehicle_added(vehicle: Vehicle)
+signal vehicle_removed(vehicle: Vehicle)
+## Aperçu du tracé de route en mode ROAD (null : aucun).
+signal road_previewed(plan: RoadNetwork.Plan)
