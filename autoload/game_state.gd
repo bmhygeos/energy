@@ -84,6 +84,9 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 		EventBus.tiles_changed.emit(placement.cleared)
 	EventBus.building_placed.emit(b)
 	_refresh_grid()
+	if def.uses_logistics() and def.vehicle_slots == 0 \
+			and not buildings.all().any(func(o: Building) -> bool: return o.def.vehicle_slots > 0):
+		EventBus.notified.emit("Sans dépôt de véhicules relié à la route, les marchandises ne circulent pas")
 	return b
 
 

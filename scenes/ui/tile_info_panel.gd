@@ -112,8 +112,9 @@ func _building_lines(b: Building) -> PackedStringArray:
 		lines.append("Chantier : %d %%" % roundi(b.progress_ratio() * 100.0))
 		lines.append("Entretien : %s €/jour" % Format.thousands(def.upkeep_per_day))
 		return lines
-	if def.uses_logistics() and not GameState.roads.is_connected_building(b):
-		lines.append("Non relié à une route !")
+	var diagnosis := GameState.logistics.diagnose(b)
+	if not diagnosis.is_empty():
+		lines.append("Transport : " + diagnosis)
 	var state := Building.STATUS_NAMES[b.status]
 	if b.status == Building.Status.RUNNING and def.input_good != Goods.Type.NONE and b.activity < 0.999:
 		state += " (%d %%)" % roundi(b.activity * 100.0)

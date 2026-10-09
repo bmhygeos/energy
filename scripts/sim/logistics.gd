@@ -123,6 +123,11 @@ func incoming(b: Building) -> float:
 	return b.reserved_in
 
 
+## Réservation restante, ramenée à 0 si négative ou résiduelle (arrondis).
+static func _clean(value: float) -> float:
+	return value if value > 0.0001 else 0.0
+
+
 func _reserve_out(b: Building, good: int, qty: float) -> void:
 	if is_warehouse(b):
 		b.store_reserved_out[good] = b.store_reserved_out.get(good, 0.0) + qty
@@ -132,9 +137,9 @@ func _reserve_out(b: Building, good: int, qty: float) -> void:
 
 func _release_out(b: Building, good: int, qty: float) -> void:
 	if is_warehouse(b):
-		b.store_reserved_out[good] = maxf(0.0, b.store_reserved_out.get(good, 0.0) - qty)
+		b.store_reserved_out[good] = _clean(b.store_reserved_out.get(good, 0.0) - qty)
 	else:
-		b.reserved_out = maxf(0.0, b.reserved_out - qty)
+		b.reserved_out = _clean(b.reserved_out - qty)
 
 
 ## Retire jusqu'à [param qty] de [param good] de [param b] ; renvoie la
@@ -218,6 +223,54 @@ func on_building_removed(b: Building) -> Array[Vehicle]:
 	return removed
 
 
+# --- Diagnostic ------------------------------------------------------------
+
+## Pourquoi les marchandises de [param b] ne circulent pas (vide : rien à
+## signaler). Pour le panneau d'information.
+func diagnose(b: Building) -> String:
+	var def := b.def
+	if not b.is_complete() or def.vehicle_slots > 0 or not def.uses_logistics():
+		return ""
+	var access := roads.access_cells(b)
+	if access.is_empty():
+		return "non relié à une route"
+	var partners := 0
+	for other in registry.all():
+		if other == b or not other.is_complete():
+			continue
+		var trades := false
+		if def.output_good != Goods.Type.NONE:
+			trades = other.def.input_good == def.output_good or is_warehouse(other)
+		if def.input_good != Goods.Type.NONE:
+			trades = trades or other.def.output_good == def.input_good or is_warehouse(other)
+		if is_warehouse(b):
+			trades = other.def.input_good != Goods.Type.NONE or other.def.output_good != Goods.Type.NONE
+		if trades and distance(b, other) >= 0:
+			partners += 1
+	if partners == 0:
+		if def.output_good != Goods.Type.NONE:
+			return "aucun client (centrale, entrepôt) joignable par la route"
+		return "aucun fournisseur joignable par la route"
+	var components := {}
+	for c in access:
+		components[roads.component_of(c)] = true
+	var reachable: Array[Vehicle] = []
+	for v in vehicles:
+		var cells := _start_cells(v) if v.state != Vehicle.State.IDLE else roads.access_cells(v.depot)
+		for c in cells:
+			if components.has(roads.component_of(c)):
+				reachable.append(v)
+				break
+	if reachable.is_empty():
+		if vehicles.is_empty():
+			return "aucun véhicule : construisez un dépôt de véhicules relié à cette route"
+		return "aucun véhicule ne peut rejoindre ce bâtiment : reliez un dépôt à cette route"
+	var busy := reachable.filter(func(v: Vehicle) -> bool: return not v.is_available()).size()
+	if busy == reachable.size():
+		return "tous les véhicules sont occupés (%d) : achetez-en au dépôt" % busy
+	return ""
+
+
 # --- Simulation ------------------------------------------------------------
 
 func step() -> Report:
@@ -252,7 +305,7 @@ func _update(v: Vehicle, report: Report) -> void:
 			v.prev_grid_pos = v.grid_pos
 			v.wait_hours -= 1
 			if v.wait_hours <= 0:
-				v.destination.reserved_in = maxf(0.0, v.destination.reserved_in - v.amount)
+				v.destination.reserved_in = _clean(v.destination.reserved_in - v.amount)
 				_put(v.destination, v.good, v.cargo)
 				report.delivered += v.cargo
 				_clear_mission(v)
@@ -284,7 +337,7 @@ func _release(v: Vehicle) -> void:
 	if v.state in [Vehicle.State.TO_SOURCE, Vehicle.State.LOADING]:
 		_release_out(v.source, v.good, v.amount)
 	if v.destination:
-		v.destination.reserved_in = maxf(0.0, v.destination.reserved_in - v.amount)
+		v.destination.reserved_in = _clean(v.destination.reserved_in - v.amount)
 
 
 ## Annule la mission (chargement perdu) et renvoie le véhicule au dépôt.
@@ -328,17 +381,16 @@ func _dispatch() -> void:
 			var need := demand(consumer)
 			if need < MIN_LOAD:
 				break
-			var source := _best_source(consumer, good)
+			var capacity := 0.0
+			for v in available:
+				capacity = maxf(capacity, v.def.capacity)
+			var source := _best_source(consumer, good, minf(capacity, need) * FULL_LOAD_RATIO)
 			if source == null:
-				break
+				break  # aucune source n'a encore une charge correcte : on attend
 			var v := _nearest_vehicle(available, source)
 			if v == null:
 				break
 			var qty := minf(minf(need, supply(source, good)), v.def.capacity)
-			var wanted := minf(v.def.capacity, need) * FULL_LOAD_RATIO
-			if qty < wanted and not is_warehouse(source) \
-					and source.output_stock < source.def.buffer_capacity * SOURCE_FULL_RATIO:
-				break  # on attend une charge plus complète
 			if not _start(v, source, consumer, good, qty):
 				break
 			available.erase(v)
@@ -365,12 +417,18 @@ func _fill_ratio(b: Building) -> float:
 	return (b.input_stock + b.reserved_in) / b.def.buffer_capacity
 
 
-## Source joignable la plus proche ayant au moins MIN_LOAD de [param good].
-func _best_source(consumer: Building, good: int) -> Building:
+## Source joignable la plus proche ayant une charge correcte de [param good] :
+## au moins [param wanted], ou n'importe quelle quantité utile si c'est un
+## entrepôt ou si sa sortie est presque pleine.
+func _best_source(consumer: Building, good: int, wanted: float) -> Building:
 	var best: Building = null
 	var best_d := 0
 	for b in registry.all():
-		if b == consumer or supply(b, good) < MIN_LOAD:
+		var available := supply(b, good)
+		if b == consumer or available < MIN_LOAD:
+			continue
+		if available < wanted and not is_warehouse(b) \
+				and b.output_stock < b.def.buffer_capacity * SOURCE_FULL_RATIO:
 			continue
 		var d := distance(b, consumer)
 		if d >= 0 and (best == null or d < best_d):

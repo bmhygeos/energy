@@ -136,7 +136,7 @@ func _line_tooltip() -> String:
 
 func _road_tooltip() -> String:
 	return "\n".join(PackedStringArray([
-		"Route", "Support des charrettes et camions. Glisser pour tracer en L.", "",
+		"Route", "Support des charrettes et camions d'un dépôt de véhicules", "(indispensable au transport). Glisser pour tracer en L.", "",
 		"Plaine, désert : %d €/tuile" % RoadNetwork.COST_PER_TILE,
 		"Forêt (défrichée) : %d €/tuile" % (RoadNetwork.COST_PER_TILE + RoadNetwork.FOREST_EXTRA_COST),
 		"Colline : %d €/tuile" % roundi(RoadNetwork.COST_PER_TILE * RoadNetwork.HILL_COST_FACTOR),

@@ -18,6 +18,7 @@ func _init() -> void:
 	_test_production()
 	_test_roads()
 	_test_logistics()
+	_test_transport_throughput()
 	_test_cities()
 	_test_grid()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
@@ -610,3 +611,38 @@ func _test_grid() -> void:
 	grid.plan_setpoints(tick + 4)
 	prod.step(tick + 4)
 	_check(lonely.status == Building.Status.STANDBY and is_equal_approx(lonely.input_stock, 10.0), "veille sans demande")
+
+
+## Cas d'usage de base : deux bûcherons, une centrale biomasse à une dizaine
+## de tuiles et un dépôt avec ses véhicules de départ doivent suffire.
+func _test_transport_throughput() -> void:
+	var map := _flat_map(Vector2i(32, 32))
+	var reg := BuildingRegistry.new(map)
+	var prod := Production.new(reg)
+	var lg := Logistics.new(reg)
+	reg.roads.add_cells(_road_line(Vector2i(0, 4), Vector2i(20, 4)))
+	for x in range(0, 8):
+		map.terrain[map.index_of(Vector2i(x, 2))] = TerrainDef.Type.FOREST
+		map.wood[map.index_of(Vector2i(x, 2))] = WorldMap.WOOD_PER_FOREST
+	var j1 := _built(reg, &"lumberjack", Vector2i(2, 3))
+	var j2 := _built(reg, &"lumberjack", Vector2i(5, 3))
+	var plant := _built(reg, &"biomass_plant", Vector2i(16, 3))
+	_check(lg.diagnose(j1).contains("dépôt"), "diagnostic : pas de dépôt (%s)" % lg.diagnose(j1))
+	_check(lg.diagnose(plant).contains("dépôt"), "diagnostic côté centrale")
+	var depot := _built(reg, &"depot", Vector2i(10, 6))
+	for id in depot.def.starting_vehicles:
+		lg.add_vehicle(depot, VehicleDb.get_def(id))
+	_check(lg.diagnose(j1).is_empty(), "diagnostic : rien à signaler (%s)" % lg.diagnose(j1))
+	var running := 0
+	for t in 600:
+		prod.step(t)
+		lg.step()
+		if t >= 200 and plant.status == Building.Status.RUNNING and plant.activity > 0.99:
+			running += 1
+	_check(running >= 360, "centrale approvisionnée en continu (%d / 400 h)" % running)
+	_check(j1.output_stock < j1.def.buffer_capacity and j2.output_stock < j2.def.buffer_capacity,
+		"le bois ne s'entasse pas chez les bûcherons")
+	map.terrain[map.index_of(Vector2i(25, 19))] = TerrainDef.Type.FOREST
+	var isolated := _built(reg, &"lumberjack", Vector2i(25, 20))
+	reg.roads.add_cells([Vector2i(26, 20)])
+	_check(lg.diagnose(isolated).contains("joignable"), "diagnostic : route isolée (%s)" % lg.diagnose(isolated))

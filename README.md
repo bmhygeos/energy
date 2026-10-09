@@ -55,14 +55,19 @@ modèles d'export).
   75 € en forêt (défrichée), 100 € en colline, pont de 400 € sur rivière ; mer,
   lac et montagne infranchissables. Entretien 1 €/tuile/jour. Démolition
   (`X`) d'une tuile de route sans remboursement.
-- **Dépôt de véhicules** (relié à une route, 6 places, livré avec une
-  charrette) : sélectionnez-le pour acheter ou revendre (50 %) des charrettes
-  (6 t, lente) et des camions (15 t, plus rapides).
+- **Dépôt de véhicules** (relié à une route, 6 places, livré avec deux
+  charrettes) : **indispensable**, sans lui rien ne circule. Sélectionnez-le
+  pour acheter ou revendre (50 %) des charrettes (12 t, 1 tuile/h) et des
+  camions (30 t, 1,2 tuile/h). Deux charrettes suffisent pour deux bûcherons
+  et une centrale biomasse à une dizaine de tuiles.
 - **Dispatcher** : chaque heure, les consommateurs les moins remplis sont servis
-  en premier par la source joignable la plus proche ; on attend une charge
-  correcte (60 % du camion ou du besoin) sauf si la source est presque pleine.
-  Le véhicule libre le plus proche va charger, livre, puis rentre au dépôt ou
+  en premier par la source joignable la plus proche ayant une charge correcte
+  (80 % du véhicule ou du besoin), ou par une source presque pleine. Le
+  véhicule libre le plus proche va charger, livre, puis rentre au dépôt ou
   enchaîne une autre mission. Coût d'usage par tuile parcourue.
+- Le panneau d'information indique sous « Transport » pourquoi les
+  marchandises d'un bâtiment ne circulent pas (pas de route, pas de client ou
+  de fournisseur joignable, pas de dépôt, véhicules tous occupés).
 - **Entrepôt** (relié à une route, 200 t toutes marchandises) : reçoit le
   surplus des producteurs dont la sortie dépasse 50 % sans client, et
   approvisionne ensuite les consommateurs.

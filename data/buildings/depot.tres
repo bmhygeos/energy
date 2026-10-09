@@ -6,7 +6,7 @@
 script = ExtResource("1_def")
 id = &"depot"
 display_name = "Dépôt de véhicules"
-description = "Héberge les charrettes et camions qui transportent les marchandises. Livré avec une charrette."
+description = "Héberge les charrettes et camions qui transportent les marchandises. Livré avec deux charrettes. Sans dépôt relié à la route, les marchandises ne circulent pas."
 category = 2
 size = Vector2i(2, 2)
 cost = 4000
@@ -15,7 +15,7 @@ upkeep_per_day = 30
 lifetime_years = 40
 needs_road = true
 vehicle_slots = 6
-starting_vehicles = Array[StringName]([&"cart"])
+starting_vehicles = Array[StringName]([&"cart", &"cart"])
 color = Color(0.62, 0.6, 0.55, 1)
 roof_color = Color(0.3, 0.42, 0.55, 1)
 height = 22.0
