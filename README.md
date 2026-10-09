@@ -26,6 +26,8 @@ modèles d'export).
 | Zoom | molette (centré sur le curseur), `+` / `-` |
 | Recentrer | Origine (Home) |
 | Pause / vitesses | Espace, `1` ×1, `2` ×2, `3` ×4 |
-| Sélectionner une tuile | clic gauche (re-clic ou Échap pour désélectionner) |
+| Sélectionner une tuile / un bâtiment | clic gauche (re-clic ou Échap pour désélectionner) |
+| Construire | bouton du menu « Construction » puis clic sur la carte (le fantôme est vert si le placement est valide, sinon le motif s'affiche en bas) ; Échap ou re-clic sur le bouton pour quitter |
+| Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment (rembourse 25 % du coût, 75 % pour un chantier) |
 | Calque d'information | `O` (relief, vent, soleil, eau, gisements) ou boutons en bas à droite |
 | Nouvelle carte | champ « Graine » + Générer, ou Aléatoire |

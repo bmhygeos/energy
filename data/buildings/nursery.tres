@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"nursery"
+display_name = "Pépinière"
+description = "Replante et régénère les forêts alentour."
+category = 0
+cost = 1000
+build_hours = 24
+upkeep_per_day = 10
+lifetime_years = 30
+required_tech = &"silviculture"
+allowed_terrains = Array[int]([0])
+color = Color(0.498, 0.682, 0.353, 1)
+roof_color = Color(0.812, 0.89, 0.69, 1)
+height = 12.0

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"wind_turbine"
+display_name = "Éolienne"
+description = "Production variable selon le vent."
+category = 1
+cost = 6000
+build_hours = 48
+upkeep_per_day = 30
+lifetime_years = 25
+required_tech = &"wind"
+min_wind = 0.55
+style = 1
+color = Color(0.933, 0.945, 0.957, 1)
+roof_color = Color(0.788, 0.816, 0.847, 1)
+height = 90.0

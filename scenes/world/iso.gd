@@ -14,10 +14,17 @@ static func map_to_world(cell: Vector2) -> Vector2:
 
 ## Sommets du losange de la tuile [param cell] (nord, est, sud, ouest).
 static func diamond(cell: Vector2i) -> PackedVector2Array:
-	var c := map_to_world(Vector2(cell))
+	return footprint_diamond(cell, Vector2i.ONE)
+
+
+## Sommets (nord, est, sud, ouest) du losange couvrant [param size] tuiles à
+## partir de [param origin] (tuile de x et y minimaux).
+static func footprint_diamond(origin: Vector2i, size: Vector2i) -> PackedVector2Array:
+	var o := Vector2(origin) - Vector2(0.5, 0.5)
+	var e := o + Vector2(size)
 	return PackedVector2Array([
-		c + Vector2(0, -HALF.y), c + Vector2(HALF.x, 0),
-		c + Vector2(0, HALF.y), c + Vector2(-HALF.x, 0),
+		map_to_world(o), map_to_world(Vector2(e.x, o.y)),
+		map_to_world(e), map_to_world(Vector2(o.x, e.y)),
 	])
 
 

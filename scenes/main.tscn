@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scenes/world/camera_controller.gd" id="2_cam"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/tile_info_panel.tscn" id="4_info"]
+[ext_resource type="PackedScene" path="res://scenes/ui/build_menu.tscn" id="5_build"]
 
 [node name="Main" type="Node2D"]
 
@@ -18,3 +19,5 @@ script = ExtResource("2_cam")
 [node name="HUD" parent="." instance=ExtResource("3_hud")]
 
 [node name="TileInfoPanel" parent="." instance=ExtResource("4_info")]
+
+[node name="BuildMenu" parent="." instance=ExtResource("5_build")]

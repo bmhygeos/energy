@@ -16,6 +16,7 @@ var _overlay_buttons: Array[Button] = []
 
 @onready var _date_label: Label = %DateLabel
 @onready var _money_label: Label = %MoneyLabel
+@onready var _upkeep_label: Label = %UpkeepLabel
 @onready var _fps_label: Label = %FpsLabel
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
@@ -37,6 +38,8 @@ func _ready() -> void:
 	EventBus.money_changed.connect(_on_money_changed)
 	EventBus.game_started.connect(_on_game_started)
 	EventBus.overlay_changed.connect(_on_overlay_changed)
+	for sig: Signal in [EventBus.building_completed, EventBus.building_removed]:
+		sig.connect(func(_b: Building) -> void: _refresh_upkeep())
 	_on_tick(GameClock.tick)
 	_on_speed_changed(GameClock.speed)
 	_on_money_changed(GameState.money)
@@ -90,8 +93,13 @@ func _on_money_changed(money: int) -> void:
 	_money_label.text = "%s €" % Format.thousands(money)
 
 
+func _refresh_upkeep() -> void:
+	_upkeep_label.text = "Entretien %s €/j" % Format.thousands(GameState.buildings.daily_upkeep())
+
+
 func _on_game_started(seed_value: int) -> void:
 	_seed_edit.text = str(seed_value)
+	_refresh_upkeep()
 
 
 func _on_overlay_changed(mode: int) -> void:

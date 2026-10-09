@@ -16,11 +16,28 @@ func _ready() -> void:
 	EventBus.tile_selected.connect(func(c: Vector2i) -> void:
 		_selected = c
 		_refresh())
+	for sig: Signal in [EventBus.building_placed, EventBus.building_completed,
+			EventBus.building_removed]:
+		sig.connect(func(_b: Building) -> void: _refresh())
+	EventBus.tiles_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
+	EventBus.tick_advanced.connect(func(_t: int) -> void:
+		var b := _shown_building()
+		if b and not b.is_complete():
+			_refresh())
 	_refresh()
 
 
+func _shown_cell() -> Vector2i:
+	return _selected if _selected.x >= 0 else _hovered
+
+
+func _shown_building() -> Building:
+	var cell := _shown_cell()
+	return GameState.buildings.building_at(cell) if cell.x >= 0 and GameState.buildings else null
+
+
 func _refresh() -> void:
-	var cell := _selected if _selected.x >= 0 else _hovered
+	var cell := _shown_cell()
 	var map := GameState.world_map
 	if cell.x < 0 or map == null or not map.has_cell(cell):
 		_panel.hide()
@@ -47,4 +64,11 @@ func _refresh() -> void:
 	if kind != WorldMap.Deposit.NONE:
 		lines.append("Gisement : %s, %s t" % [
 			WorldMap.DEPOSIT_NAMES[kind], Format.thousands(map.deposit_amount[i])])
+	var b := _shown_building()
+	if b:
+		_title.text = "%s  (%d, %d)" % [b.def.display_name, cell.x, cell.y]
+		var state := "en service" if b.is_complete() else "chantier %d %%" % roundi(b.progress_ratio() * 100.0)
+		lines.insert(0, "Sur : %s · %s" % [def.display_name.to_lower(), state])
+		lines.insert(1, "Entretien : %s €/jour" % Format.thousands(b.def.upkeep_per_day))
+		lines.insert(2, "")
 	_body.text = "\n".join(lines)

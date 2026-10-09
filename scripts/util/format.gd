@@ -12,3 +12,8 @@ static func thousands(value: int) -> String:
 		digits = digits.left(-3)
 	groups.insert(0, digits)
 	return ("-" if value < 0 else "") + " ".join(groups)
+
+
+## Durée en heures de jeu : "36 h", "3 j".
+static func duration_hours(hours: int) -> String:
+	return "%d j" % (hours / 24) if hours >= 24 and hours % 24 == 0 else "%d h" % hours

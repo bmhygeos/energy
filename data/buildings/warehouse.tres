@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"warehouse"
+display_name = "Entrepôt"
+description = "Stockage tampon entre extracteurs et centrales."
+category = 2
+size = Vector2i(2, 1)
+cost = 3000
+build_hours = 36
+upkeep_per_day = 20
+lifetime_years = 40
+color = Color(0.725, 0.635, 0.494, 1)
+roof_color = Color(0.486, 0.373, 0.271, 1)
+height = 20.0

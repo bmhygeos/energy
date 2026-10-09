@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scenes/world/map_view.gd" id="1_map"]
 [ext_resource type="Script" path="res://scenes/world/overlay_layer.gd" id="2_overlay"]
 [ext_resource type="Script" path="res://scenes/world/tile_cursor.gd" id="3_cursor"]
+[ext_resource type="Script" path="res://scenes/world/buildings_layer.gd" id="4_buildings"]
 
 [node name="MapView" type="Node2D"]
 y_sort_enabled = true
@@ -23,3 +24,7 @@ script = ExtResource("3_cursor")
 [node name="Decor" type="TileMapLayer" parent="."]
 y_sort_enabled = true
 texture_filter = 4
+
+[node name="Buildings" type="Node2D" parent="."]
+y_sort_enabled = true
+script = ExtResource("4_buildings")

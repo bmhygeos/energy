@@ -12,6 +12,9 @@ func _init() -> void:
 	_test_iso_matches_tilemap()
 	_test_map_generation()
 	_test_format()
+	_test_building_defs()
+	_test_placement()
+	_test_construction()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -54,6 +57,11 @@ func _test_iso_matches_tilemap() -> void:
 		ok = ok and layer.map_to_local(cell) == Iso.map_to_world(Vector2(cell))
 		ok = ok and layer.local_to_map(Iso.map_to_world(Vector2(cell)) + Vector2(30, 10)) == cell
 	_check(ok, "Iso identique à TileMapLayer (Diamond Down)")
+	var d := Iso.footprint_diamond(Vector2i(2, 3), Vector2i(2, 2))
+	var tiles := [Iso.diamond(Vector2i(2, 3)), Iso.diamond(Vector2i(3, 3)),
+		Iso.diamond(Vector2i(3, 4)), Iso.diamond(Vector2i(2, 4))]
+	_check(d[0] == tiles[0][0] and d[1] == tiles[1][1] and d[2] == tiles[2][2] and d[3] == tiles[3][3],
+		"losange d'emprise 2×2 = coins extrêmes des tuiles")
 	layer.free()
 
 
@@ -97,3 +105,110 @@ func _test_map_generation() -> void:
 func _test_format() -> void:
 	_check(Format.thousands(1234567) == "1\u202f234\u202f567", "milliers")
 	_check(Format.thousands(-500) == "-500", "négatif court")
+	_check(Format.duration_hours(48) == "2 j" and Format.duration_hours(36) == "36 h", "durées")
+
+
+## Petite carte de plaine 8×8 aux attributs contrôlés.
+func _flat_map() -> WorldMap:
+	var map := WorldMap.new(Vector2i(8, 8))
+	map.terrain.fill(TerrainDef.Type.PLAIN)
+	map.wind.fill(0.3)
+	map.sun.fill(0.5)
+	return map
+
+
+func _test_building_defs() -> void:
+	var ids := {}
+	for def in BuildingDb.DEFS:
+		_check(not ids.has(def.id), "identifiant unique %s" % def.id)
+		ids[def.id] = true
+		_check(def.cost > 0 and def.build_hours > 0 and def.size.x > 0 and def.size.y > 0,
+			"%s : coût, durée et taille positifs" % def.id)
+		_check(BuildingDb.get_def(def.id) == def, "BuildingDb.get_def(%s)" % def.id)
+	var plant := BuildingDb.get_def(&"coal_plant")
+	_check(plant.footprint(Vector2i(5, 5)) == [Vector2i(4, 4), Vector2i(5, 4), Vector2i(4, 5), Vector2i(5, 5)],
+		"emprise 2×2 ancrée à l'avant-bas")
+	_check(plant.describe_constraints() == PackedStringArray(["Près de l'eau"]), "contraintes lisibles")
+
+
+func _test_placement() -> void:
+	var map := _flat_map()
+	var reg := BuildingRegistry.new(map)
+	var lab := BuildingDb.get_def(&"laboratory")
+	var lumberjack := BuildingDb.get_def(&"lumberjack")
+	var mine := BuildingDb.get_def(&"coal_mine")
+	var plant := BuildingDb.get_def(&"coal_plant")
+	var turbine := BuildingDb.get_def(&"wind_turbine")
+	var nursery := BuildingDb.get_def(&"nursery")
+	var warehouse := BuildingDb.get_def(&"warehouse")
+
+	_check(reg.check_placement(lab, Vector2i(2, 2)).is_valid(), "plaine libre : valide")
+	_check(not reg.check_placement(lab, Vector2i(2, 2), lab.cost - 1).is_valid(), "fonds insuffisants")
+	_check(reg.check_placement(lab, Vector2i(2, 2), lab.cost).is_valid(), "fonds tout juste suffisants")
+	_check(not reg.check_placement(plant, Vector2i(0, 3)).is_valid(), "emprise hors carte")
+	_check(not reg.check_placement(warehouse, Vector2i(0, 3)).is_valid(), "entrepôt 2×1 hors carte à x=0")
+	_check(reg.check_placement(warehouse, Vector2i(1, 0)).is_valid(), "entrepôt 2×1 en (0..1, 0)")
+
+	map.terrain[map.index_of(Vector2i(3, 3))] = TerrainDef.Type.MOUNTAIN
+	_check(not reg.check_placement(lab, Vector2i(3, 3)).is_valid(), "montagne non constructible")
+	_check(not reg.check_placement(nursery, Vector2i(3, 3)).is_valid(), "terrain non autorisé")
+	map.terrain[map.index_of(Vector2i(3, 3))] = TerrainDef.Type.HILL
+	_check(not reg.check_placement(nursery, Vector2i(3, 3)).is_valid(), "pépinière : plaine seulement")
+	_check(reg.check_placement(lab, Vector2i(3, 3)).is_valid(), "colline constructible")
+
+	_check(not reg.check_placement(lumberjack, Vector2i(5, 5)).is_valid(), "bûcheron sans forêt")
+	map.terrain[map.index_of(Vector2i(6, 6))] = TerrainDef.Type.FOREST
+	_check(reg.check_placement(lumberjack, Vector2i(5, 5)).is_valid(), "bûcheron près d'une forêt (diagonale)")
+	var on_forest := reg.check_placement(lab, Vector2i(6, 6))
+	_check(on_forest.is_valid() and on_forest.cleared == [Vector2i(6, 6)], "forêt à défricher")
+	_check(not reg.check_placement(lumberjack, Vector2i(6, 6)).is_valid(),
+		"la forêt de l'emprise ne compte pas comme voisine")
+
+	_check(not reg.check_placement(mine, Vector2i(1, 6)).is_valid(), "mine sans gisement")
+	map.deposit[map.index_of(Vector2i(1, 6))] = WorldMap.Deposit.URANIUM
+	_check(not reg.check_placement(mine, Vector2i(1, 6)).is_valid(), "mine de charbon sur uranium")
+	map.deposit[map.index_of(Vector2i(1, 6))] = WorldMap.Deposit.COAL
+	_check(reg.check_placement(mine, Vector2i(1, 6)).is_valid(), "mine sur charbon")
+
+	_check(not reg.check_placement(plant, Vector2i(7, 1)).is_valid(), "centrale sans eau")
+	map.water_access[map.index_of(Vector2i(6, 0))] = 1
+	_check(reg.check_placement(plant, Vector2i(7, 1)).is_valid(), "centrale : une tuile près de l'eau suffit")
+
+	_check(not reg.check_placement(turbine, Vector2i(4, 0)).is_valid(), "vent insuffisant")
+	map.wind[map.index_of(Vector2i(4, 0))] = 0.9
+	_check(reg.check_placement(turbine, Vector2i(4, 0)).is_valid(), "vent suffisant")
+
+	var b := reg.place(reg.check_placement(plant, Vector2i(7, 1)))
+	_check(reg.building_at(Vector2i(6, 0)) == b and reg.building_at(Vector2i(7, 1)) == b, "occupation 2×2")
+	_check(reg.building_at(Vector2i(5, 0)) == null, "tuile voisine libre")
+	_check(not reg.check_placement(lab, Vector2i(6, 1)).is_valid(), "tuile occupée")
+	_check(not reg.check_placement(plant, Vector2i(6, 2)).is_valid(), "chevauchement partiel")
+	var forest_b := reg.place(on_forest)
+	_check(map.get_terrain(Vector2i(6, 6)) == TerrainDef.Type.PLAIN, "défrichement à la construction")
+	reg.remove(b)
+	_check(reg.building_at(Vector2i(6, 0)) == null and reg.count() == 1, "démolition libère l'emprise")
+	_check(reg.check_placement(lab, Vector2i(6, 1)).is_valid(), "emplacement réutilisable")
+	_check(reg.building_at(Vector2i(6, 6)) == forest_b, "autre bâtiment intact")
+
+
+func _test_construction() -> void:
+	var reg := BuildingRegistry.new(_flat_map())
+	var lab := BuildingDb.get_def(&"laboratory")
+	var plant := BuildingDb.get_def(&"biomass_plant")
+	var a := reg.place(reg.check_placement(lab, Vector2i(1, 1)))
+	var b := reg.place(reg.check_placement(plant, Vector2i(5, 5)))
+	_check(not a.is_complete() and a.progress_ratio() == 0.0, "chantier au départ")
+	_check(reg.daily_upkeep() == 0, "pas d'entretien pendant le chantier")
+	_check(BuildingRegistry.refund_for(a) == floori(lab.cost * BuildingRegistry.REFUND_UNDER_CONSTRUCTION),
+		"remboursement d'un chantier annulé")
+	var done := reg.advance(lab.build_hours - 1)
+	_check(done.is_empty() and not a.is_complete(), "chantier presque fini")
+	done = reg.advance(1)
+	_check(done == [a] and a.is_complete(), "chantier terminé à build_hours")
+	_check(reg.advance(1).is_empty(), "terminé une seule fois")
+	_check(reg.daily_upkeep() == lab.upkeep_per_day, "entretien des bâtiments terminés")
+	_check(BuildingRegistry.refund_for(a) == floori(lab.cost * BuildingRegistry.REFUND_COMPLETE),
+		"remboursement d'un bâtiment terminé")
+	reg.advance(plant.build_hours)
+	_check(b.is_complete() and b.build_progress == plant.build_hours, "progression plafonnée")
+	_check(reg.daily_upkeep() == lab.upkeep_per_day + plant.upkeep_per_day, "entretien cumulé")
