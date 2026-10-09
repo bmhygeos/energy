@@ -70,6 +70,13 @@ func _initialize() -> void:
 	var tech_button: Button = tree._buttons[&"mining"]
 	await _click(tech_button.get_global_rect().get_center())
 	_check(_gs.research.queue == [&"prospecting", &"mining"], "clic : technologie et prérequis en file (%s)" % [_gs.research.queue])
+	var nodes: Array = tree._nodes.values()
+	var overlaps := 0
+	for a: GraphNode in nodes:
+		for b: GraphNode in nodes:
+			if a != b and Rect2(a.position_offset, a.size).grow(-1).intersects(Rect2(b.position_offset, b.size).grow(-1)):
+				overlaps += 1
+	_check(overlaps == 0, "aucun nœud de l'arbre n'en recouvre un autre (%d)" % overlaps)
 	_gs._on_techs_done(_gs.research.add_points(5000.0))
 	for i in 2:
 		await process_frame
