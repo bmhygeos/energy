@@ -52,6 +52,9 @@ func _run(b: Building, tick: int, report: Report) -> void:
 	if not def.is_producer():
 		b.status = Building.Status.RUNNING if def.uses_logistics() else Building.Status.IDLE
 		return
+	if def.power_mw > 0.0 and b.grid_id == 0:
+		b.status = Building.Status.NO_GRID
+		return
 	var fraction := 1.0
 	if def.output_good != Goods.Type.NONE:
 		var room := def.buffer_capacity - b.output_stock
@@ -64,6 +67,11 @@ func _run(b: Building, tick: int, report: Report) -> void:
 			b.status = Building.Status.NO_INPUT
 			return
 		fraction = minf(fraction, b.input_stock / def.input_per_hour)
+	if def.power_source == BuildingDef.PowerSource.FUEL:
+		if b.power_setpoint <= EPSILON:
+			b.status = Building.Status.STANDBY
+			return
+		fraction = minf(fraction, b.power_setpoint)
 	match def.extraction:
 		BuildingDef.Extraction.FOREST:
 			var got := _harvest_forest(b, def.output_per_hour * fraction, report)

@@ -2,15 +2,19 @@ class_name OverlayLayer
 extends Node2D
 ## Calque d'information coloré par tuile (relief, vent, soleil, eau, gisements).
 
-enum Mode { NONE, RELIEF, WIND, SUN, WATER, DEPOSITS }
+enum Mode { NONE, RELIEF, WIND, SUN, WATER, DEPOSITS, GRID }
 
-const MODE_NAMES: PackedStringArray = ["Aucun", "Relief", "Vent", "Soleil", "Eau", "Gisements"]
+const MODE_NAMES: PackedStringArray = ["Aucun", "Relief", "Vent", "Soleil", "Eau", "Gisements", "Réseau"]
 const DEPOSIT_COLORS: Array[Color] = [
 	Color.TRANSPARENT, Color("1a1a1a"), Color("4be03c"), Color("c45cff"),
 ]
 const WATER_ACCESS_COLOR := Color(0.25, 0.63, 1.0, 0.6)
 const COASTAL_COLOR := Color(0.1, 0.35, 0.85, 0.7)
 const NO_WATER_COLOR := Color(0.75, 0.25, 0.2, 0.35)
+const GRID_OK_COLOR := Color(0.3, 0.85, 0.35, 0.75)
+const GRID_SHED_COLOR := Color(0.95, 0.3, 0.25, 0.75)
+const GRID_IDLE_COLOR := Color(0.6, 0.6, 0.6, 0.6)
+const GRID_PRODUCER_COLOR := Color(1.0, 0.85, 0.2, 0.75)
 
 var mode: Mode = Mode.NONE
 var map: WorldMap
@@ -22,6 +26,12 @@ func _ready() -> void:
 		visible = mode != Mode.NONE
 		queue_redraw())
 	EventBus.tiles_changed.connect(func(_cells: Array[Vector2i]) -> void: queue_redraw())
+	EventBus.grid_stepped.connect(func(_r: PowerGrid.Report) -> void:
+		if mode == Mode.GRID:
+			queue_redraw())
+	EventBus.grid_changed.connect(func() -> void:
+		if mode == Mode.GRID:
+			queue_redraw())
 	visible = false
 
 
@@ -55,12 +65,39 @@ func _cell_color(i: int, gradient: Gradient) -> Color:
 			if map.coastal[i]:
 				return COASTAL_COLOR
 			return WATER_ACCESS_COLOR if map.water_access[i] else NO_WATER_COLOR
+		Mode.GRID:
+			return _grid_color(map.cell_of(i))
 		Mode.DEPOSITS:
 			var kind := map.deposit[i]
 			if kind == WorldMap.Deposit.NONE:
 				return Color(0, 0, 0, 0.25) if not water else Color.TRANSPARENT
 			return DEPOSIT_COLORS[kind]
 	return Color.TRANSPARENT
+
+
+## Réseau : lignes selon l'état de leur réseau, villes selon leur
+## alimentation, centrales raccordées en jaune.
+func _grid_color(cell: Vector2i) -> Color:
+	var grid := GameState.grid
+	var b := GameState.buildings.building_at(cell)
+	if b and b.city:
+		match b.city.supply:
+			City.Supply.SERVED:
+				return GRID_OK_COLOR
+			City.Supply.SHED:
+				return GRID_SHED_COLOR
+			City.Supply.NO_SUPPLY:
+				return GRID_IDLE_COLOR
+		return Color(0, 0, 0, 0.35)
+	if b and b.def.power_mw > 0.0:
+		return GRID_PRODUCER_COLOR if b.grid_id != 0 else Color(0, 0, 0, 0.35)
+	var id := grid.network_at(cell)
+	if id == 0:
+		return Color.TRANSPARENT
+	var net: PowerGrid.Network = grid.networks.get(id)
+	if net == null or not net.has_supply():
+		return GRID_IDLE_COLOR
+	return GRID_SHED_COLOR if net.shed > 0 else GRID_OK_COLOR
 
 
 ## Dégradé de la légende pour les modes continus (null sinon).

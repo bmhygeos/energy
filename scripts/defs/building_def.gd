@@ -9,7 +9,7 @@ enum Extraction { NONE, FOREST, DEPOSIT, REFOREST }
 ## Ce qui module la puissance électrique produite.
 enum PowerSource { NONE, FUEL, WIND, SUN }
 ## Forme du dessin provisoire (scenes/world/building_sprite.gd).
-enum Style { BOX, TURBINE, PANELS }
+enum Style { BOX, TURBINE, PANELS, CITY }
 
 const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique", "Divers"]
 
@@ -17,6 +17,8 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 @export var display_name := ""
 @export_multiline var description := ""
 @export var category: Category = Category.OTHER
+## Proposé dans le menu de construction (false : villes).
+@export var player_buildable := true
 ## Emprise en tuiles (x, y) ; ancrée sur la tuile avant-bas (x et y maximaux).
 @export var size := Vector2i.ONE
 

@@ -11,23 +11,6 @@ const BRIDGE_COST := 400
 const UPKEEP_PER_TILE_PER_DAY := 1
 
 
-## Tracé de route projeté.
-class Plan:
-	## Tuiles du tracé, dans l'ordre.
-	var cells: Array[Vector2i] = []
-	## Tuiles à construire (hors routes existantes).
-	var new_cells: Array[Vector2i] = []
-	## Tuiles qui empêchent le tracé.
-	var blocked: Array[Vector2i] = []
-	## Forêts à défricher.
-	var cleared: Array[Vector2i] = []
-	var cost := 0
-	var error := ""
-
-	func is_valid() -> bool:
-		return error.is_empty() and not new_cells.is_empty()
-
-
 var map: WorldMap
 var _road: PackedByteArray
 ## Composante connexe par tuile de route (0 : pas de route).
@@ -74,57 +57,17 @@ func tile_cost(cell: Vector2i) -> int:
 
 ## Tracé en L de [param from] à [param to] (axe le plus long d'abord).
 static func l_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
-	var cells: Array[Vector2i] = [from]
-	var c := from
-	var x_first := absi(to.x - from.x) >= absi(to.y - from.y)
-	for pass_index in 2:
-		if (pass_index == 0) == x_first:
-			while c.x != to.x:
-				c.x += signi(to.x - c.x)
-				cells.append(c)
-		else:
-			while c.y != to.y:
-				c.y += signi(to.y - c.y)
-				cells.append(c)
-	return cells
+	return TilePlan.l_path(from, to)
 
 
 ## Vérifie le tracé [param cells] ; [param registry] sert à exclure les
 ## tuiles occupées par des bâtiments, [param money] (si ≥ 0) le coût.
-func plan(cells: Array[Vector2i], registry: BuildingRegistry, money: int = -1) -> Plan:
-	var p := Plan.new()
-	p.cells = cells
-	for cell in cells:
-		if not map.has_cell(cell):
-			p.blocked.append(cell)
-			continue
-		if has_road(cell):
-			continue
-		var cost := tile_cost(cell)
-		if cost < 0 or (registry and registry.building_at(cell) != null):
-			p.blocked.append(cell)
-			continue
-		p.new_cells.append(cell)
-		p.cost += cost
-		if map.get_terrain(cell) == TerrainDef.Type.FOREST:
-			p.cleared.append(cell)
-	if not p.blocked.is_empty():
-		var cell := p.blocked[0]
-		if not map.has_cell(cell):
-			p.error = "Hors de la carte"
-		elif registry and registry.building_at(cell):
-			p.error = "Bâtiment sur le tracé (%s)" % registry.building_at(cell).def.display_name
-		else:
-			p.error = "Terrain infranchissable (%s)" % TerrainDb.get_def(map.get_terrain(cell)).display_name.to_lower()
-	elif p.new_cells.is_empty():
-		p.error = "Route déjà construite"
-	elif money >= 0 and money < p.cost:
-		p.error = "Fonds insuffisants (%s € requis)" % Format.thousands(p.cost)
-	return p
+func plan(cells: Array[Vector2i], registry: BuildingRegistry, money: int = -1) -> TilePlan:
+	return TilePlan.check(cells, map, has_road, tile_cost, registry, true, money)
 
 
 ## Construit les tuiles d'un tracé valide ; défriche les forêts.
-func build(p: Plan) -> void:
+func build(p: TilePlan) -> void:
 	assert(p.is_valid(), "Tracé invalide : " + p.error)
 	for cell in p.new_cells:
 		_road[map.index_of(cell)] = 1

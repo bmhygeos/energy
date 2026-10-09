@@ -26,15 +26,17 @@ class Placement:
 
 var map: WorldMap
 var roads: RoadNetwork
+var grid: PowerGrid
 var _buildings: Dictionary[int, Building] = {}
 ## Identifiant du bâtiment par tuile (0 : libre).
 var _occupancy: PackedInt32Array
 var _next_id := 1
 
 
-func _init(p_map: WorldMap, p_roads: RoadNetwork = null) -> void:
+func _init(p_map: WorldMap, p_roads: RoadNetwork = null, p_grid: PowerGrid = null) -> void:
 	map = p_map
 	roads = p_roads if p_roads else RoadNetwork.new(map)
+	grid = p_grid if p_grid else PowerGrid.new(map)
 	_occupancy.resize(map.cell_count())
 
 
@@ -85,6 +87,8 @@ func _placement_error(p: Placement) -> String:
 			return "Emplacement occupé (%s)" % _buildings[_occupancy[i]].def.display_name
 		if roads.has_road(cell):
 			return "Route présente"
+		if grid.has_line(cell):
+			return "Ligne électrique présente"
 		var t := map.terrain[i]
 		var terrain := TerrainDb.get_def(t)
 		if not terrain.buildable:

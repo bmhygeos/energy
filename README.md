@@ -29,7 +29,7 @@ modèles d'export).
 | Sélectionner une tuile / un bâtiment | clic gauche (re-clic ou Échap pour désélectionner) |
 | Construire | bouton du menu « Construction » puis clic sur la carte (le fantôme est vert si le placement est valide, sinon le motif s'affiche en bas) ; Échap ou re-clic sur le bouton pour quitter |
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment (rembourse 25 % du coût, 75 % pour un chantier) |
-| Calque d'information | `O` (relief, vent, soleil, eau, gisements) ou boutons en bas à droite |
+| Calque d'information | `O` (relief, vent, soleil, eau, gisements, réseau) ou boutons en bas à droite |
 | Nouvelle carte | champ « Graine » + Générer, ou Aléatoire |
 
 ## Production (M3)
@@ -56,7 +56,7 @@ modèles d'export).
   (`X`) d'une tuile de route sans remboursement.
 - **Dépôt de véhicules** (relié à une route, 6 places, livré avec une
   charrette) : sélectionnez-le pour acheter ou revendre (50 %) des charrettes
-  (5 t, lente) et des camions (15 t, plus rapides).
+  (6 t, lente) et des camions (15 t, plus rapides).
 - **Dispatcher** : chaque heure, les consommateurs les moins remplis sont servis
   en premier par la source joignable la plus proche ; on attend une charge
   correcte (60 % du camion ou du besoin) sauf si la source est presque pleine.
@@ -68,3 +68,28 @@ modèles d'export).
 - Un bâtiment qui échange des marchandises sans route affiche une pastille bleue.
 - Couper une route recalcule les trajets ; une mission impossible est annulée
   (chargement perdu) et le véhicule rentre.
+
+## Réseau électrique et villes (M4)
+
+- **Villes** (5 sur une carte 64×64) : demande de base de 3 à 10 MW, modulée
+  par l'heure (creux la nuit, pic à 19 h : ×1,3) et la saison (hiver ×1,25,
+  été ×0,9) ; elle croît de 12 %/an si la ville est bien alimentée, 2 % sinon.
+  Une ville ne se démolit pas. Commencez par une petite ville : une centrale
+  biomasse (8 MW) ne suffit pas pour les grandes.
+- **Lignes HT** : outil « Ligne HT » puis glisser (tracé en L). 40 €/tuile,
+  120 € sur rivière ou montagne, mer et lac interdits ; entretien
+  1 €/tuile/jour. Elles peuvent longer ou croiser les routes. Un bâtiment ou
+  une ville est raccordé si une ligne borde son emprise ; un bâtiment touché
+  par deux lignes les relie en un seul réseau.
+- **Équilibre, chaque heure, par réseau** : pertes de 0,2 % par tuile de ligne
+  (25 % max.) ; les villes sont servies de la plus petite à la plus grande,
+  celles qui ne peuvent l'être entièrement sont **délestées** (coupure) avec
+  une pénalité de 1 €/MWh non livré ; le surplus est perdu.
+- **Consignes** : les centrales à combustible ne produisent que ce que
+  demandent leurs villes (+5 % de marge, pertes comprises), au prorata du
+  combustible en stock ; éolien et solaire passent d'abord. Une centrale sans
+  ligne est à l'arrêt (pastille jaune), sans demande elle est en veille et ne
+  brûle rien.
+- **Vente** : 3 €/MWh livré. Le bandeau affiche l'énergie livrée / demandée
+  (en rouge en cas de délestage) et les ventes de la veille ; le calque
+  « Réseau » colore lignes, villes et centrales selon leur état.

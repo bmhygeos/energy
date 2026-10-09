@@ -11,10 +11,10 @@ var _selected := Vector2i(-1, -1)
 var _mode := BuildTool.Mode.SELECT
 var _build_def: BuildingDef
 var _placement: BuildingRegistry.Placement
-## Tracé de route : tuile de départ du glisser ((-1, -1) : pas de glisser).
-var _road_start := Vector2i(-1, -1)
-var _road_end := Vector2i(-1, -1)
-var _road_plan: RoadNetwork.Plan
+## Tracé de route ou de ligne : tuile de départ du glisser ((-1, -1) : pas de glisser).
+var _trace_start := Vector2i(-1, -1)
+var _trace_end := Vector2i(-1, -1)
+var _trace_plan: TilePlan
 
 @onready var _ground: TileMapLayer = $Ground
 @onready var _decor: TileMapLayer = $Decor
@@ -63,20 +63,23 @@ func _process(_delta: float) -> void:
 	_set_hovered(_cell_under_mouse())
 	if _mode == BuildTool.Mode.BUILD:
 		_update_placement()
-	elif _mode == BuildTool.Mode.ROAD:
-		_update_road_plan()
+	elif _is_trace_mode():
+		_update_trace_plan()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
 	if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
-		if _mode != BuildTool.Mode.ROAD or _road_start.x < 0:
+		if not _is_trace_mode() or _trace_start.x < 0:
 			return
-		_update_road_plan()
-		if _road_plan:
-			GameState.build_road(_road_plan)
-		_road_start = Vector2i(-1, -1)
-		_road_plan = null
+		_update_trace_plan()
+		if _trace_plan:
+			if _mode == BuildTool.Mode.ROAD:
+				GameState.build_road(_trace_plan)
+			else:
+				GameState.build_line(_trace_plan)
+		_trace_start = Vector2i(-1, -1)
+		_trace_plan = null
 	elif mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
 		_click(_cell_under_mouse())
 	elif event.is_action_pressed("ui_cancel") \
@@ -103,14 +106,15 @@ func _click(cell: Vector2i) -> void:
 			var b := GameState.buildings.building_at(cell)
 			if b:
 				var refund := GameState.demolish(cell)
-				EventBus.notified.emit("%s démoli : +%s €" % [b.def.display_name, Format.thousands(refund)])
-			elif GameState.roads.has_road(cell):
+				if refund >= 0:
+					EventBus.notified.emit("%s démoli : +%s €" % [b.def.display_name, Format.thousands(refund)])
+			elif GameState.roads.has_road(cell) or GameState.grid.has_line(cell):
 				GameState.demolish(cell)
-		BuildTool.Mode.ROAD:
+		BuildTool.Mode.ROAD, BuildTool.Mode.LINE:
 			if cell.x >= 0:
-				_road_start = cell
-				_road_end = cell
-				_road_plan = null
+				_trace_start = cell
+				_trace_end = cell
+				_trace_plan = null
 		_:
 			_set_selected(Vector2i(-1, -1) if cell == _selected else cell)
 
@@ -119,16 +123,16 @@ func _on_tool_changed(mode: int, def: BuildingDef) -> void:
 	_mode = mode as BuildTool.Mode
 	_build_def = def
 	_placement = null
-	_road_start = Vector2i(-1, -1)
-	_road_plan = null
-	EventBus.road_previewed.emit(null)
+	_trace_start = Vector2i(-1, -1)
+	_trace_plan = null
+	EventBus.tile_plan_previewed.emit(null)
 	if _mode == BuildTool.Mode.BUILD:
 		_set_selected(Vector2i(-1, -1))
 		_update_placement()
 	else:
 		_buildings.hide_ghost()
 		EventBus.placement_previewed.emit(null)
-	if _mode == BuildTool.Mode.ROAD:
+	if _is_trace_mode():
 		_set_selected(Vector2i(-1, -1))
 
 
@@ -149,23 +153,29 @@ func _update_placement() -> void:
 	EventBus.placement_previewed.emit(p)
 
 
+func _is_trace_mode() -> bool:
+	return _mode == BuildTool.Mode.ROAD or _mode == BuildTool.Mode.LINE
+
+
 ## Recalcule l'aperçu du tracé (glisser en cours, sinon la tuile survolée) ;
 ## ne le publie que s'il a changé.
-func _update_road_plan() -> void:
+func _update_trace_plan() -> void:
 	if _hovered.x >= 0:
-		_road_end = _hovered
-	var start := _road_start if _road_start.x >= 0 else _hovered
+		_trace_end = _hovered
+	var start := _trace_start if _trace_start.x >= 0 else _hovered
 	if start.x < 0:
-		if _road_plan:
-			_road_plan = null
-			EventBus.road_previewed.emit(null)
+		if _trace_plan:
+			_trace_plan = null
+			EventBus.tile_plan_previewed.emit(null)
 		return
-	var plan := GameState.plan_road(start, _road_end if _road_start.x >= 0 else _hovered)
-	if _road_plan and _road_plan.cells == plan.cells and _road_plan.error == plan.error \
-			and _road_plan.cost == plan.cost:
+	var end := _trace_end if _trace_start.x >= 0 else _hovered
+	var plan := GameState.plan_road(start, end) if _mode == BuildTool.Mode.ROAD \
+		else GameState.plan_line(start, end)
+	if _trace_plan and _trace_plan.cells == plan.cells and _trace_plan.error == plan.error \
+			and _trace_plan.cost == plan.cost:
 		return
-	_road_plan = plan
-	EventBus.road_previewed.emit(plan)
+	_trace_plan = plan
+	EventBus.tile_plan_previewed.emit(plan)
 
 
 ## Tuile sous la souris, ou (-1, -1) hors de la carte ou au-dessus de l'interface.

@@ -24,6 +24,10 @@ func _ready() -> void:
 			_sprites[b.id].status = b.status)
 	EventBus.tick_advanced.connect(_on_tick)
 	EventBus.roads_changed.connect(func(_c: Array[Vector2i]) -> void: _refresh_connections())
+	EventBus.grid_changed.connect(_refresh_connections)
+	EventBus.grid_stepped.connect(func(_r: PowerGrid.Report) -> void:
+		for b in GameState.cities:
+			_sprites[b.id].queue_redraw())
 	reload()
 
 
@@ -55,6 +59,7 @@ func hide_ghost() -> void:
 
 func _add(b: Building) -> void:
 	var sprite := BuildingSprite.new()
+	sprite.city = b.city
 	sprite.setup(b.def, b.anchor, b.progress_ratio())
 	sprite.status = b.status
 	add_child(sprite)
@@ -68,8 +73,11 @@ func _refresh_connections() -> void:
 
 
 func _refresh_connection(b: Building) -> void:
+	if not _sprites.has(b.id):
+		return
 	_sprites[b.id].disconnected = b.def.uses_logistics() \
 		and not GameState.roads.is_connected_building(b)
+	_sprites[b.id].status = b.status
 
 
 func _on_tick(_tick: int) -> void:

@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scenes/world/buildings_layer.gd" id="4_buildings"]
 [ext_resource type="Script" path="res://scenes/world/road_layer.gd" id="5_roads"]
 [ext_resource type="Script" path="res://scenes/world/vehicles_layer.gd" id="6_vehicles"]
+[ext_resource type="Script" path="res://scenes/world/power_line_layer.gd" id="7_lines"]
 
 [node name="MapView" type="Node2D"]
 y_sort_enabled = true
@@ -38,3 +39,7 @@ script = ExtResource("4_buildings")
 [node name="Vehicles" type="Node2D" parent="."]
 y_sort_enabled = true
 script = ExtResource("6_vehicles")
+
+[node name="PowerLines" type="Node2D" parent="."]
+z_index = 1
+script = ExtResource("7_lines")

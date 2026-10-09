@@ -18,6 +18,8 @@ func _init() -> void:
 	_test_production()
 	_test_roads()
 	_test_logistics()
+	_test_cities()
+	_test_grid()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -228,6 +230,10 @@ func _built(reg: BuildingRegistry, id: StringName, anchor: Vector2i) -> Building
 	_check(p.is_valid(), "placement de %s en %s : %s" % [id, anchor, p.error])
 	var b := reg.place(p)
 	b.build_progress = b.def.build_hours
+	# Hors des tests du réseau, les centrales sont réputées raccordées et
+	# appelées à pleine puissance.
+	b.grid_id = -1
+	b.power_setpoint = 1.0
 	return b
 
 
@@ -353,7 +359,7 @@ func _test_roads() -> void:
 		"défrichement")
 	var again := roads.plan(_road_line(Vector2i(0, 0), Vector2i(6, 0)), reg)
 	_check(again.new_cells == [Vector2i(6, 0)] and again.cost == RoadNetwork.COST_PER_TILE, "routes existantes gratuites")
-	_check(roads.plan(_road_line(Vector2i(0, 0), Vector2i(3, 0)), reg).error == "Route déjà construite", "rien à construire")
+	_check(roads.plan(_road_line(Vector2i(0, 0), Vector2i(3, 0)), reg).error == "Déjà construit", "rien à construire")
 	map.terrain[map.index_of(Vector2i(8, 8))] = TerrainDef.Type.SEA
 	_check(not roads.plan(_road_line(Vector2i(7, 8), Vector2i(9, 8)), reg).is_valid(), "mer infranchissable")
 	var lab := reg.place(reg.check_placement(BuildingDb.get_def(&"laboratory"), Vector2i(10, 2)))
@@ -477,3 +483,130 @@ func _test_logistics() -> void:
 	_check(is_zero_approx(plant2.reserved_in) and is_zero_approx(warehouse.reserved_in)
 		and is_zero_approx(lumberjack.reserved_out), "réservations libérées à la démolition")
 	_check(v1 != v2, "deux véhicules distincts")
+
+
+func _test_cities() -> void:
+	var map := MapGenerator.generate(Vector2i(64, 64), 42)
+	var reg := BuildingRegistry.new(map)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var cities := CityGenerator.populate(reg, rng)
+	_check(cities.size() == 5, "5 villes sur 64×64 (%d)" % cities.size())
+	var ok := true
+	for b in cities:
+		ok = ok and b.city != null and b.is_complete() and reg.building_at(b.anchor) == b
+		ok = ok and b.city.base_demand >= CityGenerator.MIN_DEMAND and b.city.base_demand <= CityGenerator.MAX_DEMAND
+		for o in cities:
+			ok = ok and (o == b or (o.anchor - b.anchor).length() >= CityGenerator.MIN_SPACING)
+		for cell in b.cells:
+			ok = ok and map.get_terrain(cell) in CityGenerator.OPEN_TERRAINS
+	_check(ok, "villes valides et espacées")
+	var names := cities.map(func(b: Building) -> String: return b.city.name)
+	_check(names.size() == 5 and not names.has(""), "villes nommées")
+	var reg2 := BuildingRegistry.new(MapGenerator.generate(Vector2i(64, 64), 42))
+	rng.seed = 7
+	var again := CityGenerator.populate(reg2, rng)
+	_check(again.map(func(b: Building) -> Vector2i: return b.anchor) == cities.map(func(b: Building) -> Vector2i: return b.anchor),
+		"placement des villes reproductible")
+	_check(again.map(func(b: Building) -> String: return b.city.name) == names, "noms des villes reproductibles")
+
+	var city := City.new("Test", 10.0)
+	var night := 3
+	var evening_winter := GameDate.HOURS_PER_SEASON * 3 + 19
+	_check(city.demand_at(evening_winter) > city.demand_at(night) * 2.0, "pic d'hiver en soirée")
+	_check(is_equal_approx(city.demand_at(19), 13.0), "pic de printemps : 1,3 × base")
+	city.served_hours_today = 24
+	city.end_day()
+	var served_growth := city.base_demand / 10.0 - 1.0
+	var other := City.new("Autre", 10.0)
+	other.end_day()
+	_check(served_growth > 0.0 and other.base_demand / 10.0 - 1.0 < served_growth, "croissance plus forte si alimentée")
+	_check(is_equal_approx(served_growth, City.GROWTH_SERVED / 120.0), "croissance annuelle répartie par jour")
+
+
+func _add_city(reg: BuildingRegistry, anchor: Vector2i, demand: float) -> Building:
+	var p := reg.check_placement(CityGenerator.CITY_DEF, anchor)
+	_check(p.is_valid(), "ville en %s : %s" % [anchor, p.error])
+	var b := reg.place(p)
+	b.city = City.new("V%d" % b.id, demand)
+	return b
+
+
+func _test_grid() -> void:
+	var map := _flat_map(Vector2i(32, 32))
+	var reg := BuildingRegistry.new(map)
+	var grid := reg.grid
+	var prod := Production.new(reg)
+	var a := _add_city(reg, Vector2i(12, 6), 5.0)
+	var b := _add_city(reg, Vector2i(20, 6), 20.0)
+	var plant := _built(reg, &"biomass_plant", Vector2i(5, 6))
+	plant.input_stock = plant.def.buffer_capacity
+	var tick := 10  # 10 h : facteur horaire 1,0
+	grid.refresh_topology(reg)
+	_check(plant.grid_id == 0 and a.city.supply == City.Supply.NOT_CONNECTED, "rien de raccordé")
+	prod.step(tick)
+	_check(plant.status == Building.Status.NO_GRID and plant.power_mw == 0.0, "centrale hors réseau à l'arrêt")
+	_check(is_equal_approx(plant.input_stock, plant.def.buffer_capacity), "pas de combustible brûlé hors réseau")
+	_check(reg.check_placement(BuildingDb.get_def(&"laboratory"), Vector2i(6, 7)).is_valid(), "case libre avant la ligne")
+
+	# Ligne centrale → ville A.
+	grid.add_cells(TilePlan.l_path(Vector2i(5, 7), Vector2i(12, 7)))
+	_check(reg.check_placement(BuildingDb.get_def(&"laboratory"), Vector2i(6, 7)).error == "Ligne électrique présente",
+		"pas de bâtiment sur une ligne")
+	grid.refresh_topology(reg)
+	_check(plant.grid_id != 0 and plant.grid_id == a.grid_id and b.grid_id == 0, "centrale et ville A raccordées")
+	var net := grid.networks[plant.grid_id]
+	_check(net.tiles == 8 and is_equal_approx(net.loss_ratio, 8 * PowerGrid.LOSS_PER_TILE), "pertes selon la longueur")
+	grid.plan_setpoints(tick)
+	var need := a.city.demand_at(tick) * (1.0 + PowerGrid.MARGIN) / (1.0 - net.loss_ratio)
+	_check(is_equal_approx(plant.power_setpoint, need / plant.def.power_mw), "consigne = demande + pertes + marge")
+	prod.step(tick)
+	_check(is_equal_approx(plant.power_mw, need), "centrale modulée sur la demande")
+	var r := grid.step(tick, reg)
+	_check(a.city.supply == City.Supply.SERVED and is_equal_approx(r.delivered_mw, a.city.demand_at(tick)),
+		"ville A alimentée")
+	_check(is_equal_approx(r.revenue, r.delivered_mw * PowerGrid.PRICE_PER_MWH) and r.penalty == 0.0, "vente")
+	_check(a.city.served_hours_today == 1, "heure alimentée comptée")
+
+	# Extension vers la ville B (trop gourmande) : délestage.
+	grid.add_cells(TilePlan.l_path(Vector2i(13, 7), Vector2i(18, 7)))
+	grid.refresh_topology(reg)
+	_check(b.grid_id == plant.grid_id, "ville B raccordée")
+	grid.plan_setpoints(tick + 1)
+	_check(is_equal_approx(plant.power_setpoint, 1.0), "consigne plafonnée à pleine puissance")
+	prod.step(tick + 1)
+	r = grid.step(tick + 1, reg)
+	_check(a.city.supply == City.Supply.SERVED and b.city.supply == City.Supply.SHED, "la petite ville servie, la grande délestée")
+	_check(r.shed_cities == 1 and is_equal_approx(r.penalty, b.city.demand_at(tick + 1) * PowerGrid.PENALTY_PER_MWH),
+		"pénalité de délestage")
+
+	# Deux lignes reliées par un même bâtiment forment un seul réseau.
+	grid.add_cells(TilePlan.l_path(Vector2i(3, 5), Vector2i(3, 2)))
+	grid.refresh_topology(reg)
+	_check(grid.network_at(Vector2i(3, 2)) == grid.network_at(Vector2i(10, 7)), "réseaux unis par la centrale")
+
+	# Réseau isolé sans centrale.
+	var c := _add_city(reg, Vector2i(26, 20), 6.0)
+	grid.add_cells(TilePlan.l_path(Vector2i(24, 21), Vector2i(28, 21)))
+	r = grid.step(tick + 2, reg)
+	_check(c.city.supply == City.Supply.NO_SUPPLY and c.grid_id != plant.grid_id, "ville raccordée sans centrale")
+	_check(r.shed_cities == 1 and is_equal_approx(r.penalty, b.city.demand_at(tick + 2) * PowerGrid.PENALTY_PER_MWH),
+		"pas de pénalité sans centrale (seule la ville B est pénalisée)")
+
+	# Éolienne : les renouvelables passent d'abord.
+	map.wind[map.index_of(Vector2i(24, 22))] = 1.0
+	var turbine := _built(reg, &"wind_turbine", Vector2i(24, 22))
+	grid.refresh_topology(reg)
+	_check(turbine.grid_id == c.grid_id, "éolienne raccordée")
+	prod.step(tick + 3)
+	r = grid.step(tick + 3, reg)
+	_check(turbine.power_mw > 0.0 and r.produced_mw > plant.power_mw, "production éolienne comptée")
+
+	# Sans ville, la centrale passe en veille.
+	var lonely := _built(reg, &"biomass_plant", Vector2i(28, 28))
+	lonely.input_stock = 10.0
+	grid.add_cells([Vector2i(29, 28)])
+	grid.refresh_topology(reg)
+	grid.plan_setpoints(tick + 4)
+	prod.step(tick + 4)
+	_check(lonely.status == Building.Status.STANDBY and is_equal_approx(lonely.input_stock, 10.0), "veille sans demande")

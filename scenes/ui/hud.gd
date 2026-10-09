@@ -9,6 +9,7 @@ const LEGENDS: PackedStringArray = [
 	"Ensoleillement : faible → fort",
 	"[color=#3fa0ff]■[/color] accès à l'eau   [color=#1a59d9]■[/color] côte   [color=#c04030]■[/color] sans eau",
 	"[color=#1a1a1a]■[/color] charbon   [color=#4be03c]■[/color] uranium   [color=#c45cff]■[/color] lithium",
+	"[color=#4dd959]■[/color] alimenté   [color=#f24d40]■[/color] délestage   [color=#999999]■[/color] sans centrale   [color=#ffd933]■[/color] centrale",
 ]
 
 var _overlay_mode := OverlayLayer.Mode.NONE
@@ -18,6 +19,7 @@ var _overlay_buttons: Array[Button] = []
 @onready var _money_label: Label = %MoneyLabel
 @onready var _upkeep_label: Label = %UpkeepLabel
 @onready var _power_label: Label = %PowerLabel
+@onready var _sales_label: Label = %SalesLabel
 @onready var _fps_label: Label = %FpsLabel
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
@@ -39,12 +41,13 @@ func _ready() -> void:
 	EventBus.money_changed.connect(_on_money_changed)
 	EventBus.game_started.connect(_on_game_started)
 	EventBus.overlay_changed.connect(_on_overlay_changed)
-	EventBus.production_stepped.connect(_on_production)
+	EventBus.grid_stepped.connect(_on_grid)
 	for sig: Signal in [EventBus.building_completed, EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh_upkeep())
 	for sig: Signal in [EventBus.vehicle_added, EventBus.vehicle_removed]:
 		sig.connect(func(_v: Vehicle) -> void: _refresh_upkeep())
-	EventBus.roads_changed.connect(func(_c: Array[Vector2i]) -> void: _refresh_upkeep())
+	for sig: Signal in [EventBus.roads_changed, EventBus.lines_changed]:
+		sig.connect(func(_c: Array[Vector2i]) -> void: _refresh_upkeep())
 	_on_tick(GameClock.tick)
 	_on_speed_changed(GameClock.speed)
 	_on_money_changed(GameState.money)
@@ -98,8 +101,10 @@ func _on_money_changed(money: int) -> void:
 	_money_label.text = "%s €" % Format.thousands(money)
 
 
-func _on_production(report: Production.Report) -> void:
-	_power_label.text = "Production %s MW" % Format.decimal(report.power_mw)
+func _on_grid(report: PowerGrid.Report) -> void:
+	_power_label.text = "Réseau %s / %s MW" % [Format.decimal(report.delivered_mw), Format.decimal(report.demand_mw)]
+	_power_label.add_theme_color_override("font_color",
+		Color("ff7a6e") if report.shed_cities > 0 else Color.WHITE)
 	var stocks := {}
 	for b in GameState.buildings.all():
 		for good: int in b.store:
@@ -108,10 +113,23 @@ func _on_production(report: Production.Report) -> void:
 			stocks[b.def.input_good] = stocks.get(b.def.input_good, 0.0) + b.input_stock
 		if b.def.output_good != Goods.Type.NONE:
 			stocks[b.def.output_good] = stocks.get(b.def.output_good, 0.0) + b.output_stock
-	var lines := PackedStringArray(["Puissance produite pendant la dernière heure"])
+	var lines := PackedStringArray([
+		"Livré / demandé par les villes raccordées (dernière heure)",
+		"Production des centrales raccordées : %s MW" % Format.decimal(report.produced_mw),
+	])
+	if report.shed_cities > 0:
+		lines.append("Villes délestées : %d" % report.shed_cities)
 	for good: int in stocks:
 		lines.append("%s en stock : %s t" % [Goods.display_name(good), Format.decimal(stocks[good])])
 	_power_label.tooltip_text = "\n".join(lines)
+	var first_day := GameDate.day_index(GameClock.tick) == 0
+	var revenue := GameState.revenue_today if first_day else GameState.revenue_yesterday
+	var penalty := GameState.penalty_today if first_day else GameState.penalty_yesterday
+	_sales_label.text = "Ventes %s €/j" % Format.thousands(roundi(revenue - penalty))
+	_sales_label.tooltip_text = "%s\nVentes : %s €\nPénalités de délestage : %s €\nPrix : %s €/MWh" % [
+		"Aujourd'hui (premier jour)" if first_day else "Hier",
+		Format.thousands(roundi(revenue)), Format.thousands(roundi(penalty)),
+		Format.decimal(PowerGrid.PRICE_PER_MWH)]
 
 
 func _refresh_upkeep() -> void:
@@ -121,7 +139,7 @@ func _refresh_upkeep() -> void:
 func _on_game_started(seed_value: int) -> void:
 	_seed_edit.text = str(seed_value)
 	_refresh_upkeep()
-	_power_label.text = "Production 0 MW"
+	_on_grid(PowerGrid.Report.new())
 
 
 func _on_overlay_changed(mode: int) -> void:

@@ -10,10 +10,21 @@ var buildings: BuildingRegistry
 var production: Production
 var roads: RoadNetwork
 var logistics: Logistics
+var grid: PowerGrid
+## Villes de la partie (bâtiments portant une City).
+var cities: Array[Building] = []
+## Bilan électrique de la dernière heure.
+var last_grid: PowerGrid.Report = PowerGrid.Report.new()
+## Ventes et pénalités du jour en cours et de la veille (€).
+var revenue_today := 0.0
+var penalty_today := 0.0
+var revenue_yesterday := 0.0
+var penalty_yesterday := 0.0
 ## Puissance électrique produite pendant la dernière heure (MW).
 var power_mw := 0.0
-## Coût d'usage des véhicules pas encore débité (fraction d'euro).
-var _travel_cost := 0.0
+## Montant pas encore débité ou crédité (fractions d'euro : usage des
+## véhicules, ventes, pénalités).
+var _pending_money := 0.0
 var money: int = DEFAULT_START_MONEY:
 	set(value):
 		money = value
@@ -32,11 +43,19 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	map_size = size
 	world_map = MapGenerator.generate(size, seed_value)
 	roads = RoadNetwork.new(world_map)
-	buildings = BuildingRegistry.new(world_map, roads)
+	grid = PowerGrid.new(world_map)
+	buildings = BuildingRegistry.new(world_map, roads, grid)
 	production = Production.new(buildings)
 	logistics = Logistics.new(buildings)
+	cities = CityGenerator.populate(buildings, Rng.fork("cities"))
+	grid.refresh_topology(buildings)
 	power_mw = 0.0
-	_travel_cost = 0.0
+	last_grid = PowerGrid.Report.new()
+	revenue_today = 0.0
+	penalty_today = 0.0
+	revenue_yesterday = 0.0
+	penalty_yesterday = 0.0
+	_pending_money = 0.0
 	money = start_money
 	GameClock.reset()
 	EventBus.game_started.emit(seed_value)
@@ -64,6 +83,7 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 	if not placement.cleared.is_empty():
 		EventBus.tiles_changed.emit(placement.cleared)
 	EventBus.building_placed.emit(b)
+	_refresh_grid()
 	return b
 
 
@@ -72,7 +92,14 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 ## remboursée (-1 s'il n'y a rien à démolir).
 func demolish(cell: Vector2i) -> int:
 	var b := buildings.building_at(cell)
+	if b and b.city:
+		EventBus.notified.emit("Une ville ne peut pas être démolie")
+		return -1
 	if b == null:
+		if grid.remove(cell):
+			_refresh_grid()
+			EventBus.lines_changed.emit([cell] as Array[Vector2i])
+			return 0
 		if roads.remove(cell):
 			logistics.on_roads_changed()
 			EventBus.roads_changed.emit([cell] as Array[Vector2i])
@@ -84,17 +111,18 @@ func demolish(cell: Vector2i) -> int:
 		refund += floori(v.def.cost * Logistics.SELL_REFUND)
 		EventBus.vehicle_removed.emit(v)
 	money += refund
+	_refresh_grid()
 	EventBus.building_removed.emit(b)
 	return refund
 
 
 ## Tracé de route en L de [param from] à [param to], vérifié avec l'argent actuel.
-func plan_road(from: Vector2i, to: Vector2i) -> RoadNetwork.Plan:
+func plan_road(from: Vector2i, to: Vector2i) -> TilePlan:
 	return roads.plan(RoadNetwork.l_path(from, to), buildings, money)
 
 
 ## Construit et paie un tracé ; false (motif notifié) s'il est invalide.
-func build_road(plan: RoadNetwork.Plan) -> bool:
+func build_road(plan: TilePlan) -> bool:
 	plan = roads.plan(plan.cells, buildings, money)
 	if not plan.is_valid():
 		EventBus.notified.emit(plan.error)
@@ -106,6 +134,30 @@ func build_road(plan: RoadNetwork.Plan) -> bool:
 		EventBus.tiles_changed.emit(plan.cleared)
 	EventBus.roads_changed.emit(plan.new_cells)
 	return true
+
+
+## Tracé de ligne électrique en L, vérifié avec l'argent actuel.
+func plan_line(from: Vector2i, to: Vector2i) -> TilePlan:
+	return grid.plan(TilePlan.l_path(from, to), buildings, money)
+
+
+func build_line(plan: TilePlan) -> bool:
+	plan = grid.plan(plan.cells, buildings, money)
+	if not plan.is_valid():
+		EventBus.notified.emit(plan.error)
+		return false
+	money -= plan.cost
+	grid.build(plan)
+	_refresh_grid()
+	EventBus.lines_changed.emit(plan.new_cells)
+	return true
+
+
+## Raccordements et consignes à jour après un changement de topologie.
+func _refresh_grid() -> void:
+	grid.refresh_topology(buildings)
+	grid.plan_setpoints(GameClock.tick + 1)
+	EventBus.grid_changed.emit()
 
 
 ## Achète un véhicule [param def] pour [param depot] ; null (motif notifié)
@@ -138,7 +190,8 @@ func sell_vehicle(depot: Building, def: VehicleDef = null) -> int:
 
 ## Entretien journalier total : bâtiments, routes, véhicules.
 func daily_upkeep() -> int:
-	return buildings.daily_upkeep() + roads.daily_upkeep() + logistics.daily_upkeep()
+	return buildings.daily_upkeep() + roads.daily_upkeep() + grid.daily_upkeep() \
+		+ logistics.daily_upkeep()
 
 
 func _on_tick(tick: int) -> void:
@@ -148,19 +201,30 @@ func _on_tick(tick: int) -> void:
 		EventBus.building_completed.emit(b)
 	var report := production.step(tick)
 	var transport := logistics.step()
-	_travel_cost += transport.travel_cost
-	if _travel_cost >= 1.0:
-		money -= floori(_travel_cost)
-		_travel_cost -= floori(_travel_cost)
+	last_grid = grid.step(tick, buildings)
+	revenue_today += last_grid.revenue
+	penalty_today += last_grid.penalty
+	_pending_money += last_grid.revenue - last_grid.penalty - transport.travel_cost
+	if absf(_pending_money) >= 1.0:
+		var whole := int(_pending_money)
+		money += whole
+		_pending_money -= whole
 	power_mw = report.power_mw
 	if not report.changed_cells.is_empty():
 		EventBus.tiles_changed.emit(report.changed_cells)
 	for b in report.status_changed:
 		EventBus.building_status_changed.emit(b)
 	EventBus.production_stepped.emit(report)
+	EventBus.grid_stepped.emit(last_grid)
 
 
 func _on_day(_day: int) -> void:
+	for c in cities:
+		c.city.end_day()
+	revenue_yesterday = revenue_today
+	penalty_yesterday = penalty_today
+	revenue_today = 0.0
+	penalty_today = 0.0
 	var upkeep := daily_upkeep()
 	if upkeep > 0:
 		money -= upkeep

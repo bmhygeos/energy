@@ -26,13 +26,15 @@ func _ready() -> void:
 			EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh())
 	EventBus.tiles_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
-	EventBus.roads_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
+	for sig: Signal in [EventBus.roads_changed, EventBus.lines_changed]:
+		sig.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
+	EventBus.grid_changed.connect(_refresh)
 	EventBus.money_changed.connect(func(_m: int) -> void:
 		if _actions_for:
 			_refresh())
 	for sig: Signal in [EventBus.vehicle_added, EventBus.vehicle_removed]:
 		sig.connect(func(_v: Vehicle) -> void: _refresh())
-	EventBus.production_stepped.connect(func(_r: Production.Report) -> void:
+	EventBus.grid_stepped.connect(func(_r: PowerGrid.Report) -> void:
 		if _panel.visible:
 			_refresh())
 	_refresh()
@@ -85,11 +87,17 @@ func _refresh() -> void:
 			"Entretien : %d €/jour" % RoadNetwork.UPKEEP_PER_TILE_PER_DAY, ""])
 		head.append_array(lines)
 		lines = head
+	if GameState.grid.has_line(cell):
+		var head := _line_lines(cell)
+		head.append("")
+		head.append_array(lines)
+		lines = head
+		_title.text = "Ligne haute tension  (%d, %d)" % [cell.x, cell.y]
 	var b := _shown_building()
 	_update_actions(b if b and cell == _selected else null)
 	if b:
-		_title.text = "%s  (%d, %d)" % [b.def.display_name, cell.x, cell.y]
-		var head := _building_lines(b)
+		_title.text = "%s  (%d, %d)" % [b.city.name if b.city else b.def.display_name, cell.x, cell.y]
+		var head := _city_lines(b.city) if b.city else _building_lines(b)
 		head.append("Sur : " + def.display_name.to_lower())
 		head.append("")
 		head.append_array(lines)
@@ -111,7 +119,13 @@ func _building_lines(b: Building) -> PackedStringArray:
 		state += " (%d %%)" % roundi(b.activity * 100.0)
 	lines.append(state)
 	if def.power_mw > 0.0:
-		lines.append("Électricité : %s MW" % Format.decimal(b.power_mw))
+		lines.append("Électricité : %s / %s MW" % [Format.decimal(b.power_mw), Format.decimal(def.power_mw)])
+		if b.grid_id == 0:
+			lines.append("Réseau électrique : non raccordé !")
+		elif def.power_source == BuildingDef.PowerSource.FUEL:
+			lines.append("Réseau électrique : consigne %d %%" % roundi(b.power_setpoint * 100.0))
+		else:
+			lines.append("Réseau électrique : raccordé")
 	if def.input_good != Goods.Type.NONE:
 		lines.append("Entrée : %s / %s t de %s" % [Format.decimal(b.input_stock),
 			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.input_good).to_lower()])
@@ -198,3 +212,30 @@ func _vehicle_tooltip(def: VehicleDef) -> String:
 		"Entretien : %d €/jour" % def.upkeep_per_day,
 		"Usage : %s €/tuile" % Format.decimal(def.cost_per_tile),
 	]))
+
+
+func _city_lines(city: City) -> PackedStringArray:
+	var tick := GameClock.tick
+	var lines := PackedStringArray([
+		City.SUPPLY_NAMES[city.supply],
+		"Population : %s" % Format.thousands(city.population()),
+		"Demande : %s MW (pic %s MW)" % [Format.decimal(city.demand_at(tick)), Format.decimal(city.peak_demand(tick))],
+		"Aujourd'hui : %d h alimentée, %d h coupée" % [city.served_hours_today, city.shed_hours_today],
+	])
+	if GameDate.day_index(tick) > 0:
+		lines.append("Alimentée hier : %d %%" % roundi(city.served_ratio_yesterday * 100.0))
+	return lines
+
+
+func _line_lines(cell: Vector2i) -> PackedStringArray:
+	var net: PowerGrid.Network = GameState.grid.networks.get(GameState.grid.network_at(cell))
+	if net == null:
+		return PackedStringArray(["Réseau : —"])
+	return PackedStringArray([
+		"Réseau : %d tuiles, %d centrale%s, %d ville%s" % [net.tiles, net.producers.size(),
+			"s" if net.producers.size() > 1 else "", net.cities.size(), "s" if net.cities.size() > 1 else ""],
+		"Production : %s MW · pertes %d %%" % [Format.decimal(net.supply_mw), roundi(net.loss_ratio * 100.0)],
+		"Demande : %s MW · livré %s MW" % [Format.decimal(net.demand_mw), Format.decimal(net.delivered_mw)],
+		"Villes délestées : %d" % net.shed if net.shed > 0 else "Aucun délestage",
+		"Entretien : %d €/jour" % PowerGrid.UPKEEP_PER_TILE_PER_DAY,
+	])

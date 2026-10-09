@@ -6,8 +6,8 @@
 script = ExtResource("1_def")
 id = &"cart"
 display_name = "Charrette"
-capacity = 5.0
-speed = 0.3
+capacity = 6.0
+speed = 0.4
 cost = 300
 upkeep_per_day = 5
 cost_per_tile = 0.5

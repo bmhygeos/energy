@@ -2,11 +2,12 @@ class_name Building
 extends RefCounted
 ## Bâtiment posé sur la carte (chantier ou terminé). Pure donnée.
 
-enum Status { CONSTRUCTION, RUNNING, NO_INPUT, OUTPUT_FULL, DEPLETED, IDLE }
+enum Status { CONSTRUCTION, RUNNING, NO_INPUT, OUTPUT_FULL, DEPLETED, IDLE, NO_GRID, STANDBY }
 
 const STATUS_NAMES: PackedStringArray = [
 	"En chantier", "En service", "À l'arrêt : manque d'approvisionnement",
 	"À l'arrêt : stock de sortie plein", "À l'arrêt : ressource épuisée", "Inactif",
+	"À l'arrêt : non relié au réseau électrique", "En veille : pas de demande",
 ]
 
 var id: int
@@ -14,6 +15,8 @@ var def: BuildingDef
 ## Tuile d'ancrage (avant-bas de l'emprise).
 var anchor: Vector2i
 var cells: Array[Vector2i]
+## Ville représentée par ce bâtiment (null pour les bâtiments du joueur).
+var city: City
 ## Heures de chantier écoulées ; le bâtiment est terminé à def.build_hours.
 var build_progress := 0
 var status: Status = Status.CONSTRUCTION
@@ -30,6 +33,10 @@ var store: Dictionary[int, float] = {}
 ## Taux de fonctionnement (0–1) et puissance électrique de la dernière heure.
 var activity := 0.0
 var power_mw := 0.0
+## Réseau électrique : identifiant du réseau raccordé (0 : aucun) et consigne
+## de puissance (0–1) fixée par le réseau pour l'heure suivante.
+var grid_id := 0
+var power_setpoint := 0.0
 
 
 func _init(p_id: int, p_def: BuildingDef, p_anchor: Vector2i) -> void:

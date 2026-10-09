@@ -34,5 +34,11 @@ signal building_status_changed(building: Building)
 signal roads_changed(cells: Array[Vector2i])
 signal vehicle_added(vehicle: Vehicle)
 signal vehicle_removed(vehicle: Vehicle)
-## Aperçu du tracé de route en mode ROAD (null : aucun).
-signal road_previewed(plan: RoadNetwork.Plan)
+## Aperçu du tracé en mode ROAD ou LINE (null : aucun).
+signal tile_plan_previewed(plan: TilePlan)
+## Lignes électriques construites ou supprimées sur ces tuiles.
+signal lines_changed(cells: Array[Vector2i])
+## Raccordements au réseau électrique modifiés.
+signal grid_changed()
+## Bilan électrique de l'heure écoulée (PowerGrid.Report).
+signal grid_stepped(report: PowerGrid.Report)

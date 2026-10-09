@@ -21,23 +21,23 @@ theme_override_constants/margin_bottom = 6
 
 [node name="Row" type="HBoxContainer" parent="TopBar/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 12
 
 [node name="DateLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 0)
+custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 text = "Printemps, jour 1, an 1 — 00:00"
 
 [node name="MoneyLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 text = "0 €"
 
 [node name="UpkeepLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(170, 0)
+custom_minimum_size = Vector2(145, 0)
 layout_mode = 2
 mouse_filter = 1
 tooltip_text = "Entretien journalier : bâtiments en service, routes, véhicules"
@@ -45,11 +45,18 @@ text = "Entretien 0 €/j"
 
 [node name="PowerLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(190, 0)
+custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 mouse_filter = 1
-tooltip_text = "Puissance électrique produite pendant la dernière heure"
-text = "Production 0 MW"
+tooltip_text = "Puissance livrée / demandée par les villes raccordées"
+text = "Réseau 0 / 0 MW"
+
+[node name="SalesLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(125, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "Ventes 0 €/j"
 
 [node name="Spacer" type="Control" parent="TopBar/Margin/Row"]
 layout_mode = 2
@@ -61,7 +68,7 @@ text = "Graine"
 
 [node name="SeedEdit" type="LineEdit" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 tooltip_text = "Graine de la carte (nombre ou texte)"
 
@@ -120,7 +127,7 @@ text = "×4"
 
 [node name="FpsLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(70, 0)
+custom_minimum_size = Vector2(55, 0)
 layout_mode = 2
 horizontal_alignment = 2
 text = "0 FPS"
