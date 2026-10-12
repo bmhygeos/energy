@@ -26,7 +26,7 @@ func _ready() -> void:
 			EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh())
 	EventBus.tiles_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
-	for sig: Signal in [EventBus.roads_changed, EventBus.lines_changed]:
+	for sig: Signal in [EventBus.roads_changed, EventBus.rails_changed, EventBus.lines_changed]:
 		sig.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
 	EventBus.grid_changed.connect(_refresh)
 	EventBus.money_changed.connect(func(_m: int) -> void:
@@ -86,6 +86,13 @@ func _refresh() -> void:
 		var head := PackedStringArray([
 			"Sur : " + def.display_name.to_lower(),
 			"Entretien : %d €/jour" % RoadNetwork.UPKEEP_PER_TILE_PER_DAY, ""])
+		head.append_array(lines)
+		lines = head
+	if GameState.rails.has_rail(cell):
+		var crossing := GameState.roads.has_road(cell)
+		_title.text = "%s  (%d, %d)" % ["Passage à niveau" if crossing else "Voie ferrée", cell.x, cell.y]
+		var head := PackedStringArray([
+			"Entretien : %d €/jour" % RailNetwork.RAIL_UPKEEP_PER_TILE_PER_DAY, ""])
 		head.append_array(lines)
 		lines = head
 	if GameState.grid.has_line(cell):
@@ -152,17 +159,21 @@ func _building_lines(b: Building) -> PackedStringArray:
 		if b.reserved_in > 0.0:
 			lines.append("En route : %s t" % Format.decimal(b.reserved_in))
 	if def.vehicle_slots > 0:
+		var station := def.is_station()
 		var fleet := GameState.logistics.vehicles_of(b)
 		var busy := fleet.filter(func(v: Vehicle) -> bool: return v.state != Vehicle.State.IDLE).size()
 		var for_sale := fleet.filter(func(v: Vehicle) -> bool: return v.retiring).size()
-		lines.append("Véhicules : %d / %d (%d en mission)" % [fleet.size() - for_sale, def.vehicle_slots, busy])
+		lines.append("%s : %d / %d (%d en mission)" % ["Trains" if station else "Véhicules",
+			fleet.size() - for_sale, def.vehicle_slots, busy])
 		if for_sale > 0:
 			lines.append("À vendre au retour : %d" % for_sale)
 		if busy < fleet.size():
-			lines.append("Au dépôt : %d, rien à transporter pour l'instant" % (fleet.size() - busy))
+			lines.append("%s : %d, rien à transporter pour l'instant" % [
+				"En gare" if station else "Au dépôt", fleet.size() - busy])
 			lines.append("  (départ quand une source a ≥ %d %% d'un chargement)" % roundi(Logistics.FULL_LOAD_RATIO * 100.0))
 		if b != _actions_for:
-			lines.append("Cliquez sur le dépôt pour acheter des véhicules")
+			lines.append("Cliquez sur la gare pour acheter des trains" if station
+				else "Cliquez sur le dépôt pour acheter des véhicules")
 	var available := Production.resource_available(GameState.world_map, def, b.anchor)
 	if available >= 0.0:
 		lines.append("Ressource à portée : %s t" % Format.thousands(roundi(available)))
@@ -211,6 +222,8 @@ func _update_actions(b: Building) -> void:
 func _build_vehicle_rows(depot: Building) -> void:
 	_actions.add_child(HSeparator.new())
 	for def in VehicleDb.DEFS:
+		if def.network != depot.def.vehicle_network:
+			continue
 		var row := HBoxContainer.new()
 		var label := Label.new()
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL

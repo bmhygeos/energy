@@ -5,12 +5,15 @@ const DEFAULT_MAP_SIZE := Vector2i(64, 64)
 const DEFAULT_START_MONEY := 50_000
 ## Technologie qui révèle les gisements.
 const PROSPECTING_TECH := &"prospecting"
+## Technologie des voies ferrées.
+const RAIL_TECH := &"rail"
 
 var map_size: Vector2i = DEFAULT_MAP_SIZE
 var world_map: WorldMap
 var buildings: BuildingRegistry
 var production: Production
 var roads: RoadNetwork
+var rails: RailNetwork
 var logistics: Logistics
 var grid: PowerGrid
 var research: Research
@@ -48,8 +51,9 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	map_size = size
 	world_map = MapGenerator.generate(size, seed_value)
 	roads = RoadNetwork.new(world_map)
+	rails = RailNetwork.new(world_map)
 	grid = PowerGrid.new(world_map)
-	buildings = BuildingRegistry.new(world_map, roads, grid)
+	buildings = BuildingRegistry.new(world_map, roads, grid, rails)
 	production = Production.new(buildings)
 	logistics = Logistics.new(buildings)
 	research = Research.new(TechDb.DEFS)
@@ -140,13 +144,13 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 		EventBus.tiles_changed.emit(placement.cleared)
 	EventBus.building_placed.emit(b)
 	_refresh_grid()
-	if def.uses_logistics() and def.vehicle_slots == 0 \
-			and not buildings.all().any(func(o: Building) -> bool: return o.def.vehicle_slots > 0):
+	if def.uses_logistics() and not def.is_road_depot() \
+			and not buildings.all().any(func(o: Building) -> bool: return o.def.is_road_depot()):
 		EventBus.notified.emit("Sans dépôt de véhicules relié à la route, les marchandises ne circulent pas")
 	return b
 
 
-## Démolit le bâtiment (ou à défaut la route) présent en [param cell] et
+## Démolit le bâtiment (ou à défaut la ligne, la voie ou la route) présent en [param cell] et
 ## rembourse une part du bâtiment et de ses véhicules ; renvoie la somme
 ## remboursée (-1 s'il n'y a rien à démolir).
 func demolish(cell: Vector2i) -> int:
@@ -159,8 +163,12 @@ func demolish(cell: Vector2i) -> int:
 			_refresh_grid()
 			EventBus.lines_changed.emit([cell] as Array[Vector2i])
 			return 0
+		if rails.remove(cell):
+			logistics.on_networks_changed()
+			EventBus.rails_changed.emit([cell] as Array[Vector2i])
+			return 0
 		if roads.remove(cell):
-			logistics.on_roads_changed()
+			logistics.on_networks_changed()
 			EventBus.roads_changed.emit([cell] as Array[Vector2i])
 			return 0
 		return -1
@@ -188,10 +196,34 @@ func build_road(plan: TilePlan) -> bool:
 		return false
 	money -= plan.cost
 	roads.build(plan)
-	logistics.on_roads_changed()
+	logistics.on_networks_changed()
 	if not plan.cleared.is_empty():
 		EventBus.tiles_changed.emit(plan.cleared)
 	EventBus.roads_changed.emit(plan.new_cells)
+	return true
+
+
+## Tracé de voie ferrée en L, vérifié avec l'argent et les technologies actuels.
+func plan_rail(from: Vector2i, to: Vector2i) -> TilePlan:
+	var plan := rails.plan(TilePlan.l_path(from, to), buildings, money)
+	if not research.is_known(RAIL_TECH):
+		plan.error = "Technologie requise : " + research.get_def(RAIL_TECH).display_name
+	return plan
+
+
+func build_rail(plan: TilePlan) -> bool:
+	plan = rails.plan(plan.cells, buildings, money)
+	if not research.is_known(RAIL_TECH):
+		plan.error = "Technologie requise : " + research.get_def(RAIL_TECH).display_name
+	if not plan.is_valid():
+		EventBus.notified.emit(plan.error)
+		return false
+	money -= plan.cost
+	rails.build(plan)
+	logistics.on_networks_changed()
+	if not plan.cleared.is_empty():
+		EventBus.tiles_changed.emit(plan.cleared)
+	EventBus.rails_changed.emit(plan.new_cells)
 	return true
 
 
@@ -267,10 +299,10 @@ static func _sale_rank(v: Vehicle) -> int:
 	return 3
 
 
-## Entretien journalier total : bâtiments, routes, véhicules.
+## Entretien journalier total : bâtiments, routes, voies, lignes, véhicules.
 func daily_upkeep() -> int:
-	return buildings.daily_upkeep() + roads.daily_upkeep() + grid.daily_upkeep() \
-		+ logistics.daily_upkeep()
+	return buildings.daily_upkeep() + roads.daily_upkeep() + rails.daily_upkeep() \
+		+ grid.daily_upkeep() + logistics.daily_upkeep()
 
 
 func _on_tick(tick: int) -> void:

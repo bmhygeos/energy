@@ -6,8 +6,7 @@
 script = ExtResource("1_def")
 id = &"rail"
 display_name = "Rail"
-description = "Voies ferrées, gares et trains (étape M5b)."
+description = "Voies ferrées, gares de marchandises et trains : gros volumes, rapides, sur de longues distances."
 era = 2
 cost = 2000
 prerequisites = Array[StringName]([&"coal_plant"])
-placeholder = true

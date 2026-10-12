@@ -122,11 +122,38 @@ nécessite un navigateur avec WebGL 2.
 - **Au départ** : Bûcheronnage et Biomasse (bûcheron, centrale biomasse),
   plus routes, lignes, dépôt, entrepôt et laboratoire. Le reste est verrouillé
   (grisé dans le menu) : pépinière (Sylviculture), mine (Mines), camion
-  (Camions), centrale à charbon, éolienne (Éolien), ferme solaire (Solaire PV).
+  (Camions), centrale à charbon, éolienne (Éolien), ferme solaire (Solaire PV),
+  voie ferrée, gare et train (Rail).
 - **Bonus** : Vapeur −15 % de combustible, Mines +10 % d'extraction,
   Sylviculture ×2 repousse, Lignes HT et Transformateurs −40 % de pertes
   chacun, Dispatching et Smart grid −50 % de pénalités, Camions +10 % de
   vitesse, Physique nucléaire et des plasmas : recherche +10 % / +20 %…
 - Les technologies marquées « contenu à venir » (nucléaire, offshore,
   stockage, fusion…) font partie de l'arbre mais leurs bâtiments arriveront
-  aux étapes M5b, M6, M7 et M6b.
+  aux étapes M6, M7 et M6b.
+
+## Rail (M5b)
+
+- **Technologie Rail** (ère 2, 2 000 RP, après Centrale à charbon) : débloque
+  la voie ferrée, la gare de marchandises et le train.
+- **Voies ferrées** : outil « Voie ferrée » puis glisser (tracé en L).
+  150 €/tuile, 200 € en forêt (défrichée), 300 € en colline, pont de 1 200 €
+  sur rivière ; mer, lac et montagne infranchissables. Entretien
+  2 €/tuile/jour. Une voie peut croiser une route (passage à niveau).
+  Démolition (`X`) sans remboursement ; sur un passage à niveau, la voie part
+  avant la route.
+- **Gare de marchandises** (10 000 €, 2×2, reliée à une route **et** à une
+  voie, 300 t toutes marchandises, 2 trains) : sélectionnez-la pour acheter ou
+  revendre des **trains** (120 t, 3 tuiles/h, 20 000 €, entretien 120 €/j,
+  4 €/tuile).
+- **Fonctionnement** : la gare sert d'entrepôt aux camions. Le surplus des
+  producteurs proches y est déposé ; un train l'emmène vers la gare, joignable
+  par le rail, **plus proche par la route d'un client** de cette marchandise
+  (les marchandises ne font que se rapprocher de leurs clients : pas
+  d'aller-retour) ; les camions de la gare d'arrivée livrent ensuite les
+  consommateurs. Un train part avec au moins 60 % de sa charge, ou dès que la
+  gare de départ est presque pleine.
+- Typiquement : bûcherons ou mines loin des centrales, reliés à une gare par
+  la route ; une seconde gare près des centrales, avec son propre dépôt de
+  véhicules. Le panneau de la gare signale l'absence de voie, de route, de gare
+  partenaire ou de train ; une gare sans voie affiche la pastille bleue.

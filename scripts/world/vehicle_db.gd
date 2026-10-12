@@ -1,10 +1,11 @@
 class_name VehicleDb
 extends RefCounted
-## Définitions des véhicules routiers.
+## Définitions des véhicules (routiers et ferroviaires).
 
 const DEFS: Array[VehicleDef] = [
 	preload("res://data/vehicles/cart.tres"),
 	preload("res://data/vehicles/truck.tres"),
+	preload("res://data/vehicles/train.tres"),
 ]
 
 

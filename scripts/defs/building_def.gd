@@ -40,6 +40,8 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 @export var required_deposit: WorldMap.Deposit = WorldMap.Deposit.NONE
 ## Une route doit border l'emprise.
 @export var needs_road := false
+## Une voie ferrée doit border l'emprise.
+@export var needs_rail := false
 ## Au moins une tuile de l'emprise doit avoir accès à l'eau.
 @export var needs_water_access := false
 ## Au moins une tuile de l'emprise doit toucher la mer.
@@ -75,8 +77,10 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 @export_group("Logistique")
 ## Entrepôt : capacité totale de stockage, toutes marchandises (t).
 @export var storage_capacity := 0.0
-## Dépôt : nombre maximal de véhicules.
+## Dépôt : nombre maximal de véhicules…
 @export var vehicle_slots := 0
+## … et leur réseau (dépôt routier ou gare).
+@export var vehicle_network: VehicleDef.Network = VehicleDef.Network.ROAD
 ## Véhicules offerts à la construction (identifiants de VehicleDef).
 @export var starting_vehicles: Array[StringName] = []
 
@@ -103,10 +107,20 @@ func footprint(anchor: Vector2i) -> Array[Vector2i]:
 	return cells
 
 
-## Bâtiment qui échange des marchandises par la route.
+## Bâtiment qui échange des marchandises par la route ou le rail.
 func uses_logistics() -> bool:
 	return input_good != Goods.Type.NONE or output_good != Goods.Type.NONE \
 		or storage_capacity > 0.0 or vehicle_slots > 0
+
+
+## Dépôt routier (héberge charrettes et camions).
+func is_road_depot() -> bool:
+	return vehicle_slots > 0 and vehicle_network == VehicleDef.Network.ROAD
+
+
+## Gare : point de chargement des trains, qui y sont hébergés.
+func is_station() -> bool:
+	return vehicle_slots > 0 and vehicle_network == VehicleDef.Network.RAIL
 
 
 func is_producer() -> bool:
@@ -159,6 +173,8 @@ func describe_constraints() -> PackedStringArray:
 		lines.append("Sur un gisement de " + WorldMap.DEPOSIT_NAMES[required_deposit].to_lower())
 	if needs_road:
 		lines.append("Relié à une route")
+	if needs_rail:
+		lines.append("Relié à une voie ferrée")
 	if needs_water_access:
 		lines.append("Près de l'eau")
 	if needs_coast:

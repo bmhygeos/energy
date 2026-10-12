@@ -2,8 +2,12 @@ class_name VehicleDef
 extends Resource
 ## Définition d'un type de véhicule (data/vehicles/*.tres).
 
+## Réseau emprunté par le véhicule.
+enum Network { ROAD, RAIL }
+
 @export var id: StringName
 @export var display_name := ""
+@export var network: Network = Network.ROAD
 ## Charge utile (t).
 @export var capacity := 5.0
 ## Vitesse en tuiles par heure de jeu.

@@ -226,7 +226,8 @@ func _reforest(b: Building, tick: int, report: Report) -> void:
 		if map.terrain[i] == TerrainDef.Type.FOREST:
 			map.wood[i] = minf(WorldMap.WOOD_PER_FOREST, map.wood[i] + REGROWTH_PER_HOUR * regrowth_factor)
 		elif map.terrain[i] == TerrainDef.Type.PLAIN and registry.building_at(cell) == null \
-				and not registry.roads.has_road(cell) and map.deposit[i] == WorldMap.Deposit.NONE:
+				and not registry.roads.has_road(cell) and not registry.rails.has_rail(cell) \
+				and map.deposit[i] == WorldMap.Deposit.NONE:
 			var n := 0
 			for o in map.neighbors(cell, WorldMap.NEIGHBORS_4):
 				if map.terrain[map.index_of(o)] == TerrainDef.Type.FOREST:

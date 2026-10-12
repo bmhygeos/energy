@@ -1,7 +1,7 @@
 class_name VehicleSprite
 extends Node2D
-## Véhicule animé sur la route : position interpolée entre deux ticks,
-## sur la voie de droite, caisse colorée selon le chargement.
+## Véhicule animé sur la route (voie de droite) ou la voie ferrée :
+## position interpolée entre deux ticks, caisse colorée selon le chargement.
 
 ## Décalage latéral (voie de droite), en tuiles.
 const LANE_OFFSET := 0.1
@@ -22,7 +22,8 @@ func _process(_delta: float) -> void:
 		var world_dir := _vec(d)
 		_forward = world_dir.normalized()
 		d = d.normalized()
-		g += Vector2(-d.y, d.x) * LANE_OFFSET
+		if vehicle.def.network == VehicleDef.Network.ROAD:
+			g += Vector2(-d.y, d.x) * LANE_OFFSET
 	position = Iso.map_to_world(g)
 	queue_redraw()
 

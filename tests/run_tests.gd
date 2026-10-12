@@ -20,6 +20,7 @@ func _init() -> void:
 	_test_logistics()
 	_test_transport_throughput()
 	_test_vehicle_sale()
+	_test_rail()
 	_test_cities()
 	_test_grid()
 	_test_tech_data()
@@ -440,7 +441,7 @@ func _test_logistics() -> void:
 
 	# Coupure de la route entre le bûcheron et la centrale.
 	reg.roads.remove(Vector2i(10, 4))
-	lg.on_roads_changed()
+	lg.on_networks_changed()
 	_check(lg.distance(lumberjack, plant) == -1, "route coupée : injoignable")
 	for i in 60:
 		tick += 1
@@ -800,3 +801,85 @@ func _test_vehicle_sale() -> void:
 	_check(empty_v in sold and loaded_v in sold, "les deux vendus à leur retour")
 	_check(delivered >= cargo and plant.input_stock > before, "chargement livré avant la vente")
 	_check(lg.vehicles.size() == depot.def.vehicle_slots - 2, "flotte réduite de deux")
+
+
+func _test_rail() -> void:
+	var map := _flat_map(Vector2i(48, 16))
+	map.terrain[map.index_of(Vector2i(20, 12))] = TerrainDef.Type.RIVER
+	map.terrain[map.index_of(Vector2i(21, 12))] = TerrainDef.Type.SEA
+	var reg := BuildingRegistry.new(map)
+	var rails := reg.rails
+	_check(rails.tile_cost(Vector2i(0, 0)) == RailNetwork.RAIL_COST_PER_TILE, "voie : coût en plaine")
+	_check(rails.tile_cost(Vector2i(20, 12)) == RailNetwork.RAIL_BRIDGE_COST, "voie : pont")
+	_check(rails.tile_cost(Vector2i(21, 12)) < 0, "voie : mer infranchissable")
+	reg.roads.add_cells(_road_line(Vector2i(0, 4), Vector2i(12, 4)))
+	reg.roads.add_cells(_road_line(Vector2i(30, 4), Vector2i(46, 4)))
+	var crossing := rails.plan(TilePlan.l_path(Vector2i(14, 3), Vector2i(14, 5)), reg)
+	_check(crossing.is_valid(), "voie : passage à niveau possible (%s)" % crossing.error)
+	var station_def := BuildingDb.get_def(&"station")
+	_check(reg.check_placement(station_def, Vector2i(12, 6)).error.contains("voie ferrée"),
+		"gare : voie ferrée requise")
+	rails.add_cells(RoadNetwork.l_path(Vector2i(11, 7), Vector2i(36, 7)))
+	_check(rails.tile_count() == 26 and rails.daily_upkeep() == 26 * RailNetwork.RAIL_UPKEEP_PER_TILE_PER_DAY,
+		"voie : tuiles et entretien")
+	_check(reg.check_placement(BuildingDb.get_def(&"warehouse"), Vector2i(20, 7)).error == "Voie ferrée présente",
+		"pas de bâtiment sur une voie")
+
+	# Ouest : bûcherons → gare A ; est : gare B → centrale ; pas de route entre les deux.
+	var prod := Production.new(reg)
+	var lg := Logistics.new(reg)
+	for y in [1, 2]:
+		for x in range(0, 8):
+			map.terrain[map.index_of(Vector2i(x, y))] = TerrainDef.Type.FOREST
+			map.wood[map.index_of(Vector2i(x, y))] = WorldMap.WOOD_PER_FOREST
+	_built(reg, &"lumberjack", Vector2i(2, 3))
+	_built(reg, &"lumberjack", Vector2i(5, 3))
+	var depot_w := _built(reg, &"depot", Vector2i(10, 6))
+	var station_a := _built(reg, &"station", Vector2i(12, 6))
+	var station_b := _built(reg, &"station", Vector2i(36, 6))
+	var depot_e := _built(reg, &"depot", Vector2i(40, 6))
+	var plant := _built(reg, &"biomass_plant", Vector2i(44, 3))
+	for depot: Building in [depot_w, depot_e]:
+		for id in depot.def.starting_vehicles:
+			lg.add_vehicle(depot, VehicleDb.get_def(id))
+	var train_def := VehicleDb.get_def(&"train")
+	_check(not lg.buy_error(station_a, VehicleDb.get_def(&"cart")).is_empty(), "pas de charrette en gare")
+	_check(not lg.buy_error(depot_w, train_def).is_empty(), "pas de train au dépôt")
+	_check(lg.buy_error(station_a, train_def).is_empty(), "train achetable en gare")
+	_check(lg.diagnose(station_b).contains("aucun train"), "diagnostic : aucun train (%s)" % lg.diagnose(station_b))
+	_check(lg.distance(station_a, plant) < 0 and lg.distance(station_a, station_b, rails) > 0,
+		"gares reliées par le rail seulement")
+	var train := lg.add_vehicle(station_a, train_def)
+	_check(lg.diagnose(station_b).is_empty(), "diagnostic gare : rien à signaler (%s)" % lg.diagnose(station_b))
+	var off_track := 0
+	var train_deliveries := 0
+	var running := 0
+	var max_load := 0.0
+	for t in 1500:
+		prod.step(t)
+		var was_unloading := train.state == Vehicle.State.UNLOADING
+		lg.step()
+		if train.state in [Vehicle.State.TO_SOURCE, Vehicle.State.TO_DESTINATION, Vehicle.State.RETURNING] \
+				and not rails.has_rail(train.current_cell()):
+			off_track += 1
+		if was_unloading and train.state != Vehicle.State.UNLOADING:
+			train_deliveries += 1
+		max_load = maxf(max_load, train.cargo)
+		if t >= 900 and plant.status == Building.Status.RUNNING:
+			running += 1
+	_check(off_track == 0, "le train reste sur la voie (%d)" % off_track)
+	_check(train_deliveries >= 2, "le train livre la gare B (%d fois)" % train_deliveries)
+	_check(max_load >= train_def.capacity * Logistics.FULL_LOAD_RATIO, "chargements groupés (%.1f t)" % max_load)
+	_check(running >= 300, "centrale approvisionnée par le rail (%d / 600 h)" % running)
+	_check(station_a.store_reserved_out.get(Goods.Type.WOOD, 0.0) >= 0.0 and station_b.reserved_in >= 0.0,
+		"réservations cohérentes")
+	# Voie coupée en route : le train ne la quitte pas.
+	rails.remove(Vector2i(24, 7))
+	lg.on_networks_changed()
+	_check(lg.distance(station_a, station_b, rails) < 0, "voie coupée : gares séparées")
+	for t in 50:
+		lg.step()
+		if train.state != Vehicle.State.IDLE and not train.path.is_empty() \
+				and not rails.has_rail(train.current_cell()):
+			off_track += 1
+	_check(off_track == 0, "voie coupée : le train reste sur la voie")

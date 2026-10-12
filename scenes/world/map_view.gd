@@ -11,7 +11,7 @@ var _selected := Vector2i(-1, -1)
 var _mode := BuildTool.Mode.SELECT
 var _build_def: BuildingDef
 var _placement: BuildingRegistry.Placement
-## Tracé de route ou de ligne : tuile de départ du glisser ((-1, -1) : pas de glisser).
+## Tracé de route, de voie ou de ligne : tuile de départ du glisser ((-1, -1) : pas de glisser).
 var _trace_start := Vector2i(-1, -1)
 var _trace_end := Vector2i(-1, -1)
 var _trace_plan: TilePlan
@@ -74,10 +74,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		_update_trace_plan()
 		if _trace_plan:
-			if _mode == BuildTool.Mode.ROAD:
-				GameState.build_road(_trace_plan)
-			else:
-				GameState.build_line(_trace_plan)
+			match _mode:
+				BuildTool.Mode.ROAD:
+					GameState.build_road(_trace_plan)
+				BuildTool.Mode.RAIL:
+					GameState.build_rail(_trace_plan)
+				_:
+					GameState.build_line(_trace_plan)
 		_trace_start = Vector2i(-1, -1)
 		_trace_plan = null
 	elif mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
@@ -108,9 +111,10 @@ func _click(cell: Vector2i) -> void:
 				var refund := GameState.demolish(cell)
 				if refund >= 0:
 					EventBus.notified.emit("%s démoli : +%s €" % [b.def.display_name, Format.thousands(refund)])
-			elif GameState.roads.has_road(cell) or GameState.grid.has_line(cell):
+			elif GameState.roads.has_road(cell) or GameState.rails.has_rail(cell) \
+					or GameState.grid.has_line(cell):
 				GameState.demolish(cell)
-		BuildTool.Mode.ROAD, BuildTool.Mode.LINE:
+		BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.RAIL:
 			if cell.x >= 0:
 				_trace_start = cell
 				_trace_end = cell
@@ -154,7 +158,7 @@ func _update_placement() -> void:
 
 
 func _is_trace_mode() -> bool:
-	return _mode == BuildTool.Mode.ROAD or _mode == BuildTool.Mode.LINE
+	return _mode in [BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.RAIL]
 
 
 ## Recalcule l'aperçu du tracé (glisser en cours, sinon la tuile survolée) ;
@@ -169,8 +173,14 @@ func _update_trace_plan() -> void:
 			EventBus.tile_plan_previewed.emit(null)
 		return
 	var end := _trace_end if _trace_start.x >= 0 else _hovered
-	var plan := GameState.plan_road(start, end) if _mode == BuildTool.Mode.ROAD \
-		else GameState.plan_line(start, end)
+	var plan: TilePlan
+	match _mode:
+		BuildTool.Mode.ROAD:
+			plan = GameState.plan_road(start, end)
+		BuildTool.Mode.RAIL:
+			plan = GameState.plan_rail(start, end)
+		_:
+			plan = GameState.plan_line(start, end)
 	if _trace_plan and _trace_plan.cells == plan.cells and _trace_plan.error == plan.error \
 			and _trace_plan.cost == plan.cost:
 		return

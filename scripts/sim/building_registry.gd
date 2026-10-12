@@ -26,6 +26,7 @@ class Placement:
 
 var map: WorldMap
 var roads: RoadNetwork
+var rails: RailNetwork
 var grid: PowerGrid
 var _buildings: Dictionary[int, Building] = {}
 ## Identifiant du bâtiment par tuile (0 : libre).
@@ -33,10 +34,12 @@ var _occupancy: PackedInt32Array
 var _next_id := 1
 
 
-func _init(p_map: WorldMap, p_roads: RoadNetwork = null, p_grid: PowerGrid = null) -> void:
+func _init(p_map: WorldMap, p_roads: RoadNetwork = null, p_grid: PowerGrid = null,
+		p_rails: RailNetwork = null) -> void:
 	map = p_map
 	roads = p_roads if p_roads else RoadNetwork.new(map)
 	grid = p_grid if p_grid else PowerGrid.new(map)
+	rails = p_rails if p_rails else RailNetwork.new(map)
 	_occupancy.resize(map.cell_count())
 
 
@@ -87,6 +90,8 @@ func _placement_error(p: Placement) -> String:
 			return "Emplacement occupé (%s)" % _buildings[_occupancy[i]].def.display_name
 		if roads.has_road(cell):
 			return "Route présente"
+		if rails.has_rail(cell):
+			return "Voie ferrée présente"
 		if grid.has_line(cell):
 			return "Ligne électrique présente"
 		var t := map.terrain[i]
@@ -104,8 +109,10 @@ func _placement_error(p: Placement) -> String:
 		sun += map.sun[i]
 	if def.required_deposit != WorldMap.Deposit.NONE and not deposit_found:
 		return "Nécessite un gisement de %s" % WorldMap.DEPOSIT_NAMES[def.required_deposit].to_lower()
-	if def.needs_road and not _touches_road(p.cells):
+	if def.needs_road and not _touches(roads, p.cells):
 		return "Doit être relié à une route"
+	if def.needs_rail and not _touches(rails, p.cells):
+		return "Doit être relié à une voie ferrée"
 	if def.needs_water_access and not water_found:
 		return "Nécessite un accès à l'eau"
 	if def.needs_coast and not coast_found:
@@ -123,10 +130,11 @@ func _placement_error(p: Placement) -> String:
 	return ""
 
 
-func _touches_road(cells: Array[Vector2i]) -> bool:
+## Une tuile du réseau [param network] borde-t-elle ces tuiles ?
+func _touches(network: RoadNetwork, cells: Array[Vector2i]) -> bool:
 	for cell in cells:
 		for n in map.neighbors(cell):
-			if roads.has_road(n):
+			if network.has_road(n):
 				return true
 	return false
 

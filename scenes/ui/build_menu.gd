@@ -18,6 +18,7 @@ var _group := ButtonGroup.new()
 var _build_buttons: Dictionary[BuildingDef, Button] = {}
 var _demolish_button: Button
 var _road_button: Button
+var _rail_button: Button
 var _line_button: Button
 var _trace_plan: TilePlan
 var _toast_tween: Tween
@@ -72,6 +73,9 @@ func _build_list() -> void:
 			_road_button.tooltip_text = _road_tooltip()
 			_road_button.pressed.connect(func() -> void:
 				_select_tool(_road_button, BuildTool.Mode.ROAD, null))
+			_rail_button = _tool_button("Voie ferrée   %d €/tuile" % RailNetwork.RAIL_COST_PER_TILE)
+			_rail_button.pressed.connect(func() -> void:
+				_select_tool(_rail_button, BuildTool.Mode.RAIL, null))
 		for def: BuildingDef in defs:
 			var button := _tool_button("%s   %s €" % [def.display_name, Format.thousands(def.cost)])
 			button.tooltip_text = _tooltip(def)
@@ -148,6 +152,18 @@ func _road_tooltip() -> String:
 	]))
 
 
+func _rail_tooltip() -> String:
+	return "\n".join(PackedStringArray([
+		"Voie ferrée", "Support des trains, qui circulent entre les gares de marchandises.",
+		"Glisser pour tracer en L ; peut croiser une route (passage à niveau).", "",
+		"Plaine, désert : %d €/tuile" % RailNetwork.RAIL_COST_PER_TILE,
+		"Forêt (défrichée) : %d €/tuile" % (RailNetwork.RAIL_COST_PER_TILE + RailNetwork.RAIL_FOREST_EXTRA_COST),
+		"Colline : %d €/tuile" % roundi(RailNetwork.RAIL_COST_PER_TILE * RoadNetwork.HILL_COST_FACTOR),
+		"Pont sur rivière : %d €" % RailNetwork.RAIL_BRIDGE_COST,
+		"Entretien : %d €/tuile/jour" % RailNetwork.RAIL_UPKEEP_PER_TILE_PER_DAY,
+	]))
+
+
 func _on_tool_changed(mode: int, def: BuildingDef) -> void:
 	_mode = mode as BuildTool.Mode
 	_def = def
@@ -157,6 +173,7 @@ func _on_tool_changed(mode: int, def: BuildingDef) -> void:
 		_build_buttons[d].set_pressed_no_signal(_mode == BuildTool.Mode.BUILD and d == def)
 	_demolish_button.set_pressed_no_signal(_mode == BuildTool.Mode.DEMOLISH)
 	_road_button.set_pressed_no_signal(_mode == BuildTool.Mode.ROAD)
+	_rail_button.set_pressed_no_signal(_mode == BuildTool.Mode.RAIL)
 	_line_button.set_pressed_no_signal(_mode == BuildTool.Mode.LINE)
 	_trace_plan = null
 	_refresh_hint()
@@ -175,6 +192,15 @@ func _refresh_locks() -> void:
 				GameState.research.get_def(def.required_tech).display_name
 			if _mode == BuildTool.Mode.BUILD and _def == def:
 				EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
+	var rail_known := GameState.research.is_known(GameState.RAIL_TECH)
+	_rail_button.disabled = not rail_known
+	_rail_button.modulate.a = 1.0 if rail_known else 0.45
+	_rail_button.tooltip_text = _rail_tooltip()
+	if not rail_known:
+		_rail_button.tooltip_text += "\n\nNécessite la technologie : %s (T)" % \
+			GameState.research.get_def(GameState.RAIL_TECH).display_name
+		if _mode == BuildTool.Mode.RAIL:
+			EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
 
 
 func _refresh_affordability() -> void:
@@ -208,7 +234,7 @@ func _refresh_hint() -> void:
 			else:
 				text += "\n[color=%s]%s[/color] · Échap : annuler" % [ERROR_COLOR, _placement.error]
 		BuildTool.Mode.DEMOLISH:
-			text = "[b]Démolition[/b] — cliquez sur un bâtiment, une ligne ou une route · Échap : annuler"
+			text = "[b]Démolition[/b] — cliquez sur un bâtiment, une ligne, une voie ou une route · Échap : annuler"
 			var b := GameState.buildings.building_at(_hovered) if _hovered.x >= 0 else null
 			if b and b.city:
 				text += "\n[color=%s]Une ville ne peut pas être démolie[/color]" % ERROR_COLOR
@@ -223,11 +249,14 @@ func _refresh_hint() -> void:
 					Format.thousands(refund)]
 			elif b == null and _hovered.x >= 0 and GameState.grid.has_line(_hovered):
 				text += "\n[color=%s]Supprimer la ligne (sans remboursement)[/color]" % ERROR_COLOR
+			elif b == null and _hovered.x >= 0 and GameState.rails.has_rail(_hovered):
+				text += "\n[color=%s]Supprimer la voie ferrée (sans remboursement)[/color]" % ERROR_COLOR
 			elif b == null and _hovered.x >= 0 and GameState.roads.has_road(_hovered):
 				text += "\n[color=%s]Supprimer la route (sans remboursement)[/color]" % ERROR_COLOR
-		BuildTool.Mode.ROAD, BuildTool.Mode.LINE:
-			text = "[b]%s[/b] — glisser pour tracer · Échap : annuler" % (
-				"Route" if _mode == BuildTool.Mode.ROAD else "Ligne haute tension")
+		BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.RAIL:
+			var tool_name: String = {BuildTool.Mode.ROAD: "Route", BuildTool.Mode.RAIL: "Voie ferrée"}.get(
+				_mode, "Ligne haute tension")
+			text = "[b]%s[/b] — glisser pour tracer · Échap : annuler" % tool_name
 			if _trace_plan:
 				if _trace_plan.is_valid():
 					var n := _trace_plan.new_cells.size()

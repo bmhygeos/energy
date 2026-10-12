@@ -30,7 +30,7 @@ func _ready() -> void:
 	EventBus.tile_plan_previewed.connect(func(p: TilePlan) -> void:
 		trace_plan = p
 		queue_redraw())
-	for sig: Signal in [EventBus.roads_changed, EventBus.lines_changed]:
+	for sig: Signal in [EventBus.roads_changed, EventBus.rails_changed, EventBus.lines_changed]:
 		sig.connect(func(_c: Array[Vector2i]) -> void: queue_redraw())
 	for s: Signal in [EventBus.building_placed, EventBus.building_removed]:
 		s.connect(func(_b: Building) -> void: queue_redraw())
@@ -51,12 +51,13 @@ func _draw() -> void:
 				var d := _building_diamond(b)
 				draw_colored_polygon(d, INVALID_COLOR * Color(1, 1, 1, 0.35))
 				_outline(d, INVALID_COLOR, 3.0)
-			elif hovered.x >= 0 and (GameState.roads.has_road(hovered) or GameState.grid.has_line(hovered)):
+			elif hovered.x >= 0 and (GameState.roads.has_road(hovered) or GameState.rails.has_rail(hovered)
+					or GameState.grid.has_line(hovered)):
 				draw_colored_polygon(Iso.diamond(hovered), INVALID_COLOR * Color(1, 1, 1, 0.35))
 				_outline(Iso.diamond(hovered), INVALID_COLOR, 3.0)
 			elif hovered.x >= 0:
 				_outline(Iso.diamond(hovered), INVALID_COLOR * Color(1, 1, 1, 0.6), 2.0)
-		BuildTool.Mode.ROAD, BuildTool.Mode.LINE:
+		BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.RAIL:
 			if trace_plan:
 				for cell in trace_plan.cells:
 					if not GameState.world_map.has_cell(cell):

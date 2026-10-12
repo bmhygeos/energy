@@ -23,7 +23,8 @@ func _ready() -> void:
 		if _sprites.has(b.id):
 			_sprites[b.id].status = b.status)
 	EventBus.tick_advanced.connect(_on_tick)
-	EventBus.roads_changed.connect(func(_c: Array[Vector2i]) -> void: _refresh_connections())
+	for sig: Signal in [EventBus.roads_changed, EventBus.rails_changed]:
+		sig.connect(func(_c: Array[Vector2i]) -> void: _refresh_connections())
 	EventBus.grid_changed.connect(_refresh_connections)
 	EventBus.grid_stepped.connect(func(_r: PowerGrid.Report) -> void:
 		for b in GameState.cities:
@@ -76,7 +77,8 @@ func _refresh_connection(b: Building) -> void:
 	if not _sprites.has(b.id):
 		return
 	_sprites[b.id].disconnected = b.def.uses_logistics() \
-		and not GameState.roads.is_connected_building(b)
+		and (not GameState.roads.is_connected_building(b)
+			or b.def.needs_rail and not GameState.rails.is_connected_building(b))
 	_sprites[b.id].status = b.status
 
 

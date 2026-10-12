@@ -32,9 +32,11 @@ signal production_stepped(report: Production.Report)
 signal building_status_changed(building: Building)
 ## Routes construites ou supprimées sur ces tuiles.
 signal roads_changed(cells: Array[Vector2i])
+## Voies ferrées construites ou supprimées sur ces tuiles.
+signal rails_changed(cells: Array[Vector2i])
 signal vehicle_added(vehicle: Vehicle)
 signal vehicle_removed(vehicle: Vehicle)
-## Aperçu du tracé en mode ROAD ou LINE (null : aucun).
+## Aperçu du tracé en mode ROAD, RAIL ou LINE (null : aucun).
 signal tile_plan_previewed(plan: TilePlan)
 ## Lignes électriques construites ou supprimées sur ces tuiles.
 signal lines_changed(cells: Array[Vector2i])
