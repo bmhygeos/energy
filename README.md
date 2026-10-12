@@ -10,6 +10,8 @@ godot                                      # lancer le jeu
 godot --headless -s res://tests/run_tests.gd   # tests de la simulation
 godot -s res://tools/ui_click_test.gd          # test de l'interface (vrais clics ; déplace le pointeur)
 godot --headless --export-release "Windows Desktop" build/windows/Energy.exe
+godot --headless --export-release "Web" build/web/index.html
+python3 -m http.server -d build/web 8060      # tester la version web : http://localhost:8060
 
 # Outils
 godot --headless -s res://tools/generate_tile_art.gd        # régénère assets/tiles/*.png
@@ -18,6 +20,11 @@ godot --headless -s res://tools/render_map_preview.gd -- 42 /tmp/carte.png   # a
 
 L'export nécessite les modèles d'export Godot 4.7.2 (Éditeur → Gérer les
 modèles d'export).
+
+La version web est exportée sans threads : elle fonctionne sur n'importe quel
+hébergement statique (itch.io, GitHub Pages…) sans en-têtes COOP/COEP. Elle
+doit être servie en HTTP (pas d'ouverture directe du fichier `index.html`) et
+nécessite un navigateur avec WebGL 2.
 
 ## Contrôles
 
