@@ -6,8 +6,7 @@
 script = ExtResource("1_def")
 id = &"solar_thermal"
 display_name = "Solaire thermique"
-description = "Centrales solaires à concentration (étape M6)."
+description = "Centrales solaires thermiques : la chaleur stockée produit aussi la nuit."
 era = 5
 cost = 6500
 prerequisites = Array[StringName]([&"solar_pv"])
-placeholder = true

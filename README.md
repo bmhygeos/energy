@@ -101,13 +101,15 @@ nécessite un navigateur avec WebGL 2.
 - **Équilibre, chaque heure, par réseau** : pertes de 0,2 % par tuile de ligne
   (25 % max.) ; les villes sont servies de la plus petite à la plus grande,
   celles qui ne peuvent l'être entièrement sont **délestées** (coupure) avec
-  une pénalité de 1 €/MWh non livré ; le surplus est perdu.
+  une pénalité de 1 €/MWh non livré ; le surplus charge les batteries et
+  STEP du réseau, sinon il est perdu.
 - **Consignes** : les centrales à combustible ne produisent que ce que
   demandent leurs villes (+5 % de marge, pertes comprises), au prorata du
-  combustible en stock ; éolien et solaire passent d'abord. Une centrale sans
+  combustible en stock ; éolien et solaire passent d'abord (leur production
+  de l'heure suivante est prévue avec la météo). Une centrale sans
   ligne est à l'arrêt (pastille jaune), sans demande elle est en veille et ne
   brûle rien.
-- **Vente** : 5 €/MWh livré. Le bandeau affiche l'énergie livrée / demandée
+- **Vente** : 10 €/MWh livré. Le bandeau affiche l'énergie livrée / demandée
   (en rouge en cas de délestage) et les ventes de la veille ; le calque
   « Réseau » colore lignes, villes et centrales selon leur état.
 
@@ -125,15 +127,17 @@ nécessite un navigateur avec WebGL 2.
   (Camions), centrale à charbon, éolienne (Éolien), ferme solaire (Solaire PV),
   voie ferrée, gare et train (Rail), mine d'uranium (Physique nucléaire),
   usine d'enrichissement et camion blindé (Enrichissement), centrale
-  nucléaire et site de déchets (Réacteur).
+  nucléaire et site de déchets (Réacteur), éolienne offshore (Offshore),
+  centrale solaire thermique (Solaire thermique), batteries (Batteries),
+  STEP (STEP).
 - **Bonus** : Vapeur −15 % de combustible, Mines +10 % d'extraction,
   Sylviculture ×2 repousse, Lignes HT et Transformateurs −40 % de pertes
   chacun, Dispatching et Smart grid −50 % de pénalités, Camions +10 % de
   vitesse, Physique nucléaire et des plasmas : recherche +10 % / +20 %,
   Gestion des déchets −50 % de déchets nucléaires…
-- Les technologies marquées « contenu à venir » (offshore, stockage,
-  fusion…) font partie de l'arbre mais leurs bâtiments arriveront
-  aux étapes M6, M7 et M6b.
+- Les technologies marquées « contenu à venir » (filtres CO₂, fusion…) font
+  partie de l'arbre mais leurs bâtiments arriveront aux étapes M7 et M6b ;
+  les ports et barges de l'offshore, à la partie 3 de M6.
 
 ## Rail (M5b)
 
@@ -179,3 +183,27 @@ nécessite un navigateur avec WebGL 2.
   panneau d'information signale l'absence de camion blindé ou de site de
   déchets joignable.
 - Les incidents nucléaires arriveront avec les événements (M7).
+
+## Renouvelables, météo et stockage (M6, partie 2)
+
+- **Jour et nuit** : la lumière du jour suit l'heure et la saison (jours de
+  15 h en été, 9 h en hiver) ; le monde se teinte de bleu la nuit.
+- **Météo** : vent et nébulosité varient en douceur (fronts sur une journée,
+  rafales sur quelques heures), propres à la graine ; hiver plus venteux, été
+  plus clair. Le bandeau affiche le ciel (survol : vent, nuages, lumière).
+- **Éolienne** : puissance × potentiel de la tuile × vent du moment (statut
+  « pas de vent » par calme plat). **Ferme solaire**
+  (10 MW, au lieu de 6) : puissance × ensoleillement de la tuile × lumière du
+  jour × ciel, nulle la nuit. Le panneau d'information détaille ces facteurs.
+- **Éolienne offshore** (16 000 €, Offshore) : en mer, au contact de la côte
+  (une ligne la raccorde depuis la terre), 6 MW, vent marin fort.
+- **Centrale solaire thermique** (50 000 €, 3×3, ensoleillement ≥ 70 %) :
+  stocke la chaleur du jour (120 MWh) et produit 20 MW **à la demande**,
+  y compris le soir et la nuit tant que le stock dure ; pilotée par le réseau
+  comme une centrale à combustible.
+- **Batteries** (9 000 €, 25 MWh, 10 MW, rendement 90 %) et **STEP**
+  (40 000 €, 2×2, près de l'eau et à côté d'une colline ou d'une montagne,
+  400 MWh, 40 MW, rendement 75 %) : raccordées au réseau, elles chargent les
+  surplus et couvrent les manques avant tout délestage. Les centrales
+  pilotables suivent la demande ; le stockage lisse l'intermittence des
+  renouvelables. Le survol de l'électricité du bandeau donne le stock total.

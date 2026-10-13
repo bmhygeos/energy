@@ -17,6 +17,7 @@ var rails: RailNetwork
 var logistics: Logistics
 var grid: PowerGrid
 var research: Research
+var weather: Weather
 ## Points de recherche produits pendant la dernière heure.
 var research_rate := 0.0
 ## Villes de la partie (bâtiments portant une City).
@@ -57,6 +58,9 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	production = Production.new(buildings)
 	logistics = Logistics.new(buildings)
 	research = Research.new(TechDb.DEFS)
+	weather = Weather.new(seed_value)
+	production.weather = weather
+	grid.weather = weather
 	research_rate = 0.0
 	_apply_modifiers()
 	cities = CityGenerator.populate(buildings, Rng.fork("cities"))

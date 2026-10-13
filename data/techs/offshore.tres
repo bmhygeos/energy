@@ -6,8 +6,7 @@
 script = ExtResource("1_def")
 id = &"offshore"
 display_name = "Offshore"
-description = "Parcs éoliens en mer, ports et barges (étape M6)."
+description = "Éoliennes en mer, au vent fort et régulier (ports et barges : à venir)."
 era = 5
 cost = 6000
 prerequisites = Array[StringName]([&"wind"])
-placeholder = true

@@ -7,9 +7,11 @@ enum Category { RESOURCES, ENERGY, LOGISTICS, OTHER }
 ## Ressource naturelle exploitée par un extracteur.
 enum Extraction { NONE, FOREST, DEPOSIT, REFOREST }
 ## Ce qui module la puissance électrique produite.
-enum PowerSource { NONE, FUEL, WIND, SUN }
+## SOLAR_THERMAL : la chaleur captée le jour est stockée, puis restituée à la
+## demande (pilotable tant que le stock dure).
+enum PowerSource { NONE, FUEL, WIND, SUN, SOLAR_THERMAL }
 ## Forme du dessin provisoire (scenes/world/building_sprite.gd).
-enum Style { BOX, TURBINE, PANELS, CITY, REACTOR }
+enum Style { BOX, TURBINE, PANELS, CITY, REACTOR, SOLAR_TOWER, BASIN }
 
 const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique", "Divers"]
 
@@ -38,6 +40,9 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 @export var allowed_terrains: Array[TerrainDef.Type] = []
 ## Gisement requis sous au moins une tuile de l'emprise.
 @export var required_deposit: WorldMap.Deposit = WorldMap.Deposit.NONE
+## Construit en mer : toute l'emprise sur la mer, au contact de la terre
+## (pour y raccorder une ligne).
+@export var on_sea := false
 ## Une route doit border l'emprise.
 @export var needs_road := false
 ## Une voie ferrée doit border l'emprise.
@@ -71,6 +76,15 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 ## Puissance électrique consommée en fonctionnement (MW) : le bâtiment doit
 ## être raccordé et alimenté par le réseau.
 @export var power_demand_mw := 0.0
+## Solaire thermique : chaleur captée en plein soleil, en multiple de
+## [member power_mw] (surplus stocké pour la nuit).
+@export var solar_multiple := 1.0
+## Énergie stockable (MWh) : batterie, STEP, réservoir de chaleur.
+@export var storage_mwh := 0.0
+## Stockage du réseau (batterie, STEP) : puissance maximale de charge et de
+## décharge (MW) et rendement d'un cycle complet.
+@export var storage_power_mw := 0.0
+@export_range(0.0, 1.0) var storage_efficiency := 0.9
 ## Capacité de chaque tampon (entrée et sortie), en tonnes.
 @export var buffer_capacity := 20.0
 
@@ -123,6 +137,16 @@ func is_station() -> bool:
 	return vehicle_slots > 0 and vehicle_network == VehicleDef.Network.RAIL
 
 
+## Stockage du réseau électrique (batterie, STEP).
+func is_grid_storage() -> bool:
+	return storage_power_mw > 0.0
+
+
+## Centrale pilotable : le réseau lui fixe une consigne.
+func is_dispatchable() -> bool:
+	return power_source in [PowerSource.FUEL, PowerSource.SOLAR_THERMAL]
+
+
 func is_producer() -> bool:
 	return extraction != Extraction.NONE or output_good != Goods.Type.NONE or power_mw > 0.0 \
 		or research_per_hour > 0.0
@@ -143,8 +167,15 @@ func describe_production() -> PackedStringArray:
 			PowerSource.WIND:
 				factor = " × vent"
 			PowerSource.SUN:
-				factor = " × ensoleillement"
+				factor = " × ensoleillement (nulle la nuit)"
+			PowerSource.SOLAR_THERMAL:
+				factor = " à la demande"
 		lines.append("Électricité : %s MW%s" % [_num(power_mw), factor])
+	if power_source == PowerSource.SOLAR_THERMAL:
+		lines.append("Stocke la chaleur du jour : %s MWh (nuit comprise)" % _num(storage_mwh))
+	if is_grid_storage():
+		lines.append("Stocke : %s MWh, charge et décharge %s MW" % [_num(storage_mwh), _num(storage_power_mw)])
+		lines.append("Rendement : %d %% (charge les surplus, couvre les manques)" % roundi(storage_efficiency * 100.0))
 	if research_per_hour > 0.0:
 		lines.append("Recherche : %s RP/h" % _num(research_per_hour))
 	if power_demand_mw > 0.0:
@@ -173,6 +204,8 @@ func describe_constraints() -> PackedStringArray:
 		lines.append("Sur : " + ", ".join(names))
 	if required_deposit != WorldMap.Deposit.NONE:
 		lines.append("Sur un gisement de " + WorldMap.DEPOSIT_NAMES[required_deposit].to_lower())
+	if on_sea:
+		lines.append("En mer, au contact de la côte")
 	if needs_road:
 		lines.append("Relié à une route")
 	if needs_rail:

@@ -6,8 +6,7 @@
 script = ExtResource("1_def")
 id = &"batteries"
 display_name = "Batteries"
-description = "Stockage par batteries (étape M6)."
+description = "Batteries : stockent les surplus du réseau et couvrent les manques."
 era = 6
 cost = 7000
 prerequisites = Array[StringName]([&"solar_pv"])
-placeholder = true

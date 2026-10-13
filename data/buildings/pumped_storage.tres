@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"pumped_storage"
+display_name = "STEP"
+description = "Station de pompage : remonte l'eau dans un bassin en hauteur avec les surplus, la turbine quand la production manque."
+category = 1
+size = Vector2i(2, 2)
+cost = 40000
+build_hours = 168
+upkeep_per_day = 120
+lifetime_years = 60
+required_tech = &"pumped_storage"
+needs_water_access = true
+adjacent_terrains = Array[int]([2, 3])
+storage_mwh = 400.0
+storage_power_mw = 40.0
+storage_efficiency = 0.75
+style = 6
+color = Color(0.55, 0.52, 0.48, 1)
+roof_color = Color(0.2, 0.45, 0.75, 1)
+height = 10.0

@@ -29,6 +29,12 @@ custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 text = "Printemps, jour 1, an 1 — 00:00"
 
+[node name="WeatherLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 1
+text = "Ensoleillé"
+
 [node name="MoneyLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 0)
@@ -69,15 +75,12 @@ text = "Recherche (T)"
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SeedLabel" type="Label" parent="TopBar/Margin/Row"]
-layout_mode = 2
-text = "Graine"
-
 [node name="SeedEdit" type="LineEdit" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 tooltip_text = "Graine de la carte (nombre ou texte)"
+placeholder_text = "Graine"
 
 [node name="GenerateButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true

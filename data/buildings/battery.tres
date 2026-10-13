@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"battery"
+display_name = "Batteries"
+description = "Stocke les surplus du réseau et les restitue quand la production manque."
+category = 1
+cost = 9000
+build_hours = 24
+upkeep_per_day = 25
+lifetime_years = 15
+required_tech = &"batteries"
+storage_mwh = 25.0
+storage_power_mw = 10.0
+storage_efficiency = 0.9
+color = Color(0.86, 0.88, 0.9, 1)
+roof_color = Color(0.25, 0.55, 0.35, 1)
+height = 14.0

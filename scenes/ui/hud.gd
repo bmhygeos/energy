@@ -16,6 +16,7 @@ var _overlay_mode := OverlayLayer.Mode.NONE
 var _overlay_buttons: Array[Button] = []
 
 @onready var _date_label: Label = %DateLabel
+@onready var _weather_label: Label = %WeatherLabel
 @onready var _money_label: Label = %MoneyLabel
 @onready var _upkeep_label: Label = %UpkeepLabel
 @onready var _power_label: Label = %PowerLabel
@@ -113,6 +114,13 @@ func _on_generate_pressed() -> void:
 
 func _on_tick(tick: int) -> void:
 	_date_label.text = GameDate.format(tick)
+	var weather := GameState.weather
+	if weather == null:
+		return
+	_weather_label.text = weather.sky(tick)
+	_weather_label.tooltip_text = "Météo : %s\nVent : %d %% de la normale (éoliennes)\nNébulosité : %d %%\nLumière du jour : %d %% (panneaux solaires)" % [
+		weather.describe(tick), roundi(weather.wind_at(tick) * 100.0),
+		roundi(weather.cloud_at(tick) * 100.0), roundi(Weather.daylight_at(tick) * 100.0)]
 
 
 func _on_speed_changed(speed: int) -> void:
@@ -142,6 +150,15 @@ func _on_grid(report: PowerGrid.Report) -> void:
 	])
 	if report.shed_cities > 0:
 		lines.append("Villes délestées : %d" % report.shed_cities)
+	var stored := 0.0
+	var capacity := 0.0
+	for b in GameState.buildings.all():
+		if b.def.is_grid_storage() and b.is_complete():
+			stored += b.stored_mwh
+			capacity += b.def.storage_mwh
+	if capacity > 0.0:
+		lines.append("Stockage : %s / %s MWh (charge %s, décharge %s MW)" % [Format.decimal(stored),
+			Format.thousands(roundi(capacity)), Format.decimal(report.charged_mwh), Format.decimal(report.discharged_mwh)])
 	for good: int in stocks:
 		lines.append("%s en stock : %s t" % [Goods.display_name(good), Format.decimal(stocks[good])])
 	_power_label.tooltip_text = "\n".join(lines)

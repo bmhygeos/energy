@@ -18,6 +18,8 @@ const BADGE_COLORS := {
 }
 const DISCONNECTED_COLOR := Color("3b82f6")
 const SMOKE_COLOR := Color(0.85, 0.85, 0.85, 0.45)
+## Pièce de transition (jaune) des éoliennes en mer.
+const FOUNDATION_COLOR := Color("e8b828")
 
 var def: BuildingDef
 var anchor: Vector2i
@@ -84,11 +86,19 @@ func _draw() -> void:
 			_draw_city()
 			return
 		BuildingDef.Style.TURBINE:
+			if def.on_sea:
+				_draw_ellipse(center + Vector2(0, 1), Vector2(9, 4.5), FOUNDATION_COLOR.darkened(0.4))
+				_draw_box(PackedVector2Array([center + Vector2(0, -3), center + Vector2(6, 0),
+					center + Vector2(0, 3), center + Vector2(-6, 0)]), 8.0, FOUNDATION_COLOR, FOUNDATION_COLOR.lightened(0.2))
 			_draw_turbine(center, def.height * progress)
 		BuildingDef.Style.PANELS:
 			_draw_panels(inner, def.height * maxf(progress, 0.3))
 		BuildingDef.Style.REACTOR:
 			_draw_reactor(inner, center)
+		BuildingDef.Style.SOLAR_TOWER:
+			_draw_solar_tower(inner, center)
+		BuildingDef.Style.BASIN:
+			_draw_basin(inner, center)
 		_:
 			_draw_box(inner, def.height * progress, def.color, def.roof_color)
 			if def.has_chimney and progress > 0.6:
@@ -156,6 +166,46 @@ func _draw_panels(d: PackedVector2Array, h: float) -> void:
 	for j in range(1, cols):
 		var t := float(j) / cols
 		draw_line(d[0].lerp(d[1], t) + up, d[3].lerp(d[2], t) + up, def.roof_color, 1.0)
+
+
+## Solaire thermique : champ d'héliostats autour d'une tour, récepteur
+## éclatant quand la centrale produit.
+func _draw_solar_tower(d: PackedVector2Array, center: Vector2) -> void:
+	var n := 4 * def.size.x
+	var mirror := (d[1] - d[0]) / n * 0.35
+	var across := (d[3] - d[0]) / n * 0.35
+	for i in n:
+		for j in n:
+			var u := (i + 0.5) / n
+			var v := (j + 0.5) / n
+			if absf(u - 0.5) < 0.2 and absf(v - 0.5) < 0.2:
+				continue
+			if (i * n + j) / float(n * n) > progress:
+				continue
+			var p := d[0].lerp(d[1], u) + (d[3] - d[0]) * v + Vector2(0, -2)
+			draw_colored_polygon(PackedVector2Array([p - mirror, p - across, p + mirror, p + across]),
+				def.roof_color.lightened(0.15 if (i + j) % 2 == 0 else 0.0))
+	var h := def.height * progress
+	var base := PackedVector2Array([center + Vector2(0, -4), center + Vector2(7, 0),
+		center + Vector2(0, 4), center + Vector2(-7, 0)])
+	_draw_box(base, h, def.color, def.color.lightened(0.2))
+	if progress >= 1.0:
+		var top := center + Vector2(0, -h)
+		var hot := status == Building.Status.RUNNING
+		draw_circle(top + Vector2(0, -3), 6.0, Color("ffd76a") if hot else def.color.darkened(0.2))
+		if hot:
+			draw_circle(top + Vector2(0, -3), 11.0, Color(1.0, 0.85, 0.4, 0.3))
+
+
+## STEP : bassin en hauteur (digue et plan d'eau).
+func _draw_basin(d: PackedVector2Array, center: Vector2) -> void:
+	var h := def.height * progress
+	_draw_box(d, h, def.color, def.color.lightened(0.1))
+	var up := Vector2(0, -h)
+	var water := PackedVector2Array()
+	for p in d:
+		water.append(center + up + (p - center) * 0.8)
+	draw_colored_polygon(water, def.roof_color if progress >= 1.0 else def.color.darkened(0.2))
 
 
 ## Centrale nucléaire : bâtiment réacteur à gauche, tour de refroidissement

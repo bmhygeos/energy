@@ -1,8 +1,9 @@
 class_name Production
 extends RefCounted
 ## Production horaire des bâtiments terminés : extraction (forêts, gisements),
-## transformation (combustible → électricité), reboisement. Les marchandises
-## circulent par la route (Logistics). Pure donnée.
+## transformation (combustible → électricité), renouvelables selon la météo,
+## reboisement. Les marchandises circulent par la route (Logistics). Pure
+## donnée.
 
 ## Pépinière : repousse des forêts du rayon, et une plantation par jour.
 const REGROWTH_PER_HOUR := 0.25
@@ -29,6 +30,8 @@ var extraction_factor := 1.0
 var regrowth_factor := 1.0
 var research_factor := 1.0
 var waste_factor := 1.0
+## Vent, nuages et lumière du jour (renouvelables).
+var weather := Weather.new()
 ## Tuiles exploitables par bâtiment (id → tuiles triées par distance).
 var _area_cache: Dictionary[int, Array] = {}
 
@@ -59,6 +62,9 @@ func _run(b: Building, tick: int, report: Report) -> void:
 	if not b.is_complete():
 		b.status = Building.Status.CONSTRUCTION
 		return
+	if def.is_grid_storage():
+		b.status = Building.Status.RUNNING if b.grid_id != 0 else Building.Status.NO_GRID
+		return
 	if not def.is_producer():
 		b.status = Building.Status.RUNNING if def.uses_logistics() else Building.Status.IDLE
 		return
@@ -68,6 +74,20 @@ func _run(b: Building, tick: int, report: Report) -> void:
 	if def.power_demand_mw > 0.0 and not b.powered:
 		b.status = Building.Status.NO_POWER
 		return
+	match def.power_source:
+		BuildingDef.PowerSource.WIND, BuildingDef.PowerSource.SUN:
+			var factor := renewable_factor(map, weather, b, tick)
+			if factor <= EPSILON:
+				b.status = Building.Status.NO_WIND if def.power_source == BuildingDef.PowerSource.WIND \
+					else Building.Status.NIGHT
+				return
+			b.power_mw = def.power_mw * factor
+			b.activity = factor
+			b.status = Building.Status.RUNNING
+			return
+		BuildingDef.PowerSource.SOLAR_THERMAL:
+			_run_solar_thermal(b, tick)
+			return
 	var input_rate := input_rate_of(def)
 	var output_rate := output_rate_of(def)
 	var fraction := 1.0
@@ -104,8 +124,25 @@ func _run(b: Building, tick: int, report: Report) -> void:
 			_reforest(b, tick, report)
 	b.input_stock = maxf(0.0, b.input_stock - input_rate * fraction)
 	b.output_stock = minf(def.buffer_capacity, b.output_stock + output_rate * fraction)
-	b.power_mw = def.power_mw * fraction * _power_factor(b)
+	b.power_mw = def.power_mw * fraction
 	b.activity = fraction
+	b.status = Building.Status.RUNNING
+
+
+## Solaire thermique : stocke la chaleur captée, puis produit selon la
+## consigne du réseau tant que le stock dure (y compris la nuit).
+func _run_solar_thermal(b: Building, tick: int) -> void:
+	b.stored_mwh = minf(b.def.storage_mwh, b.stored_mwh + heat_collected(map, weather, b, tick))
+	if b.power_setpoint <= EPSILON:
+		b.status = Building.Status.STANDBY
+		return
+	if b.stored_mwh <= EPSILON:
+		b.status = Building.Status.NIGHT
+		return
+	var output := minf(b.def.power_mw * b.power_setpoint, b.stored_mwh)
+	b.stored_mwh -= output
+	b.power_mw = output
+	b.activity = output / b.def.power_mw
 	b.status = Building.Status.RUNNING
 
 
@@ -123,18 +160,26 @@ func input_rate_of(def: BuildingDef) -> float:
 	return def.input_per_hour * (fuel_factor if def.power_source == BuildingDef.PowerSource.FUEL else 1.0)
 
 
-## Facteur de puissance selon la source (vent, soleil moyens de l'emprise).
-func _power_factor(b: Building) -> float:
-	var total := 0.0
+## Part de la pleine puissance d'une éolienne ou d'un panneau pendant
+## l'heure [param tick] : potentiel moyen de l'emprise × météo.
+static func renewable_factor(p_map: WorldMap, p_weather: Weather, b: Building, tick: int) -> float:
 	match b.def.power_source:
 		BuildingDef.PowerSource.WIND:
-			for cell in b.cells:
-				total += map.wind[map.index_of(cell)]
+			return clampf(site_average(p_map, b, p_map.wind) * p_weather.wind_at(tick), 0.0, 1.0)
 		BuildingDef.PowerSource.SUN:
-			for cell in b.cells:
-				total += map.sun[map.index_of(cell)]
-		_:
-			return 1.0
+			return clampf(site_average(p_map, b, p_map.sun) * p_weather.sun_at(tick), 0.0, 1.0)
+	return 1.0
+
+
+## Chaleur captée (MWh) par une centrale solaire thermique pendant l'heure.
+static func heat_collected(p_map: WorldMap, p_weather: Weather, b: Building, tick: int) -> float:
+	return b.def.power_mw * b.def.solar_multiple * site_average(p_map, b, p_map.sun) * p_weather.sun_at(tick)
+
+
+static func site_average(p_map: WorldMap, b: Building, values: PackedFloat32Array) -> float:
+	var total := 0.0
+	for cell in b.cells:
+		total += values[p_map.index_of(cell)]
 	return total / b.cells.size()
 
 

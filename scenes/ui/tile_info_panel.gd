@@ -1,5 +1,6 @@
 extends CanvasLayer
-## Panneau d'information de la tuile sélectionnée (à défaut, survolée).
+## Panneau d'information de la tuile sélectionnée (à défaut, survolée). Taille
+## fixe : le texte est renvoyé à la ligne et les boutons restent en bas.
 
 var _hovered := Vector2i(-1, -1)
 var _selected := Vector2i(-1, -1)
@@ -131,10 +132,35 @@ func _building_lines(b: Building) -> PackedStringArray:
 		lines.append("Électricité : %s / %s MW" % [Format.decimal(b.power_mw), Format.decimal(def.power_mw)])
 		if b.grid_id == 0:
 			lines.append("Réseau électrique : non raccordé !")
-		elif def.power_source == BuildingDef.PowerSource.FUEL:
+		elif def.is_dispatchable():
 			lines.append("Réseau électrique : consigne %d %%" % roundi(b.power_setpoint * 100.0))
 		else:
 			lines.append("Réseau électrique : raccordé")
+		var tick := GameClock.tick
+		match def.power_source:
+			BuildingDef.PowerSource.WIND:
+				lines.append("Vent : %d %% (site %d %% × météo %d %%)" % [
+					roundi(Production.renewable_factor(GameState.world_map, GameState.weather, b, tick) * 100.0),
+					roundi(Production.site_average(GameState.world_map, b, GameState.world_map.wind) * 100.0),
+					roundi(GameState.weather.wind_at(tick) * 100.0)])
+			BuildingDef.PowerSource.SUN:
+				lines.append("Soleil : %d %% (site %d %% × ciel %d %%)" % [
+					roundi(Production.renewable_factor(GameState.world_map, GameState.weather, b, tick) * 100.0),
+					roundi(Production.site_average(GameState.world_map, b, GameState.world_map.sun) * 100.0),
+					roundi(GameState.weather.sun_at(tick) * 100.0)])
+			BuildingDef.PowerSource.SOLAR_THERMAL:
+				lines.append("Chaleur stockée : %s / %s MWh" % [Format.decimal(b.stored_mwh),
+					Format.thousands(roundi(def.storage_mwh))])
+	if def.is_grid_storage():
+		lines.append("Stockage : %s / %s MWh" % [Format.decimal(b.stored_mwh), Format.thousands(roundi(def.storage_mwh))])
+		if b.grid_id == 0:
+			lines.append("Réseau électrique : non raccordé !")
+		elif b.storage_flow_mw > 0.001:
+			lines.append("En charge : %s MW" % Format.decimal(b.storage_flow_mw))
+		elif b.storage_flow_mw < -0.001:
+			lines.append("En décharge : %s MW" % Format.decimal(-b.storage_flow_mw))
+		else:
+			lines.append("En attente (ni surplus ni manque)")
 	if def.input_good != Goods.Type.NONE:
 		lines.append("Entrée : %s / %s t de %s" % [Format.decimal(b.input_stock),
 			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.input_good).to_lower()])
@@ -227,6 +253,8 @@ func _build_vehicle_rows(depot: Building) -> void:
 		var row := HBoxContainer.new()
 		var label := Label.new()
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.clip_text = true
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		row.add_child(label)
 		var buy := Button.new()
 		buy.text = "+ %s €" % Format.thousands(def.cost)

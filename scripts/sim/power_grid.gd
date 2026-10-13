@@ -3,8 +3,8 @@ extends RefCounted
 ## Réseau électrique : lignes HT tracées à la tuile, réseaux (composantes
 ## connexes de lignes, reliées entre elles par les bâtiments qui les
 ## touchent), équilibre production / demande avec pertes, délestage des
-## villes, vente et pénalités, consignes de puissance des centrales. Pure
-## donnée.
+## villes, stockage (batteries, STEP), vente et pénalités, consignes de
+## puissance des centrales. Pure donnée.
 
 const LINE_COST := 40
 ## Multiplicateur de coût sur rivière et montagne (pylônes renforcés).
@@ -16,7 +16,7 @@ const LOSS_PER_TILE := 0.002
 const MAX_LOSS := 0.25
 ## Prix de vente (€/MWh livré) et pénalité (€/MWh non livré à une ville
 ## raccordée à un réseau doté de centrales).
-const PRICE_PER_MWH := 5.0
+const PRICE_PER_MWH := 10.0
 const PENALTY_PER_MWH := 1.0
 ## Marge de production demandée aux centrales pilotables.
 const MARGIN := 0.05
@@ -30,6 +30,8 @@ class Network:
 	var cities: Array[Building] = []
 	## Bâtiments consommateurs (laboratoires…), servis avant les villes.
 	var loads: Array[Building] = []
+	## Stockages (batteries, STEP) : chargent les surplus, couvrent les manques.
+	var storages: Array[Building] = []
 	var supply_mw := 0.0
 	var demand_mw := 0.0
 	var delivered_mw := 0.0
@@ -37,7 +39,7 @@ class Network:
 	var shed := 0
 
 	func has_supply() -> bool:
-		return not producers.is_empty()
+		return not producers.is_empty() or not storages.is_empty()
 
 
 ## Bilan d'une heure.
@@ -50,6 +52,9 @@ class Report:
 	## Énergie livrée aux villes (vendue), hors consommation propre.
 	var sold_mw := 0.0
 	var shed_cities := 0
+	## Énergie mise en stock et restituée pendant l'heure (MWh).
+	var charged_mwh := 0.0
+	var discharged_mwh := 0.0
 
 
 var map: WorldMap
@@ -57,6 +62,8 @@ var map: WorldMap
 var loss_factor := 1.0
 var penalty_factor := 1.0
 var fuel_factor := 1.0
+## Météo, pour prévoir la production des renouvelables de l'heure suivante.
+var weather := Weather.new()
 ## Réseaux de la dernière heure, par identifiant.
 var networks: Dictionary[int, Network] = {}
 var _line: PackedByteArray
@@ -208,6 +215,8 @@ func refresh_topology(registry: BuildingRegistry) -> void:
 		var net := networks[b.grid_id]
 		if b.city:
 			net.cities.append(b)
+		elif b.def.is_grid_storage() and b.is_complete():
+			net.storages.append(b)
 		elif b.def.power_mw > 0.0 and b.is_complete():
 			net.producers.append(b)
 		elif b.def.power_demand_mw > 0.0 and b.is_complete():
@@ -232,7 +241,12 @@ func step(tick: int, registry: BuildingRegistry) -> Report:
 	for net: Network in networks.values():
 		for p in net.producers:
 			net.supply_mw += p.power_mw
-		var available := net.supply_mw * (1.0 - net.loss_ratio)
+		var produced := net.supply_mw * (1.0 - net.loss_ratio)
+		# Les stockages complètent la production pour éviter les délestages.
+		var discharge_capacity := 0.0
+		for st in net.storages:
+			discharge_capacity += minf(st.def.storage_power_mw, st.stored_mwh)
+		var available := produced + discharge_capacity
 		# Bâtiments consommateurs d'abord (consommation propre, non vendue).
 		for b in net.loads:
 			var need := b.def.power_demand_mw
@@ -263,6 +277,13 @@ func step(tick: int, registry: BuildingRegistry) -> Report:
 				city.shed_hours_today += 1
 				net.shed += 1
 				report.penalty += d * PENALTY_PER_MWH * penalty_factor
+		var used := produced + discharge_capacity - available
+		if used > produced:
+			report.discharged_mwh += _discharge(net, used - produced, discharge_capacity)
+		else:
+			for st in net.storages:
+				st.storage_flow_mw = 0.0
+			report.charged_mwh += _charge(net, produced - used)
 		report.produced_mw += net.supply_mw
 		report.demand_mw += net.demand_mw
 		report.delivered_mw += net.delivered_mw
@@ -272,8 +293,40 @@ func step(tick: int, registry: BuildingRegistry) -> Report:
 	return report
 
 
+## Restitue [param amount] MWh, répartis au prorata de ce que chaque
+## stockage peut fournir ([param capacity] au total).
+func _discharge(net: Network, amount: float, capacity: float) -> float:
+	for st in net.storages:
+		var share := minf(st.def.storage_power_mw, st.stored_mwh) / capacity * amount
+		st.stored_mwh = maxf(0.0, st.stored_mwh - share)
+		st.storage_flow_mw = -share
+	return amount
+
+
+## Met en stock jusqu'à [param surplus] MWh, au prorata de ce que chaque
+## stockage peut absorber ; le rendement s'applique à la charge.
+func _charge(net: Network, surplus: float) -> float:
+	var room := 0.0
+	for st in net.storages:
+		room += _charge_room(st)
+	if room <= 0.0 or surplus <= 0.0:
+		return 0.0
+	var absorbed := minf(surplus, room)
+	for st in net.storages:
+		var share := _charge_room(st) / room * absorbed
+		st.stored_mwh = minf(st.def.storage_mwh, st.stored_mwh + share * st.def.storage_efficiency)
+		st.storage_flow_mw = share
+	return absorbed
+
+
+## Énergie (MWh, côté réseau) qu'un stockage peut encore absorber en une heure.
+static func _charge_room(st: Building) -> float:
+	return minf(st.def.storage_power_mw, (st.def.storage_mwh - st.stored_mwh) / st.def.storage_efficiency)
+
+
 ## Consignes des centrales pilotables pour l'heure [param tick] : les
-## renouvelables d'abord, le reste réparti au prorata du combustible en stock.
+## renouvelables d'abord (production prévue avec la météo), le reste réparti
+## au prorata de ce que chaque centrale peut fournir (combustible, chaleur).
 func plan_setpoints(tick: int) -> void:
 	for net: Network in networks.values():
 		var required := 0.0
@@ -285,14 +338,23 @@ func plan_setpoints(tick: int) -> void:
 		var capacity := 0.0
 		var dispatchable: Array[Building] = []
 		for p in net.producers:
-			if p.def.power_source == BuildingDef.PowerSource.FUEL:
+			if p.def.is_dispatchable():
 				dispatchable.append(p)
-				capacity += p.def.power_mw * _fuel_fraction(p, fuel_factor)
+				capacity += p.def.power_mw * _available_fraction(p, tick)
 			else:
-				required -= p.power_mw
+				required -= p.def.power_mw * Production.renewable_factor(map, weather, p, tick)
 		var ratio := clampf(required / capacity, 0.0, 1.0) if capacity > 0.0 else 0.0
 		for p in dispatchable:
-			p.power_setpoint = ratio * _fuel_fraction(p, fuel_factor)
+			p.power_setpoint = ratio * _available_fraction(p, tick)
+
+
+## Part de la pleine puissance qu'une centrale pilotable peut fournir
+## pendant l'heure [param tick] (combustible ou chaleur en stock).
+func _available_fraction(b: Building, tick: int) -> float:
+	if b.def.power_source == BuildingDef.PowerSource.SOLAR_THERMAL:
+		var heat := b.stored_mwh + Production.heat_collected(map, weather, b, tick)
+		return clampf(heat / b.def.power_mw, 0.0, 1.0)
+	return _fuel_fraction(b, fuel_factor)
 
 
 ## Part de la pleine puissance que le combustible en stock (et la place

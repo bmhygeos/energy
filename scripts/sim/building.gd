@@ -2,13 +2,13 @@ class_name Building
 extends RefCounted
 ## Bâtiment posé sur la carte (chantier ou terminé). Pure donnée.
 
-enum Status { CONSTRUCTION, RUNNING, NO_INPUT, OUTPUT_FULL, DEPLETED, IDLE, NO_GRID, STANDBY, NO_POWER }
+enum Status { CONSTRUCTION, RUNNING, NO_INPUT, OUTPUT_FULL, DEPLETED, IDLE, NO_GRID, STANDBY, NO_POWER, NO_WIND, NIGHT }
 
 const STATUS_NAMES: PackedStringArray = [
 	"En chantier", "En service", "À l'arrêt : manque d'approvisionnement",
 	"À l'arrêt : stock de sortie plein", "À l'arrêt : ressource épuisée", "Inactif",
 	"À l'arrêt : non relié au réseau électrique", "En veille : pas de demande",
-	"À l'arrêt : pas d'électricité",
+	"À l'arrêt : pas d'électricité", "À l'arrêt : pas de vent", "À l'arrêt : nuit",
 ]
 
 var id: int
@@ -40,6 +40,10 @@ var grid_id := 0
 var power_setpoint := 0.0
 ## Consommateur d'électricité alimenté pendant la dernière heure.
 var powered := false
+## Énergie stockée (MWh : batterie, STEP, chaleur du solaire thermique) et,
+## pour un stockage du réseau, flux de la dernière heure (MW, > 0 : charge).
+var stored_mwh := 0.0
+var storage_flow_mw := 0.0
 
 
 func _init(p_id: int, p_def: BuildingDef, p_anchor: Vector2i) -> void:

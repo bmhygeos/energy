@@ -22,6 +22,9 @@ func _init() -> void:
 	_test_vehicle_sale()
 	_test_rail()
 	_test_nuclear()
+	_test_weather()
+	_test_renewables()
+	_test_storage()
 	_test_cities()
 	_test_grid()
 	_test_tech_data()
@@ -311,12 +314,13 @@ func _test_production() -> void:
 	_check(map.deposit[map.index_of(Vector2i(21, 20))] == WorldMap.Deposit.NONE, "gisement voisin exploité")
 	_check(mine.status == Building.Status.DEPLETED and is_equal_approx(mine.output_stock, 3.0), "mine épuisée")
 
-	# Éolienne : puissance × vent.
+	# Éolienne : puissance × potentiel de la tuile × vent du moment.
 	map.wind[map.index_of(Vector2i(15, 28))] = 0.8
 	var turbine := _built(reg, &"wind_turbine", Vector2i(15, 28))
 	tick += 1
 	prod.step(tick)
-	_check(is_equal_approx(turbine.power_mw, turbine.def.power_mw * 0.8), "éolienne × vent")
+	_check(is_equal_approx(turbine.power_mw,
+		turbine.def.power_mw * clampf(0.8 * prod.weather.wind_at(tick), 0.0, 1.0)), "éolienne × vent")
 
 	# Pépinière : repousse et plantation quotidienne.
 	map.terrain[map.index_of(Vector2i(5, 25))] = TerrainDef.Type.FOREST
@@ -947,3 +951,154 @@ func _test_nuclear() -> void:
 	prod.waste_factor = 0.5
 	prod.step(2001)
 	_check(is_equal_approx(plant.output_stock, plant.def.output_per_hour * 0.5), "Gestion des déchets : moitié moins")
+
+
+func _test_weather() -> void:
+	var w := Weather.new(5)
+	_check(is_equal_approx(w.wind_at(100), Weather.new(5).wind_at(100)), "météo reproductible")
+	var differs := false
+	for t in 48:
+		differs = differs or not is_equal_approx(w.wind_at(t), Weather.new(6).wind_at(t))
+	_check(differs, "météo propre à la graine")
+	_check(Weather.daylight_at(2) == 0.0 and Weather.is_night(2), "nuit à 2 h")
+	_check(Weather.daylight_at(13) > 0.95, "plein jour à 13 h")
+	var summer := 0
+	var winter := 0
+	for h in 24:
+		summer += 1 if Weather.daylight_at(GameDate.HOURS_PER_SEASON + h) > 0.0 else 0
+		winter += 1 if Weather.daylight_at(3 * GameDate.HOURS_PER_SEASON + h) > 0.0 else 0
+	_check(summer > winter, "jours plus longs en été (%d h) qu'en hiver (%d h)" % [summer, winter])
+	var total := 0.0
+	var in_range := true
+	var smooth := true
+	for t in GameDate.HOURS_PER_YEAR:
+		var wind := w.wind_at(t)
+		var cloud := w.cloud_at(t)
+		total += wind
+		in_range = in_range and wind > 0.0 and wind <= 1.4 and cloud >= 0.0 and cloud <= 1.0
+		smooth = smooth and absf(w.wind_at(t + 1) - wind) < 0.4
+	var mean := total / GameDate.HOURS_PER_YEAR
+	_check(in_range, "vent et nuages dans leurs bornes")
+	_check(smooth, "vent sans à-coups d'une heure à l'autre")
+	_check(mean > 0.7 and mean < 1.05, "vent moyen proche de la normale (%.2f)" % mean)
+
+
+## Déroule [param hours] heures de production et de réseau à partir de
+## [param from] ; renvoie les heures de délestage et l'énergie stockée/restituée.
+func _run_hours(reg: BuildingRegistry, prod: Production, from: int, hours: int) -> Dictionary:
+	var result := {"shed": 0, "charged": 0.0, "discharged": 0.0}
+	for t in range(from, from + hours):
+		prod.step(t)
+		var r := reg.grid.step(t, reg)
+		result.shed += r.shed_cities
+		result.charged += r.charged_mwh
+		result.discharged += r.discharged_mwh
+	return result
+
+
+func _test_renewables() -> void:
+	var map := _flat_map(Vector2i(32, 32))
+	map.sun.fill(0.9)
+	var reg := BuildingRegistry.new(map)
+	var prod := Production.new(reg)
+	var grid := reg.grid
+
+	# Solaire PV : rien la nuit, produit le jour.
+	var farm := _built(reg, &"solar_farm", Vector2i(5, 5))
+	prod.step(2)
+	_check(farm.status == Building.Status.NIGHT and farm.power_mw == 0.0, "ferme solaire à l'arrêt la nuit")
+	prod.step(13)
+	_check(farm.status == Building.Status.RUNNING and farm.power_mw > 0.0
+		and is_equal_approx(farm.power_mw, farm.def.power_mw * 0.9 * prod.weather.sun_at(13)), "ferme solaire le jour")
+
+	# Prévision : la centrale pilotable s'efface devant le soleil de midi.
+	var city := _add_city(reg, Vector2i(20, 5), 8.0)
+	var plant := _built(reg, &"biomass_plant", Vector2i(12, 5))
+	plant.input_stock = plant.def.buffer_capacity
+	grid.add_cells(TilePlan.l_path(Vector2i(6, 5), Vector2i(19, 5)))
+	grid.refresh_topology(reg)
+	_check(farm.grid_id != 0 and farm.grid_id == city.grid_id and plant.grid_id == city.grid_id, "réseau solaire raccordé")
+	grid.plan_setpoints(2)
+	var night_setpoint := plant.power_setpoint
+	grid.plan_setpoints(12)
+	_check(plant.power_setpoint < night_setpoint, "consigne réduite quand le soleil est prévu")
+
+	# Solaire thermique : produit aussi la nuit avec la chaleur stockée.
+	var map2 := _flat_map(Vector2i(32, 32))
+	map2.sun.fill(0.9)
+	var reg2 := BuildingRegistry.new(map2)
+	var prod2 := Production.new(reg2)
+	var csp := _built(reg2, &"solar_thermal_plant", Vector2i(6, 6))
+	var town := _add_city(reg2, Vector2i(14, 6), 6.0)
+	reg2.grid.add_cells(TilePlan.l_path(Vector2i(7, 5), Vector2i(13, 5)))
+	reg2.grid.refresh_topology(reg2)
+	_check(csp.grid_id != 0 and csp.grid_id == town.grid_id, "solaire thermique raccordé")
+	var night_power := 0.0
+	var capped := true
+	for t in 72:
+		prod2.step(t)
+		reg2.grid.step(t, reg2)
+		capped = capped and csp.stored_mwh <= csp.def.storage_mwh + 0.001
+		if t >= 24 and Weather.is_night(t):
+			night_power += csp.power_mw
+	_check(night_power > 0.0, "solaire thermique produit la nuit (%.1f MWh)" % night_power)
+	_check(capped, "chaleur stockée plafonnée")
+
+	# Offshore : en mer, au contact de la côte, raccordée depuis la terre.
+	var sea := _flat_map(Vector2i(32, 16))
+	for y in 16:
+		for x in range(20, 32):
+			sea.terrain[sea.index_of(Vector2i(x, y))] = TerrainDef.Type.SEA
+			sea.wind[sea.index_of(Vector2i(x, y))] = 0.85
+	var reg3 := BuildingRegistry.new(sea)
+	var offshore := BuildingDb.get_def(&"offshore_wind")
+	_check(reg3.check_placement(offshore, Vector2i(10, 8)).error == "Doit être construit en mer", "offshore : pas sur terre")
+	_check(reg3.check_placement(offshore, Vector2i(25, 8)).error.begins_with("Doit toucher la côte"), "offshore : au contact de la côte")
+	var mill := _built(reg3, &"offshore_wind", Vector2i(20, 8))
+	var port_town := _add_city(reg3, Vector2i(12, 8), 3.0)
+	reg3.grid.add_cells(TilePlan.l_path(Vector2i(13, 8), Vector2i(19, 8)))
+	reg3.grid.refresh_topology(reg3)
+	_check(mill.grid_id != 0 and mill.grid_id == port_town.grid_id, "éolienne offshore raccordée par la côte")
+	var prod3 := Production.new(reg3)
+	var energy := 0.0
+	for t in 24:
+		prod3.step(t)
+		energy += mill.power_mw
+	_check(energy > 0.0, "éolienne offshore produit")
+
+	# STEP : près de l'eau et du relief.
+	var hills := _flat_map(Vector2i(16, 16))
+	hills.water_access[hills.index_of(Vector2i(5, 5))] = 1
+	var reg4 := BuildingRegistry.new(hills)
+	var step_def := BuildingDb.get_def(&"pumped_storage")
+	_check(not reg4.check_placement(step_def, Vector2i(5, 5)).is_valid(), "STEP : relief requis")
+	hills.terrain[hills.index_of(Vector2i(6, 5))] = TerrainDef.Type.HILL
+	_check(reg4.check_placement(step_def, Vector2i(5, 5)).is_valid(), "STEP : eau et colline")
+	_check(not reg4.check_placement(step_def, Vector2i(10, 10)).is_valid(), "STEP : eau requise")
+
+
+## Batteries : chargent le surplus solaire du jour et évitent les coupures
+## du soir.
+func _test_storage() -> void:
+	var results := []
+	for with_battery in [false, true]:
+		var map := _flat_map(Vector2i(32, 32))
+		map.sun.fill(0.9)
+		var reg := BuildingRegistry.new(map)
+		var prod := Production.new(reg)
+		_built(reg, &"solar_farm", Vector2i(5, 5))
+		var city := _add_city(reg, Vector2i(20, 5), 1.5)
+		reg.grid.add_cells(TilePlan.l_path(Vector2i(6, 5), Vector2i(19, 5)))
+		var battery: Building = null
+		if with_battery:
+			battery = _built(reg, &"battery", Vector2i(10, 6))
+		reg.grid.refresh_topology(reg)
+		if battery:
+			_check(battery.grid_id == city.grid_id, "batterie raccordée")
+		var r := _run_hours(reg, prod, 0, 72)
+		if battery:
+			_check(battery.stored_mwh <= battery.def.storage_mwh + 0.001, "batterie plafonnée")
+			_check(r.charged > 0.0 and r.discharged > 0.0, "batterie chargée le jour, déchargée ensuite")
+			_check(r.discharged <= r.charged * battery.def.storage_efficiency + 0.001, "rendement de la batterie respecté")
+		results.append(r)
+	_check(results[1].shed < results[0].shed, "moins de coupures avec la batterie (%d < %d h)" % [results[1].shed, results[0].shed])

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"offshore_wind"
+display_name = "Éolienne offshore"
+description = "Grande éolienne en mer : vent fort et régulier. Une ligne la raccorde depuis la côte."
+category = 1
+cost = 16000
+build_hours = 72
+upkeep_per_day = 70
+lifetime_years = 25
+required_tech = &"offshore"
+on_sea = true
+min_wind = 0.6
+power_mw = 6.0
+power_source = 2
+style = 1
+color = Color(0.933, 0.945, 0.957, 1)
+roof_color = Color(0.788, 0.816, 0.847, 1)
+height = 110.0

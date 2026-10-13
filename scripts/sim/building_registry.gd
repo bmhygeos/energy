@@ -96,7 +96,10 @@ func _placement_error(p: Placement) -> String:
 			return "Ligne électrique présente"
 		var t := map.terrain[i]
 		var terrain := TerrainDb.get_def(t)
-		if not terrain.buildable:
+		if def.on_sea:
+			if t != TerrainDef.Type.SEA:
+				return "Doit être construit en mer"
+		elif not terrain.buildable:
 			return "Terrain non constructible (%s)" % terrain.display_name.to_lower()
 		if not def.allowed_terrains.is_empty() and t not in def.allowed_terrains:
 			return "Terrain interdit pour ce bâtiment (%s)" % terrain.display_name.to_lower()
@@ -109,6 +112,8 @@ func _placement_error(p: Placement) -> String:
 		sun += map.sun[i]
 	if def.required_deposit != WorldMap.Deposit.NONE and not deposit_found:
 		return "Nécessite un gisement de %s" % WorldMap.DEPOSIT_NAMES[def.required_deposit].to_lower()
+	if def.on_sea and not _touches_land(p.cells):
+		return "Doit toucher la côte (pour y raccorder une ligne)"
 	if def.needs_road and not _touches(roads, p.cells):
 		return "Doit être relié à une route"
 	if def.needs_rail and not _touches(rails, p.cells):
@@ -135,6 +140,15 @@ func _touches(network: RoadNetwork, cells: Array[Vector2i]) -> bool:
 	for cell in cells:
 		for n in map.neighbors(cell):
 			if network.has_road(n):
+				return true
+	return false
+
+
+## Une tuile terrestre borde-t-elle (4-connexité) ces tuiles ?
+func _touches_land(cells: Array[Vector2i]) -> bool:
+	for cell in cells:
+		for n in map.neighbors(cell):
+			if n not in cells and not map.is_water(n):
 				return true
 	return false
 
