@@ -21,6 +21,7 @@ func _init() -> void:
 	_test_transport_throughput()
 	_test_vehicle_sale()
 	_test_rail()
+	_test_nuclear()
 	_test_cities()
 	_test_grid()
 	_test_tech_data()
@@ -883,3 +884,66 @@ func _test_rail() -> void:
 				and not rails.has_rail(train.current_cell()):
 			off_track += 1
 	_check(off_track == 0, "voie coupée : le train reste sur la voie")
+
+
+func _test_nuclear() -> void:
+	_check(Goods.is_hazardous(Goods.Type.NUCLEAR_FUEL) and Goods.is_hazardous(Goods.Type.NUCLEAR_WASTE)
+		and not Goods.is_hazardous(Goods.Type.URANIUM_ORE), "matières dangereuses")
+	var map := _flat_map(Vector2i(40, 12))
+	map.water_access.fill(1)
+	map.deposit[map.index_of(Vector2i(3, 3))] = WorldMap.Deposit.URANIUM
+	map.deposit_amount[map.index_of(Vector2i(3, 3))] = 5000.0
+	var reg := BuildingRegistry.new(map)
+	var prod := Production.new(reg)
+	var lg := Logistics.new(reg)
+	reg.roads.add_cells(_road_line(Vector2i(0, 4), Vector2i(38, 4)))
+	var mine := _built(reg, &"uranium_mine", Vector2i(3, 3))
+	var enrich := _built(reg, &"enrichment_plant", Vector2i(8, 3))
+	enrich.powered = true
+	var warehouse := _built(reg, &"warehouse", Vector2i(12, 3))
+	var plant := _built(reg, &"nuclear_plant", Vector2i(18, 3))
+	var depot := _built(reg, &"depot", Vector2i(14, 6))
+	var cart := VehicleDb.get_def(&"cart")
+	var armored := VehicleDb.get_def(&"armored_truck")
+	lg.add_vehicle(depot, cart)
+	lg.add_vehicle(depot, cart)
+	var probe := Vehicle.new(0, armored, depot)
+	_check(Logistics.can_carry(probe, Goods.Type.NUCLEAR_WASTE) and not Logistics.can_carry(probe, Goods.Type.COAL),
+		"camion blindé : matières dangereuses seulement")
+	_check(not Logistics.can_carry(lg.vehicles[0], Goods.Type.NUCLEAR_FUEL), "charrette : pas de combustible")
+	_check(lg.diagnose(plant).contains("site de stockage"), "diagnostic : pas de site de déchets (%s)" % lg.diagnose(plant))
+	var site := _built(reg, &"waste_site", Vector2i(24, 3))
+	_check(lg.diagnose(enrich).contains("blindé"), "diagnostic : pas de camion blindé (%s)" % lg.diagnose(enrich))
+	lg.add_vehicle(depot, armored)
+	lg.add_vehicle(depot, armored)
+	_check(lg.diagnose(enrich).is_empty(), "diagnostic : rien à signaler (%s)" % lg.diagnose(enrich))
+	var misrouted := 0
+	var stored_hazard := 0.0
+	var powered_hours := 0
+	for t in 1500:
+		prod.step(t)
+		lg.step()
+		for v in lg.vehicles:
+			if v.cargo > 0.0 and Goods.is_hazardous(v.good) != v.def.armored:
+				misrouted += 1
+		stored_hazard = maxf(stored_hazard, warehouse.store.get(Goods.Type.NUCLEAR_FUEL, 0.0)
+			+ warehouse.store.get(Goods.Type.NUCLEAR_WASTE, 0.0))
+		if plant.power_mw > 0.0:
+			powered_hours += 1
+	_check(misrouted == 0, "chaque véhicule ne porte que ce qu'il peut (%d)" % misrouted)
+	_check(stored_hazard == 0.0, "pas de matière dangereuse en entrepôt")
+	_check(warehouse.store.get(Goods.Type.URANIUM_ORE, 0.0) >= 0.0 and mine.status != Building.Status.DEPLETED,
+		"mine en service")
+	_check(powered_hours >= 800, "centrale nucléaire alimentée (%d / 1500 h)" % powered_hours)
+	_check(site.input_stock > 10.0, "déchets évacués vers le site (%.1f t)" % site.input_stock)
+
+	# Stock de déchets plein : centrale à l'arrêt, consigne nulle.
+	plant.output_stock = plant.def.buffer_capacity
+	plant.input_stock = plant.def.buffer_capacity
+	prod.step(2000)
+	_check(plant.status == Building.Status.OUTPUT_FULL and plant.power_mw == 0.0, "déchets pleins : arrêt")
+	_check(PowerGrid._fuel_fraction(plant, 1.0) == 0.0, "déchets pleins : aucune puissance planifiée")
+	plant.output_stock = 0.0
+	prod.waste_factor = 0.5
+	prod.step(2001)
+	_check(is_equal_approx(plant.output_stock, plant.def.output_per_hour * 0.5), "Gestion des déchets : moitié moins")

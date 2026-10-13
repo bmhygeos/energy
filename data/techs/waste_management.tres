@@ -6,8 +6,8 @@
 script = ExtResource("1_def")
 id = &"waste_management"
 display_name = "Gestion des déchets"
-description = "Sites de stockage des déchets (étape M6)."
+description = "Retraitement : les centrales nucléaires produisent moitié moins de déchets."
 era = 4
 cost = 4500
 prerequisites = Array[StringName]([&"reactor"])
-placeholder = true
+modifiers = Dictionary[StringName, float]({&"waste": 0.5})

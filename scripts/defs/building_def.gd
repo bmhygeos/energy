@@ -9,7 +9,7 @@ enum Extraction { NONE, FOREST, DEPOSIT, REFOREST }
 ## Ce qui module la puissance électrique produite.
 enum PowerSource { NONE, FUEL, WIND, SUN }
 ## Forme du dessin provisoire (scenes/world/building_sprite.gd).
-enum Style { BOX, TURBINE, PANELS, CITY }
+enum Style { BOX, TURBINE, PANELS, CITY, REACTOR }
 
 const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique", "Divers"]
 
@@ -131,7 +131,9 @@ func is_producer() -> bool:
 ## Production à plein régime, une ligne par flux (vide : aucune).
 func describe_production() -> PackedStringArray:
 	var lines := PackedStringArray()
-	if input_good != Goods.Type.NONE:
+	if input_good != Goods.Type.NONE and input_per_hour <= 0.0:
+		lines.append("Stocke : %s t de %s" % [_num(buffer_capacity), Goods.display_name(input_good).to_lower()])
+	elif input_good != Goods.Type.NONE:
 		lines.append("Consomme : %s t/h de %s" % [_num(input_per_hour), Goods.display_name(input_good).to_lower()])
 	if output_good != Goods.Type.NONE:
 		lines.append("Produit : %s t/h de %s" % [_num(output_per_hour), Goods.display_name(output_good).to_lower()])

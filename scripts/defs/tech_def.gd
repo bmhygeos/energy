@@ -13,6 +13,7 @@ const MODIFIER_NAMES := {
 	&"research": "Production de recherche",
 	&"vehicle_speed": "Vitesse des véhicules",
 	&"penalty": "Pénalités de délestage",
+	&"waste": "Déchets nucléaires produits",
 }
 
 @export var id: StringName

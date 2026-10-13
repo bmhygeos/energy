@@ -6,8 +6,7 @@
 script = ExtResource("1_def")
 id = &"enrichment"
 display_name = "Enrichissement"
-description = "Usine d'enrichissement de l'uranium (étape M6)."
+description = "Usine d'enrichissement (minerai → combustible) et camion blindé pour les matières dangereuses."
 era = 4
 cost = 4000
 prerequisites = Array[StringName]([&"nuclear_physics"])
-placeholder = true

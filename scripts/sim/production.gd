@@ -28,6 +28,7 @@ var fuel_factor := 1.0
 var extraction_factor := 1.0
 var regrowth_factor := 1.0
 var research_factor := 1.0
+var waste_factor := 1.0
 ## Tuiles exploitables par bâtiment (id → tuiles triées par distance).
 var _area_cache: Dictionary[int, Array] = {}
 
@@ -68,7 +69,7 @@ func _run(b: Building, tick: int, report: Report) -> void:
 		b.status = Building.Status.NO_POWER
 		return
 	var input_rate := input_rate_of(def)
-	var output_rate := def.output_per_hour * (extraction_factor if def.extraction != BuildingDef.Extraction.NONE else 1.0)
+	var output_rate := output_rate_of(def)
 	var fraction := 1.0
 	if def.output_good != Goods.Type.NONE:
 		var room := def.buffer_capacity - b.output_stock
@@ -106,6 +107,15 @@ func _run(b: Building, tick: int, report: Report) -> void:
 	b.power_mw = def.power_mw * fraction * _power_factor(b)
 	b.activity = fraction
 	b.status = Building.Status.RUNNING
+
+
+## Production horaire à plein régime, technologies comprises.
+func output_rate_of(def: BuildingDef) -> float:
+	if def.extraction != BuildingDef.Extraction.NONE:
+		return def.output_per_hour * extraction_factor
+	if def.output_good == Goods.Type.NUCLEAR_WASTE:
+		return def.output_per_hour * waste_factor
+	return def.output_per_hour
 
 
 ## Consommation horaire de combustible à plein régime, technologies comprises.

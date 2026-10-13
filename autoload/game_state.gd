@@ -125,6 +125,7 @@ func _apply_modifiers() -> void:
 	production.extraction_factor = research.modifier(&"extraction")
 	production.regrowth_factor = research.modifier(&"regrowth")
 	production.research_factor = research.modifier(&"research")
+	production.waste_factor = research.modifier(&"waste")
 	grid.loss_factor = research.modifier(&"grid_loss")
 	grid.penalty_factor = research.modifier(&"penalty")
 	grid.fuel_factor = research.modifier(&"fuel_use")

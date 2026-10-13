@@ -107,7 +107,7 @@ nécessite un navigateur avec WebGL 2.
   combustible en stock ; éolien et solaire passent d'abord. Une centrale sans
   ligne est à l'arrêt (pastille jaune), sans demande elle est en veille et ne
   brûle rien.
-- **Vente** : 3 €/MWh livré. Le bandeau affiche l'énergie livrée / demandée
+- **Vente** : 5 €/MWh livré. Le bandeau affiche l'énergie livrée / demandée
   (en rouge en cas de délestage) et les ventes de la veille ; le calque
   « Réseau » colore lignes, villes et centrales selon leur état.
 
@@ -123,13 +123,16 @@ nécessite un navigateur avec WebGL 2.
   plus routes, lignes, dépôt, entrepôt et laboratoire. Le reste est verrouillé
   (grisé dans le menu) : pépinière (Sylviculture), mine (Mines), camion
   (Camions), centrale à charbon, éolienne (Éolien), ferme solaire (Solaire PV),
-  voie ferrée, gare et train (Rail).
+  voie ferrée, gare et train (Rail), mine d'uranium (Physique nucléaire),
+  usine d'enrichissement et camion blindé (Enrichissement), centrale
+  nucléaire et site de déchets (Réacteur).
 - **Bonus** : Vapeur −15 % de combustible, Mines +10 % d'extraction,
   Sylviculture ×2 repousse, Lignes HT et Transformateurs −40 % de pertes
   chacun, Dispatching et Smart grid −50 % de pénalités, Camions +10 % de
-  vitesse, Physique nucléaire et des plasmas : recherche +10 % / +20 %…
-- Les technologies marquées « contenu à venir » (nucléaire, offshore,
-  stockage, fusion…) font partie de l'arbre mais leurs bâtiments arriveront
+  vitesse, Physique nucléaire et des plasmas : recherche +10 % / +20 %,
+  Gestion des déchets −50 % de déchets nucléaires…
+- Les technologies marquées « contenu à venir » (offshore, stockage,
+  fusion…) font partie de l'arbre mais leurs bâtiments arriveront
   aux étapes M6, M7 et M6b.
 
 ## Rail (M5b)
@@ -157,3 +160,22 @@ nécessite un navigateur avec WebGL 2.
   la route ; une seconde gare près des centrales, avec son propre dépôt de
   véhicules. Le panneau de la gare signale l'absence de voie, de route, de gare
   partenaire ou de train ; une gare sans voie affiche la pastille bleue.
+
+## Nucléaire (M6, partie 1)
+
+- **Mine d'uranium** (8 000 €, sur gisement d'uranium) : 0,5 t/h de minerai.
+- **Usine d'enrichissement** (18 000 €, 2×2) : 0,5 t/h de minerai → 0,1 t/h
+  de combustible ; raccordée au réseau et alimentée (4 MW).
+- **Centrale nucléaire** (60 000 €, 3×3, près de l'eau) : 120 MW pour
+  0,1 t/h de combustible, pilotée par le réseau comme les autres centrales à
+  combustible. Elle produit autant de **déchets nucléaires** (moitié moins
+  avec Gestion des déchets) ; stock de déchets plein → arrêt (pastille
+  orange), et le réseau ne compte plus sur elle.
+- **Site de stockage des déchets** (15 000 €, 2×2) : entrepose 400 t de
+  déchets, définitivement ; une fois plein, en construire un autre.
+- **Matières dangereuses** (combustible, déchets) : transportées seulement par
+  **camion blindé** (8 t, 1,2 tuile/h, 6 000 €, à acheter au dépôt), qui ne
+  transporte rien d'autre ; jamais déposées en entrepôt ni en gare. Le
+  panneau d'information signale l'absence de camion blindé ou de site de
+  déchets joignable.
+- Les incidents nucléaires arriveront avec les événements (M7).

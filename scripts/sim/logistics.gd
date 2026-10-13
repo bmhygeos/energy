@@ -269,23 +269,24 @@ func diagnose(b: Building) -> String:
 	var access := roads.access_cells(b)
 	if access.is_empty():
 		return "non relié à une route"
-	var partners := 0
-	for other in registry.all():
-		if other == b or not other.is_complete():
-			continue
-		var trades := false
-		if def.output_good != Goods.Type.NONE:
-			trades = other.def.input_good == def.output_good or is_warehouse(other)
-		if def.input_good != Goods.Type.NONE:
-			trades = trades or other.def.output_good == def.input_good or is_warehouse(other)
-		if is_warehouse(b):
-			trades = other.def.input_good != Goods.Type.NONE or other.def.output_good != Goods.Type.NONE
-		if trades and distance(b, other) >= 0:
-			partners += 1
-	if partners == 0:
-		if def.output_good != Goods.Type.NONE:
+	# Marchandises échangées par le bâtiment (aucune en propre pour un entrepôt).
+	var flows: Array[int] = []
+	if is_warehouse(b):
+		var partners := registry.all().filter(func(o: Building) -> bool:
+			return o != b and o.is_complete() and distance(b, o) >= 0 \
+				and (o.def.input_good != Goods.Type.NONE or o.def.output_good != Goods.Type.NONE))
+		if partners.is_empty():
+			return "aucun fournisseur joignable par la route"
+	if def.output_good != Goods.Type.NONE:
+		flows.append(def.output_good)
+		if not _has_partner(b, def.output_good, true):
+			if def.output_good == Goods.Type.NUCLEAR_WASTE:
+				return "aucun site de stockage des déchets joignable par la route"
 			return "aucun client (centrale, entrepôt) joignable par la route"
-		return "aucun fournisseur joignable par la route"
+	if def.input_good != Goods.Type.NONE:
+		flows.append(def.input_good)
+		if not _has_partner(b, def.input_good, false):
+			return "aucun fournisseur de %s joignable par la route" % Goods.display_name(def.input_good).to_lower()
 	var components := {}
 	for c in access:
 		components[roads.component_of(c)] = true
@@ -302,10 +303,39 @@ func diagnose(b: Building) -> String:
 		if vehicles.is_empty():
 			return "aucun véhicule : construisez un dépôt de véhicules relié à cette route"
 		return "aucun véhicule ne peut rejoindre ce bâtiment : reliez un dépôt à cette route"
-	var busy := reachable.filter(func(v: Vehicle) -> bool: return not v.is_available()).size()
-	if busy == reachable.size():
+	if flows.is_empty():
+		flows.append(Goods.Type.NONE)
+	for good in flows:
+		if not reachable.any(func(v: Vehicle) -> bool: return can_carry(v, good)):
+			if Goods.is_hazardous(good):
+				return "aucun camion blindé (%s) : achetez-en au dépôt" % Goods.display_name(good).to_lower()
+			return "aucun véhicule ordinaire : achetez des charrettes ou des camions au dépôt"
+	var carriers := reachable.filter(func(v: Vehicle) -> bool:
+		return flows.any(func(good: int) -> bool: return can_carry(v, good)))
+	var busy := carriers.filter(func(v: Vehicle) -> bool: return not v.is_available()).size()
+	if busy == carriers.size():
 		return "tous les véhicules sont occupés (%d) : achetez-en au dépôt" % busy
 	return ""
+
+
+## Un partenaire joignable par la route échange-t-il [param good] avec
+## [param b] (client si [param as_output], sinon fournisseur) ? Les
+## entrepôts comptent, sauf pour les matières dangereuses.
+func _has_partner(b: Building, good: int, as_output: bool) -> bool:
+	for other in registry.all():
+		if other == b or not other.is_complete():
+			continue
+		var trades := (other.def.input_good if as_output else other.def.output_good) == good \
+			or (is_warehouse(other) and not Goods.is_hazardous(good))
+		if trades and distance(b, other) >= 0:
+			return true
+	return false
+
+
+## [param v] peut-il transporter [param good] ? Les véhicules blindés sont
+## réservés aux matières dangereuses (NONE : marchandise ordinaire).
+static func can_carry(v: Vehicle, good: int) -> bool:
+	return v.def.armored == Goods.is_hazardous(good)
 
 
 func _diagnose_station(b: Building) -> String:
@@ -447,30 +477,34 @@ func _dispatch_road(available: Array[Vehicle]) -> void:
 			var need := demand(consumer)
 			if need < MIN_LOAD:
 				break
+			var carriers := available.filter(func(v: Vehicle) -> bool: return can_carry(v, good))
+			if carriers.is_empty():
+				break
 			var capacity := 0.0
-			for v in available:
+			for v in carriers:
 				capacity = maxf(capacity, v.def.capacity)
 			var source := _best_source(consumer, good, minf(capacity, need) * FULL_LOAD_RATIO)
 			if source == null:
 				break  # aucune source n'a encore une charge correcte : on attend
-			var v := _nearest_vehicle(available, source)
+			var v := _nearest_vehicle(carriers, source)
 			if v == null:
 				break
 			var qty := minf(minf(need, supply(source, good)), v.def.capacity)
 			if not _start(v, source, consumer, good, qty):
 				break
 			available.erase(v)
-	# Surplus des producteurs vers les entrepôts.
+	# Surplus des producteurs vers les entrepôts (jamais de matières dangereuses).
 	for producer in registry.all():
 		var good := producer.def.output_good
-		if good == Goods.Type.NONE or is_warehouse(producer):
+		if good == Goods.Type.NONE or Goods.is_hazardous(good) or is_warehouse(producer):
 			continue
 		while not available.is_empty() \
 				and supply(producer, good) >= producer.def.buffer_capacity * SURPLUS_RATIO:
 			var warehouse := _best_warehouse(producer)
 			if warehouse == null:
 				break
-			var v := _nearest_vehicle(available, producer)
+			var v := _nearest_vehicle(available.filter(func(c: Vehicle) -> bool: return can_carry(c, good)),
+				producer)
 			if v == null:
 				break
 			var qty := minf(minf(supply(producer, good), storage_room(warehouse)), v.def.capacity)

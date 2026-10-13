@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="VehicleDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/vehicle_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"armored_truck"
+display_name = "Camion blindé"
+armored = true
+capacity = 8.0
+speed = 1.2
+cost = 6000
+upkeep_per_day = 50
+cost_per_tile = 3.0
+required_tech = &"enrichment"
+color = Color(0.92, 0.75, 0.15, 1)
+length = 20.0

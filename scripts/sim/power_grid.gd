@@ -16,7 +16,7 @@ const LOSS_PER_TILE := 0.002
 const MAX_LOSS := 0.25
 ## Prix de vente (€/MWh livré) et pénalité (€/MWh non livré à une ville
 ## raccordée à un réseau doté de centrales).
-const PRICE_PER_MWH := 3.0
+const PRICE_PER_MWH := 5.0
 const PENALTY_PER_MWH := 1.0
 ## Marge de production demandée aux centrales pilotables.
 const MARGIN := 0.05
@@ -295,9 +295,12 @@ func plan_setpoints(tick: int) -> void:
 			p.power_setpoint = ratio * _fuel_fraction(p, fuel_factor)
 
 
-## Part de la pleine puissance que le combustible en stock permet pendant
-## une heure.
+## Part de la pleine puissance que le combustible en stock (et la place
+## libre pour les résidus, déchets nucléaires) permet pendant une heure.
 static func _fuel_fraction(b: Building, fuel_use: float) -> float:
-	if b.def.input_good == Goods.Type.NONE or b.def.input_per_hour <= 0.0:
-		return 1.0
-	return clampf(b.input_stock / (b.def.input_per_hour * fuel_use), 0.0, 1.0)
+	var fraction := 1.0
+	if b.def.input_good != Goods.Type.NONE and b.def.input_per_hour > 0.0:
+		fraction = b.input_stock / (b.def.input_per_hour * fuel_use)
+	if b.def.output_good != Goods.Type.NONE and b.def.output_per_hour > 0.0:
+		fraction = minf(fraction, (b.def.buffer_capacity - b.output_stock) / b.def.output_per_hour)
+	return clampf(fraction, 0.0, 1.0)

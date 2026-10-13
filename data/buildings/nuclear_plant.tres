@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"nuclear_plant"
+display_name = "Centrale nucléaire"
+description = "Puissance très forte, sans CO₂. Produit des déchets nucléaires : sans site de stockage où les évacuer, la centrale s'arrête quand son stock de déchets est plein."
+category = 1
+size = Vector2i(3, 3)
+cost = 60000
+build_hours = 240
+upkeep_per_day = 400
+lifetime_years = 50
+required_tech = &"reactor"
+needs_water_access = true
+input_good = 4
+input_per_hour = 0.1
+output_good = 5
+output_per_hour = 0.1
+power_mw = 120.0
+power_source = 1
+buffer_capacity = 20.0
+style = 4
+color = Color(0.86, 0.86, 0.84, 1)
+roof_color = Color(0.55, 0.57, 0.6, 1)
+height = 30.0

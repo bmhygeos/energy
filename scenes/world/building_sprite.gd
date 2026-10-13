@@ -58,7 +58,7 @@ func setup(p_def: BuildingDef, p_anchor: Vector2i, p_progress: float = 1.0) -> v
 func _update_process() -> void:
 	if def:
 		set_process(status == Building.Status.RUNNING and progress >= 1.0
-			and (def.style == BuildingDef.Style.TURBINE or def.has_chimney))
+			and (def.style in [BuildingDef.Style.TURBINE, BuildingDef.Style.REACTOR] or def.has_chimney))
 
 
 func _process(delta: float) -> void:
@@ -87,6 +87,8 @@ func _draw() -> void:
 			_draw_turbine(center, def.height * progress)
 		BuildingDef.Style.PANELS:
 			_draw_panels(inner, def.height * maxf(progress, 0.3))
+		BuildingDef.Style.REACTOR:
+			_draw_reactor(inner, center)
 		_:
 			_draw_box(inner, def.height * progress, def.color, def.roof_color)
 			if def.has_chimney and progress > 0.6:
@@ -154,6 +156,55 @@ func _draw_panels(d: PackedVector2Array, h: float) -> void:
 	for j in range(1, cols):
 		var t := float(j) / cols
 		draw_line(d[0].lerp(d[1], t) + up, d[3].lerp(d[2], t) + up, def.roof_color, 1.0)
+
+
+## Centrale nucléaire : bâtiment réacteur à gauche, tour de refroidissement
+## (hyperboloïde) à droite, panache de vapeur en service.
+func _draw_reactor(d: PackedVector2Array, center: Vector2) -> void:
+	var back := PackedVector2Array()
+	for p in d:
+		back.append(d[3].lerp(p, 0.5))
+	_draw_box(back, def.height * progress, def.color, def.roof_color)
+	var dome := (back[0] + back[2]) / 2.0 + Vector2(0, -def.height * progress)
+	if progress > 0.5:
+		draw_circle(dome, 9.0 * def.size.x * clampf((progress - 0.5) * 2.0, 0.0, 1.0), def.roof_color.lightened(0.2))
+	var foot := center.lerp(d[1], 0.45) + Vector2(0, 6)
+	var radius := 15.0 * def.size.x
+	var h := 2.4 * radius * progress
+	var left := PackedVector2Array()
+	var right := PackedVector2Array()
+	const STEPS := 8
+	for k in STEPS + 1:
+		var t := float(k) / STEPS
+		var r := radius * (0.72 + 0.28 * absf(t - 0.7) / 0.7)  # col vers 70 % de la hauteur
+		left.append(foot + Vector2(-r, -h * t))
+		right.append(foot + Vector2(r, -h * t))
+	var shell := left.duplicate()
+	right.reverse()
+	shell.append_array(right)
+	draw_colored_polygon(shell, def.color.darkened(0.12))
+	# Ombre sur la moitié gauche, puis ouverture au sommet.
+	var shade := PackedVector2Array()
+	for k in left.size():
+		shade.append(left[k])
+	for k in range(left.size() - 1, -1, -1):
+		shade.append(left[k].lerp(foot + Vector2(0, -h * float(k) / STEPS), 0.55))
+	draw_colored_polygon(shade, def.color.darkened(0.3))
+	var top_r := right[0].x - foot.x
+	_draw_ellipse(foot + Vector2(0, -h), Vector2(top_r, top_r * 0.35), def.roof_color.darkened(0.3))
+	if progress >= 1.0 and status == Building.Status.RUNNING:
+		for k in 4:
+			var t := fmod(_blade_angle / TAU + k / 4.0, 1.0)
+			var r := top_r * (0.7 + 0.8 * t)
+			draw_circle(foot + Vector2(10.0 * t, -h - 8.0 - 50.0 * t), r, Color(1, 1, 1, 0.35 * (1.0 - t)))
+
+
+func _draw_ellipse(c: Vector2, radii: Vector2, color: Color) -> void:
+	var points := PackedVector2Array()
+	for k in 16:
+		var a := TAU * k / 16.0
+		points.append(c + Vector2(cos(a) * radii.x, sin(a) * radii.y))
+	draw_colored_polygon(points, color)
 
 
 ## Panaches de fumée montant de [param top], animés par l'angle du rotor.

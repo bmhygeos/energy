@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"enrichment_plant"
+display_name = "Usine d'enrichissement"
+description = "Transforme le minerai d'uranium en combustible nucléaire. Doit être raccordée au réseau électrique et alimentée. Le combustible ne voyage qu'en camion blindé."
+category = 0
+size = Vector2i(2, 2)
+cost = 18000
+build_hours = 96
+upkeep_per_day = 120
+lifetime_years = 40
+required_tech = &"enrichment"
+input_good = 3
+input_per_hour = 0.5
+output_good = 4
+output_per_hour = 0.1
+power_demand_mw = 4.0
+buffer_capacity = 20.0
+color = Color(0.82, 0.84, 0.86, 1)
+roof_color = Color(0.4, 0.62, 0.42, 1)
+height = 30.0

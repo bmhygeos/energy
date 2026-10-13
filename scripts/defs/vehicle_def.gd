@@ -8,6 +8,8 @@ enum Network { ROAD, RAIL }
 @export var id: StringName
 @export var display_name := ""
 @export var network: Network = Network.ROAD
+## Blindé : seul à transporter les matières dangereuses, et rien d'autre.
+@export var armored := false
 ## Charge utile (t).
 @export var capacity := 5.0
 ## Vitesse en tuiles par heure de jeu.

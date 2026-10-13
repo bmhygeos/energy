@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"waste_site"
+display_name = "Site de stockage des déchets"
+description = "Entrepose définitivement les déchets nucléaires, apportés par camion blindé. Une fois plein, il faut en construire un autre."
+category = 1
+size = Vector2i(2, 2)
+cost = 15000
+build_hours = 72
+upkeep_per_day = 80
+lifetime_years = 0
+required_tech = &"reactor"
+input_good = 5
+buffer_capacity = 400.0
+color = Color(0.6, 0.58, 0.5, 1)
+roof_color = Color(0.5, 0.36, 0.56, 1)
+height = 12.0
