@@ -76,6 +76,9 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 ## Puissance électrique à plein régime (MW).
 @export var power_mw := 0.0
 @export var power_source: PowerSource = PowerSource.NONE
+## Émissions à plein régime (t/h de CO₂ et de particules) : polluent l'air
+## alentour et seront taxées.
+@export var emission_per_hour := 0.0
 ## Points de recherche produits par heure (laboratoires).
 @export var research_per_hour := 0.0
 ## Puissance électrique consommée en fonctionnement (MW) : le bâtiment doit
@@ -194,6 +197,8 @@ func describe_production() -> PackedStringArray:
 		lines.append("Rendement : %d %% (charge les surplus, couvre les manques)" % roundi(storage_efficiency * 100.0))
 	if research_per_hour > 0.0:
 		lines.append("Recherche : %s RP/h" % _num(research_per_hour))
+	if emission_per_hour > 0.0:
+		lines.append("Pollue : %s t/h de CO₂ à plein régime" % _num(emission_per_hour))
 	if power_demand_mw > 0.0:
 		lines.append("Consomme : %s MW d'électricité" % _num(power_demand_mw))
 	match extraction:

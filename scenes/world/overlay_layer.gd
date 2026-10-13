@@ -1,10 +1,13 @@
 class_name OverlayLayer
 extends Node2D
-## Calque d'information coloré par tuile (relief, vent, soleil, eau, gisements).
+## Calque d'information coloré par tuile (relief, vent, soleil, eau,
+## gisements, réseau, pollution).
 
-enum Mode { NONE, RELIEF, WIND, SUN, WATER, DEPOSITS, GRID }
+enum Mode { NONE, RELIEF, WIND, SUN, WATER, DEPOSITS, GRID, POLLUTION }
 
-const MODE_NAMES: PackedStringArray = ["Aucun", "Relief", "Vent", "Soleil", "Eau", "Gisements", "Réseau"]
+const MODE_NAMES: PackedStringArray = ["Aucun", "Relief", "Vent", "Soleil", "Eau", "Gisements", "Réseau", "Pollution"]
+## Rafraîchissement du calque de pollution (heures de jeu).
+const POLLUTION_REDRAW_HOURS := 6
 const DEPOSIT_COLORS: Array[Color] = [
 	Color.TRANSPARENT, Color("1a1a1a"), Color("4be03c"), Color("c45cff"),
 ]
@@ -31,6 +34,9 @@ func _ready() -> void:
 			queue_redraw())
 	EventBus.grid_changed.connect(func() -> void:
 		if mode == Mode.GRID:
+			queue_redraw())
+	EventBus.tick_advanced.connect(func(tick: int) -> void:
+		if mode == Mode.POLLUTION and tick % POLLUTION_REDRAW_HOURS == 0:
 			queue_redraw())
 	visible = false
 
@@ -67,6 +73,9 @@ func _cell_color(i: int, gradient: Gradient) -> Color:
 			return WATER_ACCESS_COLOR if map.water_access[i] else NO_WATER_COLOR
 		Mode.GRID:
 			return _grid_color(map.cell_of(i))
+		Mode.POLLUTION:
+			var p := GameState.pollution.level[i] / Pollution.FULL_POLLUTION if GameState.pollution else 0.0
+			return Color.TRANSPARENT if p < 0.02 else gradient.sample(minf(p, 1.0))
 		Mode.DEPOSITS:
 			if not GameState.deposits_revealed():
 				return Color.TRANSPARENT
@@ -116,6 +125,9 @@ static func gradient_for(m: Mode) -> Gradient:
 		Mode.SUN:
 			g.offsets = [0.0, 0.5, 1.0]
 			g.colors = [Color("30305099"), Color("e0a030b0"), Color("fff060e0")]
+		Mode.POLLUTION:
+			g.offsets = [0.0, 0.25, 1.0]
+			g.colors = [Color("d8c87070"), Color("c07838c8"), Color("4a2a3af0")]
 		_:
 			return null
 	return g

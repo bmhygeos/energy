@@ -19,6 +19,7 @@ var waters: WaterNetwork
 var logistics: Logistics
 var grid: PowerGrid
 var research: Research
+var pollution: Pollution
 var weather: Weather
 ## Points de recherche produits pendant la dernière heure.
 var research_rate := 0.0
@@ -60,6 +61,7 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	buildings = BuildingRegistry.new(world_map, roads, grid, rails, waters)
 	production = Production.new(buildings)
 	logistics = Logistics.new(buildings)
+	pollution = Pollution.new(buildings)
 	research = Research.new(TechDb.DEFS)
 	weather = Weather.new(seed_value)
 	production.weather = weather
@@ -133,6 +135,7 @@ func _apply_modifiers() -> void:
 	production.regrowth_factor = research.modifier(&"regrowth")
 	production.research_factor = research.modifier(&"research")
 	production.waste_factor = research.modifier(&"waste")
+	pollution.filter_factor = research.modifier(&"pollution")
 	grid.loss_factor = research.modifier(&"grid_loss")
 	grid.penalty_factor = research.modifier(&"penalty")
 	grid.fuel_factor = research.modifier(&"fuel_use")
@@ -319,6 +322,7 @@ func _on_tick(tick: int) -> void:
 			EventBus.vehicle_added.emit(logistics.add_vehicle(b, VehicleDb.get_def(id)))
 		EventBus.building_completed.emit(b)
 	var report := production.step(tick)
+	pollution.step()
 	research_rate = report.research
 	if report.research > 0.0:
 		_on_techs_done(research.add_points(report.research))
@@ -347,7 +351,7 @@ func _on_tick(tick: int) -> void:
 
 func _on_day(_day: int) -> void:
 	for c in cities:
-		c.city.end_day()
+		c.city.end_day(pollution.air_quality(c.cells))
 	revenue_yesterday = revenue_today
 	penalty_yesterday = penalty_today
 	revenue_today = 0.0

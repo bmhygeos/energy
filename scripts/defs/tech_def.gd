@@ -14,6 +14,7 @@ const MODIFIER_NAMES := {
 	&"vehicle_speed": "Vitesse des véhicules",
 	&"penalty": "Pénalités de délestage",
 	&"waste": "Déchets nucléaires produits",
+	&"pollution": "Pollution des centrales à combustible",
 }
 
 @export var id: StringName

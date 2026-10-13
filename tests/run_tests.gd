@@ -26,6 +26,7 @@ func _init() -> void:
 	_test_renewables()
 	_test_storage()
 	_test_ports()
+	_test_pollution()
 	_test_cities()
 	_test_grid()
 	_test_tech_data()
@@ -1167,3 +1168,58 @@ func _test_ports() -> void:
 	_check(deliveries >= 2, "la barge livre le port B (%d fois)" % deliveries)
 	_check(running >= 300, "centrale approvisionnée par barge (%d / 600 h)" % running)
 	_check(lg.diagnose(port_a).is_empty(), "diagnostic port A : rien à signaler (%s)" % lg.diagnose(port_a))
+
+
+func _test_pollution() -> void:
+	var map := _flat_map(Vector2i(48, 48))
+	var reg := BuildingRegistry.new(map)
+	var pol := Pollution.new(reg)
+	map.water_access.fill(1)
+	map.deposit[map.index_of(Vector2i(30, 30))] = WorldMap.Deposit.COAL
+	map.deposit_amount[map.index_of(Vector2i(30, 30))] = 100.0
+	var plant := _built(reg, &"coal_plant", Vector2i(10, 10))
+	var mine := _built(reg, &"coal_mine", Vector2i(30, 30))
+	plant.status = Building.Status.RUNNING
+	plant.activity = 0.5
+	mine.status = Building.Status.RUNNING
+	mine.activity = 1.0
+	_check(is_equal_approx(pol.emission_of(plant), plant.def.emission_per_hour * 0.5), "émission selon l'activité")
+	pol.filter_factor = 0.5
+	_check(is_equal_approx(pol.emission_of(plant), plant.def.emission_per_hour * 0.25)
+		and is_equal_approx(pol.emission_of(mine), mine.def.emission_per_hour), "filtres CO₂ : centrales seulement")
+	pol.filter_factor = 1.0
+	plant.status = Building.Status.STANDBY
+	_check(pol.emission_of(plant) == 0.0, "pas d'émission en veille")
+	plant.status = Building.Status.RUNNING
+	plant.activity = 1.0
+	var e := pol.step()
+	_check(is_equal_approx(e, plant.def.emission_per_hour + mine.def.emission_per_hour), "émissions de l'heure")
+	_check(is_equal_approx(pol.level_at(Vector2i(10, 10)), plant.def.emission_per_hour), "pleine valeur sur l'emprise")
+	_check(pol.level_at(Vector2i(10 + 4, 10)) < pol.level_at(Vector2i(10 + 1, 10))
+		and pol.level_at(Vector2i(10 + Pollution.RADIUS + 1, 10)) == 0.0, "dispersion décroissante et bornée")
+	for i in 300:
+		pol.step()
+	var steady := plant.def.emission_per_hour / (1.0 - Pollution.RETENTION)
+	_check(absf(pol.level_at(Vector2i(10, 10)) - steady) < steady * 0.01, "équilibre émission / dissipation")
+	var near := pol.air_quality([Vector2i(14, 10)] as Array[Vector2i])
+	var far := pol.air_quality([Vector2i(10, 40)] as Array[Vector2i])
+	_check(near < 0.5 and is_equal_approx(far, 1.0), "air pollué près de la centrale (%.2f), pur au loin" % near)
+	plant.status = Building.Status.STANDBY
+	mine.status = Building.Status.IDLE
+	var before := pol.level_at(Vector2i(10, 10))
+	pol.step()
+	_check(is_equal_approx(pol.level_at(Vector2i(10, 10)), before * Pollution.RETENTION), "dissipation sans émission")
+
+	# Villes : la pollution freine la croissance et pèse sur la satisfaction.
+	var clean := City.new("Propre", 10.0)
+	var dirty := City.new("Polluée", 10.0)
+	for c: City in [clean, dirty]:
+		for d in 20:
+			c.served_hours_today = 24
+			c.end_day(1.0 if c == clean else 0.0)
+	_check(dirty.base_demand < clean.base_demand, "croissance freinée par la pollution")
+	_check(clean.satisfaction > 0.95 and absf(dirty.satisfaction - City.SATISFACTION_SUPPLY_WEIGHT) < 0.05,
+		"satisfaction : alimentation et air (%.2f / %.2f)" % [clean.satisfaction, dirty.satisfaction])
+	var dark := City.new("Sans courant", 10.0)
+	dark.end_day(1.0)
+	_check(dark.satisfaction < 0.5, "satisfaction en baisse sans courant")

@@ -135,9 +135,10 @@ nécessite un navigateur avec WebGL 2.
   Sylviculture ×2 repousse, Lignes HT et Transformateurs −40 % de pertes
   chacun, Dispatching et Smart grid −50 % de pénalités, Camions +10 % de
   vitesse, Physique nucléaire et des plasmas : recherche +10 % / +20 %,
-  Gestion des déchets −50 % de déchets nucléaires…
-- Les technologies marquées « contenu à venir » (filtres CO₂, fusion…) font
-  partie de l'arbre mais leurs bâtiments arriveront aux étapes M7 et M6b.
+  Gestion des déchets −50 % de déchets nucléaires, Filtres CO₂ −50 % de
+  pollution des centrales à combustible…
+- Les technologies marquées « contenu à venir » (fusion) font partie de
+  l'arbre mais leurs bâtiments arriveront à l'étape M6b.
 
 ## Rail (M5b)
 
@@ -225,3 +226,21 @@ nécessite un navigateur avec WebGL 2.
 - Le panneau du port signale l'absence d'eau, de route, de port partenaire
   ou de barge. Les matières dangereuses ne passent ni par les ports ni par
   les gares.
+
+## Pollution et satisfaction (M7, partie 1)
+
+- **Émissions** (t/h de CO₂ à plein régime, selon l'activité) : centrale à
+  charbon 30, centrale biomasse 4, usine d'enrichissement et mine de charbon
+  1, mine d'uranium 0,5 ; rien pour le nucléaire et les renouvelables.
+  Filtres CO₂ : −50 % pour les centrales à combustible.
+- **Pollution de l'air** : chaque émission se répand jusqu'à 8 tuiles
+  autour du bâtiment, en décroissant avec la distance, et se dissipe de 4 %
+  par heure. Calque « Pollution » (`O`) ; le panneau d'une tuile indique sa
+  pollution, celui d'un bâtiment ses émissions.
+- **Villes** : la qualité de l'air (moyenne de la pollution sur la ville)
+  freine leur croissance (jusqu'à −8 %/an). Leur **satisfaction** suit, jour
+  après jour, la part d'heures alimentées (70 %) et la qualité de l'air
+  (30 %). Le survol de l'électricité du bandeau donne les émissions de
+  l'heure et la satisfaction moyenne des habitants.
+- Implanter les centrales thermiques loin des villes, ou passer au
+  nucléaire et aux renouvelables, garde l'air pur.

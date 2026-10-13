@@ -10,6 +10,7 @@ const LEGENDS: PackedStringArray = [
 	"[color=#3fa0ff]■[/color] accès à l'eau   [color=#1a59d9]■[/color] côte   [color=#c04030]■[/color] sans eau",
 	"[color=#1a1a1a]■[/color] charbon   [color=#4be03c]■[/color] uranium   [color=#c45cff]■[/color] lithium",
 	"[color=#4dd959]■[/color] alimenté   [color=#f24d40]■[/color] délestage   [color=#999999]■[/color] sans centrale   [color=#ffd933]■[/color] centrale",
+	"Pollution de l'air : faible → irrespirable",
 ]
 
 var _overlay_mode := OverlayLayer.Mode.NONE
@@ -150,6 +151,14 @@ func _on_grid(report: PowerGrid.Report) -> void:
 	])
 	if report.shed_cities > 0:
 		lines.append("Villes délestées : %d" % report.shed_cities)
+	lines.append("Émissions : %s t/h de CO₂" % Format.decimal(GameState.pollution.emitted_last_hour))
+	var people := 0
+	var happy := 0.0
+	for b in GameState.cities:
+		people += b.city.population()
+		happy += b.city.satisfaction * b.city.population()
+	if people > 0:
+		lines.append("Satisfaction des habitants : %d %%" % roundi(happy / people * 100.0))
 	var stored := 0.0
 	var capacity := 0.0
 	for b in GameState.buildings.all():

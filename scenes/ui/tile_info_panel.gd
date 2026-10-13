@@ -67,6 +67,8 @@ func _refresh() -> void:
 		"Vent : %d %%" % roundi(map.wind[i] * 100.0),
 		"Ensoleillement : %d %%" % roundi(map.sun[i] * 100.0),
 	])
+	if GameState.pollution and GameState.pollution.level[i] >= 1.0:
+		lines.append("Pollution : %d" % roundi(GameState.pollution.level[i]))
 	if not def.is_water:
 		var water := "non"
 		if map.coastal[i]:
@@ -171,6 +173,8 @@ func _building_lines(b: Building) -> PackedStringArray:
 			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.output_good).to_lower()])
 		if b.reserved_out > 0.0:
 			lines.append("Promis aux véhicules : %s t" % Format.decimal(b.reserved_out))
+	if def.emission_per_hour > 0.0:
+		lines.append("Émissions : %s t/h de CO₂" % Format.decimal(GameState.pollution.emission_of(b)))
 	if def.research_per_hour > 0.0:
 		lines.append("Recherche : %s RP/h" % Format.decimal(
 			def.research_per_hour * GameState.production.research_factor if b.status == Building.Status.RUNNING else 0.0))
@@ -292,6 +296,8 @@ func _city_lines(city: City) -> PackedStringArray:
 	])
 	if GameDate.day_index(tick) > 0:
 		lines.append("Alimentée hier : %d %%" % roundi(city.served_ratio_yesterday * 100.0))
+	lines.append("Satisfaction : %d %% (alimentation et air)" % roundi(city.satisfaction * 100.0))
+	lines.append("Qualité de l'air : %d %%" % roundi(city.air_quality * 100.0))
 	return lines
 
 

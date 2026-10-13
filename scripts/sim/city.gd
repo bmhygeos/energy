@@ -1,7 +1,8 @@
 class_name City
 extends RefCounted
 ## Ville : demande électrique variant selon l'heure et la saison, croissance
-## annuelle (plus rapide si elle est bien alimentée). Pure donnée.
+## annuelle (plus rapide si elle est bien alimentée, freinée par la
+## pollution), satisfaction des habitants. Pure donnée.
 
 enum Supply { NOT_CONNECTED, NO_SUPPLY, SERVED, SHED }
 
@@ -18,6 +19,12 @@ const SEASONAL: PackedFloat32Array = [1.0, 0.9, 1.0, 1.25]
 ## Croissance annuelle de la demande de base selon l'alimentation.
 const GROWTH_SERVED := 0.12
 const GROWTH_UNSERVED := 0.02
+## Croissance annuelle retirée par un air irrespirable (qualité nulle).
+const POLLUTION_SHRINK := 0.08
+## Poids de la fiabilité de l'alimentation dans la satisfaction (le reste :
+## qualité de l'air), et part de l'écart rattrapée chaque jour.
+const SATISFACTION_SUPPLY_WEIGHT := 0.7
+const SATISFACTION_RATE := 0.25
 ## Habitants par MW de demande de base.
 const PEOPLE_PER_MW := 1000
 
@@ -30,6 +37,10 @@ var supply: Supply = Supply.NOT_CONNECTED
 var served_hours_today := 0
 var shed_hours_today := 0
 var served_ratio_yesterday := 0.0
+## Qualité de l'air (0–1) et satisfaction des habitants (0–1), mises à jour
+## chaque jour.
+var air_quality := 1.0
+var satisfaction := 0.5
 
 
 func _init(p_name: String = "", p_base_demand: float = 10.0) -> void:
@@ -55,10 +66,15 @@ func peak_demand(tick: int) -> float:
 	return base_demand * 1.3 * SEASONAL[GameDate.season(tick)]
 
 
-## Fin de journée : croissance selon la part d'heures alimentées.
-func end_day() -> void:
+## Fin de journée : croissance selon la part d'heures alimentées et la
+## qualité de l'air [param p_air_quality] (0–1) ; la satisfaction se
+## rapproche de sa cible.
+func end_day(p_air_quality: float = 1.0) -> void:
 	served_ratio_yesterday = served_hours_today / float(GameDate.HOURS_PER_DAY)
-	var growth := lerpf(GROWTH_UNSERVED, GROWTH_SERVED, served_ratio_yesterday)
+	air_quality = p_air_quality
+	var target := SATISFACTION_SUPPLY_WEIGHT * served_ratio_yesterday + (1.0 - SATISFACTION_SUPPLY_WEIGHT) * air_quality
+	satisfaction = lerpf(satisfaction, target, SATISFACTION_RATE)
+	var growth := lerpf(GROWTH_UNSERVED, GROWTH_SERVED, served_ratio_yesterday) - POLLUTION_SHRINK * (1.0 - air_quality)
 	base_demand *= 1.0 + growth / (GameDate.DAYS_PER_SEASON * GameDate.SEASONS_PER_YEAR)
 	served_hours_today = 0
 	shed_hours_today = 0
