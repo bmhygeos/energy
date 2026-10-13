@@ -99,6 +99,8 @@ func _draw() -> void:
 			_draw_solar_tower(inner, center)
 		BuildingDef.Style.BASIN:
 			_draw_basin(inner, center)
+		BuildingDef.Style.PORT:
+			_draw_port(inner, center)
 		_:
 			_draw_box(inner, def.height * progress, def.color, def.roof_color)
 			if def.has_chimney and progress > 0.6:
@@ -195,6 +197,44 @@ func _draw_solar_tower(d: PackedVector2Array, center: Vector2) -> void:
 		draw_circle(top + Vector2(0, -3), 6.0, Color("ffd76a") if hot else def.color.darkened(0.2))
 		if hot:
 			draw_circle(top + Vector2(0, -3), 11.0, Color(1.0, 0.85, 0.4, 0.3))
+
+
+## Port : quai, grue portuaire côté eau et hangar côté terre.
+func _draw_port(d: PackedVector2Array, center: Vector2) -> void:
+	_draw_box(d, 4.0, def.color.darkened(0.2), def.color)
+	var quay := Vector2(0, -4)
+	var toward_water := _water_direction() * 0.3
+	var shed_center := center - toward_water + quay
+	var shed := PackedVector2Array()
+	for p in d:
+		shed.append(shed_center + (p - center) * 0.45)
+	_draw_box(shed, def.height * progress, def.roof_color.lightened(0.3), def.roof_color)
+	if progress < 1.0:
+		return
+	var foot := center + toward_water + quay
+	var top := foot + Vector2(0, -def.height * 2.2)
+	var crane := Color("e8a33a")
+	var jib := toward_water.normalized() * 22.0 + Vector2(0, -6)
+	draw_line(foot + Vector2(-4, 0), top, crane, 2.0)
+	draw_line(foot + Vector2(4, 0), top, crane, 2.0)
+	draw_line(top - jib * 0.4, top + jib, crane, 2.5)
+	draw_line(top + jib * 0.9, top + jib * 0.9 + Vector2(0, 18), Color(0.2, 0.2, 0.2), 1.0)
+
+
+## Décalage (pixels) du centre de l'emprise vers le bord donnant sur l'eau
+## navigable (vers le bas de l'écran à défaut, pour le fantôme).
+func _water_direction() -> Vector2:
+	var dir := Vector2.ZERO
+	var waters: WaterNetwork = GameState.waters
+	var cells := def.footprint(anchor)
+	if waters:
+		for c in cells:
+			for o in WorldMap.NEIGHBORS_4:
+				if c + o not in cells and waters.is_navigable(c + o):
+					dir += Vector2(o)
+	if dir == Vector2.ZERO:
+		dir = Vector2(1, 1)
+	return (Iso.map_to_world(dir.normalized() * def.size.x) - Iso.map_to_world(Vector2.ZERO))
 
 
 ## STEP : bassin en hauteur (digue et plan d'eau).

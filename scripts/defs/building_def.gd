@@ -11,7 +11,7 @@ enum Extraction { NONE, FOREST, DEPOSIT, REFOREST }
 ## demande (pilotable tant que le stock dure).
 enum PowerSource { NONE, FUEL, WIND, SUN, SOLAR_THERMAL }
 ## Forme du dessin provisoire (scenes/world/building_sprite.gd).
-enum Style { BOX, TURBINE, PANELS, CITY, REACTOR, SOLAR_TOWER, BASIN }
+enum Style { BOX, TURBINE, PANELS, CITY, REACTOR, SOLAR_TOWER, BASIN, PORT }
 
 const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique", "Divers"]
 
@@ -47,6 +47,11 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 @export var needs_road := false
 ## Une voie ferrée doit border l'emprise.
 @export var needs_rail := false
+## Une tuile navigable (mer, lac, rivière) doit border l'emprise.
+@export var needs_navigable := false
+## Un port terminé doit se trouver à moins de ce nombre de tuiles, sur la
+## même étendue d'eau (0 : aucun) : desserte des chantiers en mer.
+@export var port_range := 0
 ## Au moins une tuile de l'emprise doit avoir accès à l'eau.
 @export var needs_water_access := false
 ## Au moins une tuile de l'emprise doit toucher la mer.
@@ -137,6 +142,17 @@ func is_station() -> bool:
 	return vehicle_slots > 0 and vehicle_network == VehicleDef.Network.RAIL
 
 
+## Port : point de chargement des barges, qui y sont hébergées.
+func is_port() -> bool:
+	return vehicle_slots > 0 and vehicle_network == VehicleDef.Network.WATER
+
+
+## Plateforme (gare ou port) : entrepôt d'où partent trains ou barges vers
+## les plateformes du même réseau.
+func is_hub() -> bool:
+	return vehicle_slots > 0 and vehicle_network != VehicleDef.Network.ROAD
+
+
 ## Stockage du réseau électrique (batterie, STEP).
 func is_grid_storage() -> bool:
 	return storage_power_mw > 0.0
@@ -206,6 +222,10 @@ func describe_constraints() -> PackedStringArray:
 		lines.append("Sur un gisement de " + WorldMap.DEPOSIT_NAMES[required_deposit].to_lower())
 	if on_sea:
 		lines.append("En mer, au contact de la côte")
+	if port_range > 0:
+		lines.append("Port à moins de %d tuiles" % port_range)
+	if needs_navigable:
+		lines.append("Au bord de l'eau navigable (mer, lac, rivière)")
 	if needs_road:
 		lines.append("Relié à une route")
 	if needs_rail:

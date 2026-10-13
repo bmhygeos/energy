@@ -7,6 +7,7 @@ const DEFS: Array[VehicleDef] = [
 	preload("res://data/vehicles/truck.tres"),
 	preload("res://data/vehicles/armored_truck.tres"),
 	preload("res://data/vehicles/train.tres"),
+	preload("res://data/vehicles/barge.tres"),
 ]
 
 

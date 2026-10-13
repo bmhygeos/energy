@@ -3,7 +3,9 @@ extends Resource
 ## Définition d'un type de véhicule (data/vehicles/*.tres).
 
 ## Réseau emprunté par le véhicule.
-enum Network { ROAD, RAIL }
+enum Network { ROAD, RAIL, WATER }
+
+const NETWORK_NAMES: PackedStringArray = ["route", "rail", "eau"]
 
 @export var id: StringName
 @export var display_name := ""

@@ -14,6 +14,8 @@ var buildings: BuildingRegistry
 var production: Production
 var roads: RoadNetwork
 var rails: RailNetwork
+## Voies navigables (mer, lacs, rivières), données par la carte.
+var waters: WaterNetwork
 var logistics: Logistics
 var grid: PowerGrid
 var research: Research
@@ -53,8 +55,9 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	world_map = MapGenerator.generate(size, seed_value)
 	roads = RoadNetwork.new(world_map)
 	rails = RailNetwork.new(world_map)
+	waters = WaterNetwork.new(world_map)
 	grid = PowerGrid.new(world_map)
-	buildings = BuildingRegistry.new(world_map, roads, grid, rails)
+	buildings = BuildingRegistry.new(world_map, roads, grid, rails, waters)
 	production = Production.new(buildings)
 	logistics = Logistics.new(buildings)
 	research = Research.new(TechDb.DEFS)

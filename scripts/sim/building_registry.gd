@@ -27,6 +27,7 @@ class Placement:
 var map: WorldMap
 var roads: RoadNetwork
 var rails: RailNetwork
+var waters: WaterNetwork
 var grid: PowerGrid
 var _buildings: Dictionary[int, Building] = {}
 ## Identifiant du bâtiment par tuile (0 : libre).
@@ -35,11 +36,12 @@ var _next_id := 1
 
 
 func _init(p_map: WorldMap, p_roads: RoadNetwork = null, p_grid: PowerGrid = null,
-		p_rails: RailNetwork = null) -> void:
+		p_rails: RailNetwork = null, p_waters: WaterNetwork = null) -> void:
 	map = p_map
 	roads = p_roads if p_roads else RoadNetwork.new(map)
 	grid = p_grid if p_grid else PowerGrid.new(map)
 	rails = p_rails if p_rails else RailNetwork.new(map)
+	waters = p_waters if p_waters else WaterNetwork.new(map)
 	_occupancy.resize(map.cell_count())
 
 
@@ -114,6 +116,10 @@ func _placement_error(p: Placement) -> String:
 		return "Nécessite un gisement de %s" % WorldMap.DEPOSIT_NAMES[def.required_deposit].to_lower()
 	if def.on_sea and not _touches_land(p.cells):
 		return "Doit toucher la côte (pour y raccorder une ligne)"
+	if def.port_range > 0 and not _port_within(p.cells, def.port_range):
+		return "Nécessite un port à moins de %d tuiles, sur la même étendue d'eau" % def.port_range
+	if def.needs_navigable and not _touches(waters, p.cells):
+		return "Doit border l'eau navigable (mer, lac, rivière)"
 	if def.needs_road and not _touches(roads, p.cells):
 		return "Doit être relié à une route"
 	if def.needs_rail and not _touches(rails, p.cells):
@@ -140,6 +146,30 @@ func _touches(network: RoadNetwork, cells: Array[Vector2i]) -> bool:
 	for cell in cells:
 		for n in map.neighbors(cell):
 			if network.has_road(n):
+				return true
+	return false
+
+
+## Un port terminé, à moins de [param max_distance] tuiles (Tchebychev) de ces
+## tuiles, donne-t-il sur la même étendue d'eau ?
+func _port_within(cells: Array[Vector2i], max_distance: int) -> bool:
+	var components := {}
+	for cell in cells:
+		components[waters.component_of(cell)] = true
+		for n in map.neighbors(cell):
+			components[waters.component_of(n)] = true
+	components.erase(0)
+	for b: Building in _buildings.values():
+		if not b.def.is_port() or not b.is_complete():
+			continue
+		var near := false
+		for cell in cells:
+			for c in b.cells:
+				near = near or maxi(absi(cell.x - c.x), absi(cell.y - c.y)) <= max_distance
+		if not near:
+			continue
+		for a in waters.access_cells(b):
+			if components.has(waters.component_of(a)):
 				return true
 	return false
 

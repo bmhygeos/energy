@@ -127,7 +127,8 @@ nécessite un navigateur avec WebGL 2.
   (Camions), centrale à charbon, éolienne (Éolien), ferme solaire (Solaire PV),
   voie ferrée, gare et train (Rail), mine d'uranium (Physique nucléaire),
   usine d'enrichissement et camion blindé (Enrichissement), centrale
-  nucléaire et site de déchets (Réacteur), éolienne offshore (Offshore),
+  nucléaire et site de déchets (Réacteur), port, barge et éolienne offshore
+  (Offshore),
   centrale solaire thermique (Solaire thermique), batteries (Batteries),
   STEP (STEP).
 - **Bonus** : Vapeur −15 % de combustible, Mines +10 % d'extraction,
@@ -136,8 +137,7 @@ nécessite un navigateur avec WebGL 2.
   vitesse, Physique nucléaire et des plasmas : recherche +10 % / +20 %,
   Gestion des déchets −50 % de déchets nucléaires…
 - Les technologies marquées « contenu à venir » (filtres CO₂, fusion…) font
-  partie de l'arbre mais leurs bâtiments arriveront aux étapes M7 et M6b ;
-  les ports et barges de l'offshore, à la partie 3 de M6.
+  partie de l'arbre mais leurs bâtiments arriveront aux étapes M7 et M6b.
 
 ## Rail (M5b)
 
@@ -196,7 +196,8 @@ nécessite un navigateur avec WebGL 2.
   (10 MW, au lieu de 6) : puissance × ensoleillement de la tuile × lumière du
   jour × ciel, nulle la nuit. Le panneau d'information détaille ces facteurs.
 - **Éolienne offshore** (16 000 €, Offshore) : en mer, au contact de la côte
-  (une ligne la raccorde depuis la terre), 6 MW, vent marin fort.
+  (une ligne la raccorde depuis la terre), à moins de 15 tuiles d'un port
+  sur la même étendue d'eau ; 6 MW, vent marin fort.
 - **Centrale solaire thermique** (50 000 €, 3×3, ensoleillement ≥ 70 %) :
   stocke la chaleur du jour (120 MWh) et produit 20 MW **à la demande**,
   y compris le soir et la nuit tant que le stock dure ; pilotée par le réseau
@@ -207,3 +208,20 @@ nécessite un navigateur avec WebGL 2.
   surplus et couvrent les manques avant tout délestage. Les centrales
   pilotables suivent la demande ; le stockage lisse l'intermittence des
   renouvelables. Le survol de l'électricité du bandeau donne le stock total.
+
+## Ports et barges (M6, partie 3)
+
+- **Voies navigables** : la mer, les lacs et les rivières, gratuites et sans
+  entretien ; une étendue d'eau isolée forme son propre réseau.
+- **Port** (15 000 €, 2×2, Offshore) : au bord de l'eau navigable et relié à
+  une route ; 400 t toutes marchandises, 3 barges. Il fonctionne comme une
+  gare : les camions y déposent le surplus des producteurs proches, une
+  barge l'emmène vers le port, joignable par l'eau, le plus proche par la
+  route d'un client, et les camions de l'autre rive livrent. Il dessert aussi
+  les chantiers d'éoliennes offshore.
+- **Barge** (12 000 €, à acheter au port) : 200 t, 1,5 tuile/h, entretien
+  60 €/j, 1 €/tuile — lente mais très économique par tonne. Elle part avec
+  au moins 60 % de sa charge, ou dès que le port de départ est presque plein.
+- Le panneau du port signale l'absence d'eau, de route, de port partenaire
+  ou de barge. Les matières dangereuses ne passent ni par les ports ni par
+  les gares.

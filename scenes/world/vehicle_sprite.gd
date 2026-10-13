@@ -1,6 +1,6 @@
 class_name VehicleSprite
 extends Node2D
-## Véhicule animé sur la route (voie de droite) ou la voie ferrée :
+## Véhicule animé sur la route (voie de droite), la voie ferrée ou l'eau :
 ## position interpolée entre deux ticks, caisse colorée selon le chargement.
 
 ## Décalage latéral (voie de droite), en tuiles.
@@ -35,10 +35,14 @@ static func _vec(v: Vector2) -> Vector2:
 
 func _draw() -> void:
 	var f := _forward * vehicle.def.length / 2.0
-	var s := Vector2(-_forward.y, _forward.x) * WIDTH / 2.0
+	var water := vehicle.def.network == VehicleDef.Network.WATER
+	var s := Vector2(-_forward.y, _forward.x) * WIDTH * (2.0 if water else 1.0) / 2.0
 	s.y *= 0.5  # aplatissement isométrique de la largeur
 	var up := Vector2(0, -HEIGHT)
 	var base := PackedVector2Array([f + s, f - s, -f - s, -f + s])
+	if water:
+		# Coque à l'étrave en pointe, posée sur l'eau.
+		base = PackedVector2Array([f * 1.15, f * 0.7 - s, -f - s, -f + s, f * 0.7 + s])
 	draw_colored_polygon(base, Color(0, 0, 0, 0.3))
 	var top := PackedVector2Array()
 	for p in base:

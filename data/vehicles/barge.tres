@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="VehicleDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/vehicle_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"barge"
+display_name = "Barge"
+network = 2
+capacity = 200.0
+speed = 1.5
+cost = 12000
+upkeep_per_day = 60
+cost_per_tile = 1.0
+required_tech = &"offshore"
+color = Color(0.45, 0.2, 0.16, 1)
+length = 56.0

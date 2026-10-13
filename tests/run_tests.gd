@@ -25,6 +25,7 @@ func _init() -> void:
 	_test_weather()
 	_test_renewables()
 	_test_storage()
+	_test_ports()
 	_test_cities()
 	_test_grid()
 	_test_tech_data()
@@ -1054,6 +1055,10 @@ func _test_renewables() -> void:
 	var offshore := BuildingDb.get_def(&"offshore_wind")
 	_check(reg3.check_placement(offshore, Vector2i(10, 8)).error == "Doit être construit en mer", "offshore : pas sur terre")
 	_check(reg3.check_placement(offshore, Vector2i(25, 8)).error.begins_with("Doit toucher la côte"), "offshore : au contact de la côte")
+	_check(reg3.check_placement(offshore, Vector2i(20, 8)).error.begins_with("Nécessite un port"), "offshore : port requis")
+	reg3.roads.add_cells(_road_line(Vector2i(14, 2), Vector2i(19, 2)))
+	_built(reg3, &"port", Vector2i(19, 4))
+	_check(not reg3.check_placement(offshore, Vector2i(20, 15 + 5)).is_valid(), "offshore : port trop loin")
 	var mill := _built(reg3, &"offshore_wind", Vector2i(20, 8))
 	var port_town := _add_city(reg3, Vector2i(12, 8), 3.0)
 	reg3.grid.add_cells(TilePlan.l_path(Vector2i(13, 8), Vector2i(19, 8)))
@@ -1102,3 +1107,63 @@ func _test_storage() -> void:
 			_check(r.discharged <= r.charged * battery.def.storage_efficiency + 0.001, "rendement de la batterie respecté")
 		results.append(r)
 	_check(results[1].shed < results[0].shed, "moins de coupures avec la batterie (%d < %d h)" % [results[1].shed, results[0].shed])
+
+
+## Barges : bûcherons à l'ouest d'un lac, centrale à l'est, reliés seulement
+## par l'eau entre deux ports.
+func _test_ports() -> void:
+	var map := _flat_map(Vector2i(48, 16))
+	for y in 16:
+		for x in range(17, 30):
+			map.terrain[map.index_of(Vector2i(x, y))] = TerrainDef.Type.LAKE
+	var reg := BuildingRegistry.new(map)
+	var waters := reg.waters
+	_check(waters.is_navigable(Vector2i(20, 3)) and not waters.is_navigable(Vector2i(10, 3)), "lac navigable, terre non")
+	_check(waters.tile_count() == 13 * 16 and waters.daily_upkeep() == 0, "voies navigables gratuites")
+	reg.roads.add_cells(_road_line(Vector2i(0, 4), Vector2i(16, 4)))
+	reg.roads.add_cells(_road_line(Vector2i(30, 4), Vector2i(46, 4)))
+	var port_def := BuildingDb.get_def(&"port")
+	_check(reg.check_placement(port_def, Vector2i(12, 6)).error.contains("eau navigable"), "port : au bord de l'eau")
+	var prod := Production.new(reg)
+	var lg := Logistics.new(reg)
+	for y in [1, 2]:
+		for x in range(0, 8):
+			map.terrain[map.index_of(Vector2i(x, y))] = TerrainDef.Type.FOREST
+			map.wood[map.index_of(Vector2i(x, y))] = WorldMap.WOOD_PER_FOREST
+	_built(reg, &"lumberjack", Vector2i(2, 3))
+	_built(reg, &"lumberjack", Vector2i(5, 3))
+	var depot_w := _built(reg, &"depot", Vector2i(10, 6))
+	var port_a := _built(reg, &"port", Vector2i(16, 6))
+	var port_b := _built(reg, &"port", Vector2i(31, 6))
+	var depot_e := _built(reg, &"depot", Vector2i(40, 6))
+	var plant := _built(reg, &"biomass_plant", Vector2i(44, 3))
+	for depot: Building in [depot_w, depot_e]:
+		for id in depot.def.starting_vehicles:
+			lg.add_vehicle(depot, VehicleDb.get_def(id))
+	var barge_def := VehicleDb.get_def(&"barge")
+	_check(lg.buy_error(depot_w, barge_def) == "Les barges s'achètent au port", "pas de barge au dépôt")
+	_check(not lg.buy_error(port_a, VehicleDb.get_def(&"train")).is_empty(), "pas de train au port")
+	_check(lg.buy_error(port_a, barge_def).is_empty(), "barge achetable au port")
+	_check(lg.diagnose(port_b).contains("aucune barge"), "diagnostic : aucune barge (%s)" % lg.diagnose(port_b))
+	_check(lg.distance(port_a, plant) < 0 and lg.distance(port_a, port_b, waters) > 0,
+		"ports reliés par l'eau seulement")
+	var barge := lg.add_vehicle(port_a, barge_def)
+	_check(lg.diagnose(port_b).is_empty(), "diagnostic port : rien à signaler (%s)" % lg.diagnose(port_b))
+	var on_land := 0
+	var deliveries := 0
+	var running := 0
+	for t in 1500:
+		prod.step(t)
+		var was_unloading := barge.state == Vehicle.State.UNLOADING
+		lg.step()
+		if barge.state in [Vehicle.State.TO_SOURCE, Vehicle.State.TO_DESTINATION, Vehicle.State.RETURNING] \
+				and not waters.is_navigable(barge.current_cell()):
+			on_land += 1
+		if was_unloading and barge.state != Vehicle.State.UNLOADING:
+			deliveries += 1
+		if t >= 900 and plant.status == Building.Status.RUNNING:
+			running += 1
+	_check(on_land == 0, "la barge reste sur l'eau (%d)" % on_land)
+	_check(deliveries >= 2, "la barge livre le port B (%d fois)" % deliveries)
+	_check(running >= 300, "centrale approvisionnée par barge (%d / 600 h)" % running)
+	_check(lg.diagnose(port_a).is_empty(), "diagnostic port A : rien à signaler (%s)" % lg.diagnose(port_a))

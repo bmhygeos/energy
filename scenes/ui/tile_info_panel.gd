@@ -186,19 +186,21 @@ func _building_lines(b: Building) -> PackedStringArray:
 			lines.append("En route : %s t" % Format.decimal(b.reserved_in))
 	if def.vehicle_slots > 0:
 		var station := def.is_station()
+		var port := def.is_port()
 		var fleet := GameState.logistics.vehicles_of(b)
 		var busy := fleet.filter(func(v: Vehicle) -> bool: return v.state != Vehicle.State.IDLE).size()
 		var for_sale := fleet.filter(func(v: Vehicle) -> bool: return v.retiring).size()
-		lines.append("%s : %d / %d (%d en mission)" % ["Trains" if station else "Véhicules",
+		lines.append("%s : %d / %d (%d en mission)" % ["Trains" if station else "Barges" if port else "Véhicules",
 			fleet.size() - for_sale, def.vehicle_slots, busy])
 		if for_sale > 0:
 			lines.append("À vendre au retour : %d" % for_sale)
 		if busy < fleet.size():
 			lines.append("%s : %d, rien à transporter pour l'instant" % [
-				"En gare" if station else "Au dépôt", fleet.size() - busy])
+				"En gare" if station else "Au port" if port else "Au dépôt", fleet.size() - busy])
 			lines.append("  (départ quand une source a ≥ %d %% d'un chargement)" % roundi(Logistics.FULL_LOAD_RATIO * 100.0))
 		if b != _actions_for:
 			lines.append("Cliquez sur la gare pour acheter des trains" if station
+				else "Cliquez sur le port pour acheter des barges" if port
 				else "Cliquez sur le dépôt pour acheter des véhicules")
 	var available := Production.resource_available(GameState.world_map, def, b.anchor)
 	if available >= 0.0:

@@ -1,10 +1,11 @@
 class_name Logistics
 extends RefCounted
-## Transport des marchandises : véhicules des dépôts et trains des gares,
-## missions source (sortie disponible) → destination (entrée en manque),
-## surplus vers les entrepôts et gares, trains de gare en gare vers les
-## clients, réservations des quantités promises, déplacement le long des
-## routes et des voies, coût d'usage. Pure donnée.
+## Transport des marchandises : véhicules des dépôts, trains des gares et
+## barges des ports, missions source (sortie disponible) → destination
+## (entrée en manque), surplus vers les entrepôts, gares et ports, trains et
+## barges de plateforme en plateforme vers les clients, réservations des
+## quantités promises, déplacement le long des routes, des voies et de
+## l'eau, coût d'usage. Pure donnée.
 
 ## Durée d'un chargement / déchargement (heures).
 const LOAD_HOURS := 1
@@ -34,6 +35,7 @@ class Report:
 var registry: BuildingRegistry
 var roads: RoadNetwork
 var rails: RailNetwork
+var waters: WaterNetwork
 var vehicles: Array[Vehicle] = []
 ## Facteur de vitesse des technologies acquises.
 var speed_factor := 1.0
@@ -47,11 +49,21 @@ func _init(p_registry: BuildingRegistry) -> void:
 	registry = p_registry
 	roads = registry.roads
 	rails = registry.rails
+	waters = registry.waters
 
 
 ## Réseau emprunté par [param v].
 func _net(v: Vehicle) -> RoadNetwork:
-	return rails if v.def.network == VehicleDef.Network.RAIL else roads
+	return _net_of(v.def.network)
+
+
+func _net_of(network: VehicleDef.Network) -> RoadNetwork:
+	match network:
+		VehicleDef.Network.RAIL:
+			return rails
+		VehicleDef.Network.WATER:
+			return waters
+	return roads
 
 
 # --- Véhicules -------------------------------------------------------------
@@ -65,8 +77,12 @@ func buy_error(depot: Building, def: VehicleDef, money: int = -1) -> String:
 	if depot.def.vehicle_slots <= 0:
 		return "Ce bâtiment n'héberge pas de véhicules"
 	if depot.def.vehicle_network != def.network:
-		return "Les trains s'achètent en gare" if def.network == VehicleDef.Network.RAIL \
-			else "Les véhicules routiers s'achètent au dépôt"
+		match def.network:
+			VehicleDef.Network.RAIL:
+				return "Les trains s'achètent en gare"
+			VehicleDef.Network.WATER:
+				return "Les barges s'achètent au port"
+		return "Les véhicules routiers s'achètent au dépôt"
 	if not depot.is_complete():
 		return "Dépôt en chantier"
 	if active_vehicles_of(depot).size() >= depot.def.vehicle_slots:
@@ -198,7 +214,7 @@ func _put(b: Building, good: int, qty: float) -> void:
 func distance(a: Building, b: Building, net: RoadNetwork = null) -> int:
 	if net == null:
 		net = roads
-	var key := Vector3i(mini(a.id, b.id), maxi(a.id, b.id), 1 if net == rails else 0)
+	var key := Vector3i(mini(a.id, b.id), maxi(a.id, b.id), [roads, rails, waters].find(net))
 	if not _distance_cache.has(key):
 		var path := net.path_between(net.access_cells(a), net.access_cells(b))
 		_distance_cache[key] = path.size() - 1 if not path.is_empty() else -1
@@ -262,8 +278,8 @@ func on_building_removed(b: Building) -> Array[Vehicle]:
 ## signaler). Pour le panneau d'information.
 func diagnose(b: Building) -> String:
 	var def := b.def
-	if def.is_station() and b.is_complete():
-		return _diagnose_station(b)
+	if def.is_hub() and b.is_complete():
+		return _diagnose_hub(b)
 	if not b.is_complete() or def.vehicle_slots > 0 or not def.uses_logistics():
 		return ""
 	var access := roads.access_cells(b)
@@ -338,18 +354,23 @@ static func can_carry(v: Vehicle, good: int) -> bool:
 	return v.def.armored == Goods.is_hazardous(good)
 
 
-func _diagnose_station(b: Building) -> String:
-	if rails.access_cells(b).is_empty():
-		return "non reliée à une voie ferrée"
+## Gare ou port : accès, plateforme partenaire, trains ou barges.
+func _diagnose_hub(b: Building) -> String:
+	var network := b.def.vehicle_network
+	var net := _net_of(network)
+	var port := network == VehicleDef.Network.WATER
+	if net.access_cells(b).is_empty():
+		return "sans accès à l'eau navigable" if port else "non reliée à une voie ferrée"
 	if roads.access_cells(b).is_empty():
-		return "non reliée à une route"
+		return "non relié à une route" if port else "non reliée à une route"
 	var linked: Array[Building] = registry.all().filter(func(o: Building) -> bool:
-		return o != b and o.def.is_station() and o.is_complete() and distance(b, o, rails) >= 0)
+		return o != b and o.def.is_hub() and o.def.vehicle_network == network and o.is_complete() \
+			and distance(b, o, net) >= 0)
 	if linked.is_empty():
-		return "aucune autre gare joignable par le rail"
+		return "aucun autre port joignable par l'eau" if port else "aucune autre gare joignable par le rail"
 	if not vehicles.any(func(v: Vehicle) -> bool:
-			return v.def.network == VehicleDef.Network.RAIL and (v.depot == b or v.depot in linked)):
-		return "aucun train : achetez-en un en gare"
+			return v.def.network == network and (v.depot == b or v.depot in linked)):
+		return "aucune barge : achetez-en une au port" if port else "aucun train : achetez-en un en gare"
 	return ""
 
 
@@ -459,9 +480,9 @@ func _dispatch() -> void:
 	var available: Array[Vehicle] = vehicles.filter(func(v: Vehicle) -> bool:
 		return v.is_available() and v.def.network == VehicleDef.Network.ROAD)
 	_dispatch_road(available)
-	var trains: Array[Vehicle] = vehicles.filter(func(v: Vehicle) -> bool:
-		return v.is_available() and v.def.network == VehicleDef.Network.RAIL)
-	_dispatch_trains(trains)
+	for network in [VehicleDef.Network.RAIL, VehicleDef.Network.WATER]:
+		_dispatch_hubs(vehicles.filter(func(v: Vehicle) -> bool:
+			return v.is_available() and v.def.network == network), network)
 
 
 func _dispatch_road(available: Array[Vehicle]) -> void:
@@ -513,21 +534,22 @@ func _dispatch_road(available: Array[Vehicle]) -> void:
 			available.erase(v)
 
 
-## Trains : le stock d'une gare part vers la gare joignable par le rail qui
-## rapproche cette marchandise de ses clients, par chargements presque
-## complets (ou tout de suite si la gare de départ est presque pleine).
-func _dispatch_trains(available: Array[Vehicle]) -> void:
+## Trains et barges : le stock d'une plateforme (gare, port) part vers la
+## plateforme du même réseau qui rapproche cette marchandise de ses clients,
+## par chargements presque complets (ou tout de suite si la plateforme de
+## départ est presque pleine).
+func _dispatch_hubs(available: Array[Vehicle], network: VehicleDef.Network) -> void:
 	if available.is_empty():
 		return
 	for station in registry.all():
-		if not station.def.is_station() or not station.is_complete():
+		if not station.def.is_hub() or station.def.vehicle_network != network or not station.is_complete():
 			continue
 		for good: int in station.store.keys():
 			while not available.is_empty():
 				var stock := supply(station, good)
 				if stock < MIN_LOAD:
 					break
-				var target := _best_station(station, good)
+				var target := _best_hub(station, good)
 				if target == null:
 					break
 				var v := _nearest_vehicle(available, station)
@@ -542,15 +564,17 @@ func _dispatch_trains(available: Array[Vehicle]) -> void:
 				available.erase(v)
 
 
-## Gare la plus proche par le rail de [param from], ayant de la place, et
-## plus proche par la route que [param from] d'un client de [param good].
-func _best_station(from: Building, good: int) -> Building:
+## Plateforme du réseau de [param from] la plus proche (par ce réseau),
+## ayant de la place, et plus proche par la route que [param from] d'un
+## client de [param good].
+func _best_hub(from: Building, good: int) -> Building:
+	var network := from.def.vehicle_network
 	var best: Building = null
 	var best_d := 0
 	for b in registry.all():
-		if b == from or not b.def.is_station() or storage_room(b) < MIN_LOAD:
+		if b == from or not b.def.is_hub() or b.def.vehicle_network != network or storage_room(b) < MIN_LOAD:
 			continue
-		var d := distance(from, b, rails)
+		var d := distance(from, b, _net_of(network))
 		if d < 0 or (best != null and d >= best_d) or not _closer_to_client(b, from, good):
 			continue
 		best = b
