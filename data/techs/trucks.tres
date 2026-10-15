@@ -8,6 +8,6 @@ id = &"trucks"
 display_name = "Camions"
 description = "Camions de 30 t, plus rapides que les charrettes."
 era = 2
-cost = 900
+cost = 600
 prerequisites = Array[StringName]([&"prospecting"])
 modifiers = Dictionary[StringName, float]({&"vehicle_speed": 1.1})

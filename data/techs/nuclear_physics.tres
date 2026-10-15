@@ -8,6 +8,6 @@ id = &"nuclear_physics"
 display_name = "Physique nucléaire"
 description = "Bases de l'atome : mine d'uranium ; laboratoires plus productifs."
 era = 4
-cost = 3500
+cost = 6000
 prerequisites = Array[StringName]([&"transformers"])
 modifiers = Dictionary[StringName, float]({&"research": 1.1})

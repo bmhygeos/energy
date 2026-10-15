@@ -8,6 +8,6 @@ id = &"transformers"
 display_name = "Transformateurs"
 description = "Postes de transformation : pertes encore réduites."
 era = 3
-cost = 2400
+cost = 4000
 prerequisites = Array[StringName]([&"hv_lines"])
 modifiers = Dictionary[StringName, float]({&"grid_loss": 0.6})

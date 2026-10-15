@@ -38,6 +38,8 @@ nécessite un navigateur avec WebGL 2.
 | Construire | bouton du menu « Construction » puis clic sur la carte (le fantôme est vert si le placement est valide, sinon le motif s'affiche en bas) ; Échap ou re-clic sur le bouton pour quitter |
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment (rembourse 25 % du coût, 75 % pour un chantier) |
 | Arbre technologique | `T` ou bouton « Recherche » du bandeau ; Échap pour fermer |
+| Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
+| Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, vent, soleil, eau, gisements, réseau) ou boutons en bas à droite ; les gisements ne sont visibles qu'après la technologie Prospection |
 | Nouvelle carte | champ « Graine » + Générer, ou Aléatoire |
 
@@ -90,7 +92,7 @@ nécessite un navigateur avec WebGL 2.
 
 - **Villes** (5 sur une carte 64×64) : demande de base de 3 à 10 MW, modulée
   par l'heure (creux la nuit, pic à 19 h : ×1,3) et la saison (hiver ×1,25,
-  été ×0,9) ; elle croît de 12 %/an si la ville est bien alimentée, 2 % sinon.
+  été ×0,9) ; elle croît de 25 %/an si la ville est bien alimentée, 2 % sinon.
   Une ville ne se démolit pas. Commencez par une petite ville : une centrale
   biomasse (8 MW) ne suffit pas pour les grandes.
 - **Lignes HT** : outil « Ligne HT » puis glisser (tracé en L). 40 €/tuile,
@@ -101,7 +103,7 @@ nécessite un navigateur avec WebGL 2.
 - **Équilibre, chaque heure, par réseau** : pertes de 0,2 % par tuile de ligne
   (25 % max.) ; les villes sont servies de la plus petite à la plus grande,
   celles qui ne peuvent l'être entièrement sont **délestées** (coupure) avec
-  une pénalité de 1 €/MWh non livré ; le surplus charge les batteries et
+  une pénalité de 5 €/MWh non livré ; le surplus charge les batteries et
   STEP du réseau, sinon il est perdu.
 - **Consignes** : les centrales à combustible ne produisent que ce que
   demandent leurs villes (+5 % de marge, pertes comprises), au prorata du
@@ -143,7 +145,7 @@ nécessite un navigateur avec WebGL 2.
 
 ## Rail (M5b)
 
-- **Technologie Rail** (ère 2, 2 000 RP, après Centrale à charbon) : débloque
+- **Technologie Rail** (ère 2, 1 800 RP, après Centrale à charbon) : débloque
   la voie ferrée, la gare de marchandises et le train.
 - **Voies ferrées** : outil « Voie ferrée » puis glisser (tracé en L).
   150 €/tuile, 200 € en forêt (défrichée), 300 € en colline, pont de 1 200 €
@@ -151,7 +153,7 @@ nécessite un navigateur avec WebGL 2.
   2 €/tuile/jour. Une voie peut croiser une route (passage à niveau).
   Démolition (`X`) sans remboursement ; sur un passage à niveau, la voie part
   avant la route.
-- **Gare de marchandises** (10 000 €, 2×2, reliée à une route **et** à une
+- **Gare de marchandises** (20 000 €, 2×2, reliée à une route **et** à une
   voie, 300 t toutes marchandises, 2 trains) : sélectionnez-la pour acheter ou
   revendre des **trains** (120 t, 3 tuiles/h, 20 000 €, entretien 120 €/j,
   4 €/tuile).
@@ -169,15 +171,15 @@ nécessite un navigateur avec WebGL 2.
 
 ## Nucléaire (M6, partie 1)
 
-- **Mine d'uranium** (8 000 €, sur gisement d'uranium) : 0,5 t/h de minerai.
-- **Usine d'enrichissement** (18 000 €, 2×2) : 0,5 t/h de minerai → 0,1 t/h
+- **Mine d'uranium** (40 000 €, sur gisement d'uranium) : 0,5 t/h de minerai.
+- **Usine d'enrichissement** (100 000 €, 2×2) : 0,5 t/h de minerai → 0,1 t/h
   de combustible ; raccordée au réseau et alimentée (4 MW).
-- **Centrale nucléaire** (60 000 €, 3×3, près de l'eau) : 120 MW pour
+- **Centrale nucléaire** (450 000 €, 3×3, près de l'eau) : 120 MW pour
   0,1 t/h de combustible, pilotée par le réseau comme les autres centrales à
   combustible. Elle produit autant de **déchets nucléaires** (moitié moins
   avec Gestion des déchets) ; stock de déchets plein → arrêt (pastille
   orange), et le réseau ne compte plus sur elle.
-- **Site de stockage des déchets** (15 000 €, 2×2) : entrepose 400 t de
+- **Site de stockage des déchets** (60 000 €, 2×2) : entrepose 400 t de
   déchets, définitivement ; une fois plein, en construire un autre.
 - **Matières dangereuses** (combustible, déchets) : transportées seulement par
   **camion blindé** (8 t, 1,2 tuile/h, 6 000 €, à acheter au dépôt), qui ne
@@ -197,15 +199,15 @@ nécessite un navigateur avec WebGL 2.
   « pas de vent » par calme plat). **Ferme solaire**
   (10 MW, au lieu de 6) : puissance × ensoleillement de la tuile × lumière du
   jour × ciel, nulle la nuit. Le panneau d'information détaille ces facteurs.
-- **Éolienne offshore** (16 000 €, Offshore) : en mer, au contact de la côte
+- **Éolienne offshore** (30 000 €, Offshore) : en mer, au contact de la côte
   (une ligne la raccorde depuis la terre), à moins de 15 tuiles d'un port
   sur la même étendue d'eau ; 6 MW, vent marin fort.
-- **Centrale solaire thermique** (50 000 €, 3×3, ensoleillement ≥ 70 %) :
+- **Centrale solaire thermique** (90 000 €, 3×3, ensoleillement ≥ 70 %) :
   stocke la chaleur du jour (120 MWh) et produit 20 MW **à la demande**,
   y compris le soir et la nuit tant que le stock dure ; pilotée par le réseau
   comme une centrale à combustible.
-- **Batteries** (9 000 €, 25 MWh, 10 MW, rendement 90 %) et **STEP**
-  (40 000 €, 2×2, près de l'eau et à côté d'une colline ou d'une montagne,
+- **Batteries** (20 000 €, 25 MWh, 10 MW, rendement 90 %) et **STEP**
+  (120 000 €, 2×2, près de l'eau et à côté d'une colline ou d'une montagne,
   400 MWh, 40 MW, rendement 75 %) : raccordées au réseau, elles chargent les
   surplus et couvrent les manques avant tout délestage. Les centrales
   pilotables suivent la demande ; le stockage lisse l'intermittence des
@@ -215,7 +217,7 @@ nécessite un navigateur avec WebGL 2.
 
 - **Voies navigables** : la mer, les lacs et les rivières, gratuites et sans
   entretien ; une étendue d'eau isolée forme son propre réseau.
-- **Port** (15 000 €, 2×2, Offshore) : au bord de l'eau navigable et relié à
+- **Port** (30 000 €, 2×2, Offshore) : au bord de l'eau navigable et relié à
   une route ; 400 t toutes marchandises, 3 barges. Il fonctionne comme une
   gare : les camions y déposent le surplus des producteurs proches, une
   barge l'emmène vers le port, joignable par l'eau, le plus proche par la
@@ -286,3 +288,62 @@ nécessite un navigateur avec WebGL 2.
   événement, la météo du bandeau passe en orange et son survol liste les
   événements en cours. Le panneau d'un bâtiment arrêté donne le délai de
   reprise. Les réparations apparaissent dans le bilan du jour.
+
+## Statistiques et jalons (M8, partie 1)
+
+- **Fenêtre Statistiques** (`G` ou bouton « Stats ») : un point par jour,
+  sur 30 jours, 1 an ou toute la partie. Le survol d'un graphique donne la
+  date et les valeurs.
+  - *Électricité* : production par type de centrale (aires empilées) et
+    demande ; délestages.
+  - *Finances* : trésorerie ; ventes, subventions, dépenses et bilan du
+    jour ; prix moyen du marché.
+  - *Environnement* : émissions de CO₂ ; part renouvelable et satisfaction.
+  - *Villes et recherche* : population ; recherche produite.
+  - Le compteur d'images par seconde a quitté le bandeau pour cette fenêtre.
+- **Jalons du bac à sable** (onglet « Jalons ») : 12 objectifs facultatifs,
+  vérifiés chaque fin de journée et annoncés une fois atteints : premier
+  mégawatt, une ville puis toutes les villes alimentées 24 h sur 24, 100 MW
+  livrés en moyenne, ère atomique, moitié verte (50 % renouvelable), zéro
+  carbone, habitants comblés (80 %), millionnaire, 20 technologies,
+  500 000 habitants, ère de la fusion.
+
+## Tutoriel et info-bulles (M8, partie 2)
+
+- **Tutoriel** en 9 étapes, affiché en haut de l'écran au lancement (`H`
+  pour le masquer ou le rouvrir) : caméra et temps, bûcheron, centrale
+  biomasse, dépôt et routes, première livraison, ligne vers une ville,
+  recherche, statistiques, puis un résumé des mécaniques avancées. Les
+  étapes d'action passent d'elles-mêmes quand elles sont accomplies ;
+  « Passer » et « Précédent » permettent de naviguer.
+- **Info-bulles** : date (effet de la saison sur la demande, durée du jour,
+  prochaine saison), trésorerie (bilan d'hier, entretien), boutons de calque
+  (ce que montre chaque calque) ; délai d'apparition réduit à 0,3 s.
+
+## Équilibrage (M8, partie 3)
+
+Réglé sur le rythme cible d'une partie d'1 h à ×1 (1 min réelle = 25 jours
+de jeu). `godot --headless -s res://tools/balance_report.gd` imprime le
+rapport : arrivée de chaque ère pour un joueur moyen (1 laboratoire à 1 min,
+2 à 3 min, 4 à 10 min, 8 à 22 min, 12 à 40 min), rentabilité des centrales
+et demande des villes année par année.
+
+- **Recherche** : rendement décroissant des laboratoires (n laboratoires
+  produisent comme n^0,75 : 4 labos ≈ 2,8, 9 labos ≈ 5,2), indiqué dans le
+  panneau du laboratoire. Coûts revus ère par ère : ère 2 moins chère (le
+  charbon arrive vers 5 min), ères 3 à 6 plus chères (réseau ≈ 11 min,
+  atome ≈ 18 min, renouvelables ≈ 28 min, stockage ≈ 38 min).
+- **Demande** : les villes bien alimentées croissent de 25 %/an (au lieu de
+  12 %) : ≈ 32 MW au départ, 87 MW en an 5 (le nucléaire devient utile),
+  236 MW en an 9, 640 MW en fin de partie.
+- **Centrales** : prix et entretien relevés au-delà de l'ère du bois pour
+  qu'elles se remboursent en 10 à 45 jours de jeu à pleine demande (au lieu
+  de 2 à 20) et que l'entretien pèse sur les centrales surdimensionnées :
+  charbon 90 000 € (900 €/j), nucléaire 450 000 € (2 500 €/j), éolienne
+  10 000 €, ferme solaire 22 000 €, offshore 30 000 €, solaire thermique
+  90 000 €, batteries 20 000 €, STEP 120 000 € ; mines, usine
+  d'enrichissement, site de déchets, gare et port suivent. Le bois (départ
+  à 50 000 €) est inchangé, à part l'entretien de la centrale biomasse
+  (150 €/j).
+- **Délestage** : pénalité portée à 5 €/MWh non livré (la moitié du prix),
+  pour que la fiabilité et le stockage comptent.

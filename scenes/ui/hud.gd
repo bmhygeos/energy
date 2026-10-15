@@ -13,6 +13,17 @@ const LEGENDS: PackedStringArray = [
 	"Pollution de l'air : faible → irrespirable",
 ]
 
+## Info-bulles des calques (par OverlayLayer.Mode).
+const OVERLAY_TIPS: PackedStringArray = [
+	"Aucun calque (O pour faire défiler)",
+	"Altitude : repérer collines et montagnes (routes et lignes plus chères)",
+	"Potentiel éolien : plus fort sur les côtes et les crêtes",
+	"Ensoleillement : plus fort dans les déserts",
+	"Accès à l'eau : requis par les centrales à charbon et nucléaires",
+	"Gisements de charbon et d'uranium (après Prospection)",
+	"État du réseau : villes alimentées ou délestées, centrales, lignes",
+	"Pollution de l'air : à tenir loin des villes",
+]
 ## Teinte de la météo pendant un événement (détail au survol).
 const EVENT_COLOR := Color("f0a020")
 
@@ -26,7 +37,6 @@ var _overlay_buttons: Array[Button] = []
 @onready var _power_label: Label = %PowerLabel
 @onready var _sales_label: Label = %SalesLabel
 @onready var _research_button: Button = %ResearchButton
-@onready var _fps_label: Label = %FpsLabel
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
 @onready var _legend_gradient: TextureRect = %LegendGradient
@@ -53,6 +63,7 @@ func _ready() -> void:
 		_refresh_research()
 		_refresh_overlay_locks())
 	_research_button.pressed.connect(func() -> void: get_node("../TechTree").toggle())
+	%StatsButton.pressed.connect(func() -> void: get_node("../StatsWindow").toggle())
 	for sig: Signal in [EventBus.building_completed, EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh_upkeep())
 	for sig: Signal in [EventBus.vehicle_added, EventBus.vehicle_removed]:
@@ -64,10 +75,6 @@ func _ready() -> void:
 	_on_money_changed(GameState.money)
 	_on_game_started(Rng.seed_value)
 	_on_overlay_changed(_overlay_mode)
-
-
-func _process(_delta: float) -> void:
-	_fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -89,7 +96,7 @@ func _refresh_overlay_locks() -> void:
 		var locked := _overlay_locked(mode)
 		_overlay_buttons[mode].disabled = locked
 		_overlay_buttons[mode].tooltip_text = "Nécessite la technologie : %s (T)" % \
-			TechDb.get_def(GameState.PROSPECTING_TECH).display_name if locked else ""
+			TechDb.get_def(GameState.PROSPECTING_TECH).display_name if locked else OVERLAY_TIPS[mode]
 	if _overlay_locked(_overlay_mode):
 		EventBus.overlay_changed.emit(OverlayLayer.Mode.NONE)
 
@@ -118,6 +125,8 @@ func _on_generate_pressed() -> void:
 
 func _on_tick(tick: int) -> void:
 	_date_label.text = GameDate.format(tick)
+	if GameDate.hour_of_day(tick) == 0 or _date_label.tooltip_text.is_empty():
+		_date_label.tooltip_text = _date_tooltip(tick)
 	var weather := GameState.weather
 	if weather == null:
 		return
@@ -138,6 +147,19 @@ func _on_speed_changed(speed: int) -> void:
 
 func _on_money_changed(money: int) -> void:
 	_money_label.text = "%s €" % Format.thousands(money)
+	var economy := GameState.economy
+	if economy:
+		_money_label.tooltip_text = "Argent en caisse\nBilan d'hier : %s €\nEntretien : %s €/jour (débité à minuit)" % [
+			Format.thousands(roundi(economy.yesterday.net())), Format.thousands(GameState.daily_upkeep())]
+
+
+## Saison, demande saisonnière, durée du jour, prochaine saison.
+static func _date_tooltip(tick: int) -> String:
+	var season := GameDate.season(tick)
+	var days_left := GameDate.DAYS_PER_SEASON - GameDate.day_of_season(tick) + 1
+	return "%s, an %d\nDemande des villes : ×%s (saison)\nJour : %d h de soleil\n%s dans %d jour(s)\n1 jour ≈ 2,4 s à ×1" % [
+		GameDate.SEASON_NAMES[season], GameDate.year(tick), Format.decimal(City.SEASONAL[season], 2),
+		roundi(Weather.DAY_LENGTH[season]), GameDate.SEASON_NAMES[(season + 1) % GameDate.SEASONS_PER_YEAR], days_left]
 
 
 func _on_grid(report: PowerGrid.Report) -> void:

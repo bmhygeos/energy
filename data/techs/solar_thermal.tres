@@ -8,5 +8,5 @@ id = &"solar_thermal"
 display_name = "Solaire thermique"
 description = "Centrales solaires thermiques : la chaleur stockée produit aussi la nuit."
 era = 5
-cost = 6500
+cost = 9500
 prerequisites = Array[StringName]([&"solar_pv"])

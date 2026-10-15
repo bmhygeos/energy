@@ -8,5 +8,5 @@ id = &"rail"
 display_name = "Rail"
 description = "Voies ferrées, gares de marchandises et trains : gros volumes, rapides, sur de longues distances."
 era = 2
-cost = 2000
+cost = 1800
 prerequisites = Array[StringName]([&"coal_plant"])

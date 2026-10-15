@@ -8,5 +8,5 @@ id = &"batteries"
 display_name = "Batteries"
 description = "Batteries : stockent les surplus du réseau et couvrent les manques."
 era = 6
-cost = 7000
+cost = 10000
 prerequisites = Array[StringName]([&"solar_pv"])

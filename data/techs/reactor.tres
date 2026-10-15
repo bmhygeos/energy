@@ -8,5 +8,5 @@ id = &"reactor"
 display_name = "Réacteur"
 description = "Centrale nucléaire et site de stockage des déchets."
 era = 4
-cost = 5000
+cost = 8000
 prerequisites = Array[StringName]([&"enrichment"])

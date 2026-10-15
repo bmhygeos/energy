@@ -8,5 +8,5 @@ id = &"coal_plant"
 display_name = "Centrale à charbon"
 description = "Grosses centrales thermiques au charbon."
 era = 2
-cost = 1500
+cost = 1000
 prerequisites = Array[StringName]([&"steam"])

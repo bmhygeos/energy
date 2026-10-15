@@ -66,10 +66,17 @@ text = "Bilan 0 €/j"
 
 [node name="ResearchButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 0)
+custom_minimum_size = Vector2(130, 0)
 layout_mode = 2
 focus_mode = 0
 text = "Recherche (T)"
+
+[node name="StatsButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Graphiques et jalons (G)"
+text = "Stats (G)"
 
 [node name="Spacer" type="Control" parent="TopBar/Margin/Row"]
 layout_mode = 2
@@ -134,13 +141,6 @@ focus_mode = 0
 toggle_mode = true
 button_group = SubResource("ButtonGroup_speed")
 text = "×4"
-
-[node name="FpsLabel" type="Label" parent="TopBar/Margin/Row"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(55, 0)
-layout_mode = 2
-horizontal_alignment = 2
-text = "0 FPS"
 
 [node name="OverlayPanel" type="PanelContainer" parent="."]
 anchors_preset = 3

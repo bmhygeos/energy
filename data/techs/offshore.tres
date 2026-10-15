@@ -8,5 +8,5 @@ id = &"offshore"
 display_name = "Offshore"
 description = "Ports et barges, éoliennes en mer au vent fort et régulier."
 era = 5
-cost = 6000
+cost = 9000
 prerequisites = Array[StringName]([&"wind"])

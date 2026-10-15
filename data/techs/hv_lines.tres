@@ -8,6 +8,6 @@ id = &"hv_lines"
 display_name = "Lignes HT"
 description = "Tension plus élevée : moins de pertes."
 era = 3
-cost = 1800
+cost = 6000
 prerequisites = Array[StringName]([&"coal_plant"])
 modifiers = Dictionary[StringName, float]({&"grid_loss": 0.6})

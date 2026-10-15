@@ -8,6 +8,6 @@ id = &"advanced_fusion"
 display_name = "Fusion avancée"
 description = "Rendement accru, coûts réduits (étape M6b)."
 era = 7
-cost = 22000
+cost = 20000
 prerequisites = Array[StringName]([&"commercial_fusion"])
 placeholder = true

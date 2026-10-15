@@ -71,6 +71,14 @@ tech_tree={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":84)]
 }
+statistics={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":71)]
+}
+tutorial={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":72)]
+}
 time_toggle_pause={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":32)]
@@ -92,3 +100,7 @@ time_speed_4={
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+
+[gui]
+
+timers/tooltip_delay_sec=0.3

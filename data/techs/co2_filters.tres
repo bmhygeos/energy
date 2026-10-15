@@ -8,6 +8,6 @@ id = &"co2_filters"
 display_name = "Filtres CO₂"
 description = "Filtres sur les cheminées : pollution des centrales à combustible −50 %."
 era = 6
-cost = 8000
+cost = 10500
 prerequisites = Array[StringName]([&"coal_plant", &"batteries"])
 modifiers = Dictionary[StringName, float]({&"pollution": 0.5})

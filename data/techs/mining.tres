@@ -8,6 +8,6 @@ id = &"mining"
 display_name = "Mines"
 description = "Mines de charbon."
 era = 2
-cost = 900
+cost = 600
 prerequisites = Array[StringName]([&"prospecting"])
 modifiers = Dictionary[StringName, float]({&"extraction": 1.1})

@@ -8,6 +8,6 @@ id = &"breeding_blanket"
 display_name = "Couverture tritigène"
 description = "Production de tritium à partir du lithium (étape M6b)."
 era = 7
-cost = 12000
+cost = 11000
 prerequisites = Array[StringName]([&"plasma_physics"])
 placeholder = true

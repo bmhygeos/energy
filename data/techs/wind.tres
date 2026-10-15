@@ -8,5 +8,5 @@ id = &"wind"
 display_name = "Éolien"
 description = "Éoliennes."
 era = 5
-cost = 4000
+cost = 6500
 prerequisites = Array[StringName]([&"hv_lines"])

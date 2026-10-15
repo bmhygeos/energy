@@ -25,6 +25,9 @@ var weather: Weather
 var economy: Economy
 ## Tempêtes, sécheresses, crises, grèves, incidents nucléaires.
 var events: Events
+## Historique journalier (graphiques) et jalons du bac à sable.
+var stats: Statistics
+var milestones: Milestones
 ## Points de recherche produits pendant la dernière heure.
 var research_rate := 0.0
 ## Villes de la partie (bâtiments portant une City).
@@ -65,6 +68,8 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	weather = Weather.new(seed_value)
 	economy = Economy.new(seed_value)
 	events = Events.new(Rng.fork("events"), weather)
+	stats = Statistics.new()
+	milestones = Milestones.new()
 	production.weather = weather
 	grid.weather = weather
 	grid.economy = economy
@@ -333,6 +338,7 @@ func _on_tick(tick: int) -> void:
 		EventBus.notified.emit("%s vendu : +%s €" % [v.def.display_name, Format.thousands(Logistics.refund_of(v))])
 	last_grid = grid.step(tick, buildings)
 	_pending_money += economy.settle_hour(tick, last_grid, pollution.emitted_last_hour, transport.travel_cost)
+	stats.record_hour(buildings, last_grid, pollution.emitted_last_hour, report.research, last_grid.price)
 	if absf(_pending_money) >= 1.0:
 		var whole := int(_pending_money)
 		money += whole
@@ -368,8 +374,22 @@ func _on_day(day: int) -> void:
 	economy.end_day(upkeep)
 	if upkeep > 0:
 		money -= upkeep
+	stats.end_day(money, economy.yesterday, cities)
+	_check_milestones(day - 1)
 	if day % (GameDate.DAYS_PER_SEASON * GameDate.SEASONS_PER_YEAR) == 0:
 		_announce_year(GameClock.tick)
+
+
+func _check_milestones(day: int) -> void:
+	var facts := Milestones.Facts.new()
+	facts.stats = stats
+	facts.money = money
+	facts.cities = cities
+	facts.buildings = buildings.all()
+	facts.research = research
+	for def in milestones.check(facts, day):
+		EventBus.milestone_reached.emit(def)
+		EventBus.notified.emit("Jalon atteint : %s — %s" % [def.display_name, def.description])
 
 
 ## Nouveaux taux de l'année : taxe carbone et subvention aux renouvelables.

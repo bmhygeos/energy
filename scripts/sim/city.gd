@@ -17,7 +17,7 @@ const HOURLY: PackedFloat32Array = [
 ## Facteur saisonnier (printemps, été, automne, hiver).
 const SEASONAL: PackedFloat32Array = [1.0, 0.9, 1.0, 1.25]
 ## Croissance annuelle de la demande de base selon l'alimentation.
-const GROWTH_SERVED := 0.12
+const GROWTH_SERVED := 0.25
 const GROWTH_UNSERVED := 0.02
 ## Croissance annuelle retirée par un air irrespirable (qualité nulle).
 const POLLUTION_SHRINK := 0.08

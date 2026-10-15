@@ -8,6 +8,6 @@ id = &"plasma_physics"
 display_name = "Physique des plasmas"
 description = "Ouvre la voie à la fusion ; laboratoires plus productifs."
 era = 7
-cost = 10000
+cost = 9000
 prerequisites = Array[StringName]([&"reactor", &"smart_grid"])
 modifiers = Dictionary[StringName, float]({&"research": 1.2})

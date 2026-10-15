@@ -8,5 +8,5 @@ id = &"solar_pv"
 display_name = "Solaire PV"
 description = "Fermes solaires photovoltaïques."
 era = 5
-cost = 5000
+cost = 7500
 prerequisites = Array[StringName]([&"wind"])

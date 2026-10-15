@@ -8,6 +8,6 @@ id = &"waste_management"
 display_name = "Gestion des déchets"
 description = "Retraitement : les centrales nucléaires produisent moitié moins de déchets."
 era = 4
-cost = 4500
+cost = 7000
 prerequisites = Array[StringName]([&"reactor"])
 modifiers = Dictionary[StringName, float]({&"waste": 0.5})

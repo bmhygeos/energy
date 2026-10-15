@@ -180,8 +180,13 @@ func _building_lines(b: Building) -> PackedStringArray:
 	if def.emission_per_hour > 0.0:
 		lines.append("Émissions : %s t/h de CO₂" % Format.decimal(GameState.pollution.emission_of(b)))
 	if def.research_per_hour > 0.0:
-		lines.append("Recherche : %s RP/h" % Format.decimal(
-			def.research_per_hour * GameState.production.research_factor if b.status == Building.Status.RUNNING else 0.0))
+		var labs := GameState.buildings.all().filter(func(o: Building) -> bool:
+			return o.def.research_per_hour > 0.0 and o.status == Building.Status.RUNNING).size()
+		var efficiency := Production.research_efficiency(labs)
+		lines.append("Recherche : %s RP/h" % Format.decimal(def.research_per_hour * GameState.production.research_factor
+			* efficiency if b.status == Building.Status.RUNNING else 0.0))
+		if labs > 1:
+			lines.append("Rendement : %d %% (%d laboratoires en service)" % [roundi(efficiency * 100.0), labs])
 	if def.power_demand_mw > 0.0:
 		lines.append("Électricité : %s MW %s" % [Format.decimal(def.power_demand_mw),
 			"(alimenté)" if b.powered else "(non alimenté)"])

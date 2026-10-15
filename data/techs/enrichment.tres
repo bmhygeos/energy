@@ -8,5 +8,5 @@ id = &"enrichment"
 display_name = "Enrichissement"
 description = "Usine d'enrichissement (minerai → combustible) et camion blindé pour les matières dangereuses."
 era = 4
-cost = 4000
+cost = 6500
 prerequisites = Array[StringName]([&"nuclear_physics"])

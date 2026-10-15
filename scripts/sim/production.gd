@@ -10,6 +10,9 @@ const REGROWTH_PER_HOUR := 0.25
 const PLANT_INTERVAL_HOURS := 24
 const SAPLING_WOOD := 10.0
 const EPSILON := 0.0001
+## Rendement décroissant de la recherche : n laboratoires produisent comme
+## n^RESEARCH_SCALING laboratoires isolés (coordination, équipes).
+const RESEARCH_SCALING := 0.75
 
 
 ## Bilan d'une heure de production.
@@ -47,15 +50,23 @@ func _init(p_registry: BuildingRegistry) -> void:
 ## Exécute une heure de production (tick [param tick]).
 func step(tick: int) -> Report:
 	var report := Report.new()
+	var labs := 0
 	for b in registry.all():
 		var old := b.status
 		_run(b, tick, report)
 		if b.status != old:
 			report.status_changed.append(b)
 		report.power_mw += b.power_mw
-		if b.status == Building.Status.RUNNING:
+		if b.status == Building.Status.RUNNING and b.def.research_per_hour > 0.0:
 			report.research += b.def.research_per_hour * research_factor
+			labs += 1
+	report.research *= research_efficiency(labs)
 	return report
+
+
+## Rendement de chaque laboratoire quand [param labs] sont en service.
+static func research_efficiency(labs: int) -> float:
+	return pow(labs, RESEARCH_SCALING - 1.0) if labs > 1 else 1.0
 
 
 func _run(b: Building, tick: int, report: Report) -> void:

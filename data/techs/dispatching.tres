@@ -8,6 +8,6 @@ id = &"dispatching"
 display_name = "Dispatching"
 description = "Pilotage du réseau : délestages mieux négociés."
 era = 3
-cost = 3000
+cost = 4500
 prerequisites = Array[StringName]([&"transformers"])
 modifiers = Dictionary[StringName, float]({&"penalty": 0.5})

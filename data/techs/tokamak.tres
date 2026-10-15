@@ -8,6 +8,6 @@ id = &"tokamak"
 display_name = "Tokamak expérimental"
 description = "Réacteur expérimental, gros producteur de recherche (étape M6b)."
 era = 7
-cost = 14000
+cost = 12000
 prerequisites = Array[StringName]([&"hts"])
 placeholder = true

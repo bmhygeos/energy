@@ -49,3 +49,5 @@ signal research_changed()
 signal tech_unlocked(tech: TechDef)
 ## État de la flotte modifié sans ajout ni retrait (vente différée…).
 signal vehicles_changed()
+## Jalon du bac à sable atteint (Milestones.Def).
+signal milestone_reached(milestone: Milestones.Def)

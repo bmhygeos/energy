@@ -8,6 +8,6 @@ id = &"smart_grid"
 display_name = "Smart grid"
 description = "Réseau intelligent : pertes et délestages réduits."
 era = 6
-cost = 9000
+cost = 11500
 prerequisites = Array[StringName]([&"dispatching", &"batteries"])
 modifiers = Dictionary[StringName, float]({&"grid_loss": 0.8, &"penalty": 0.5})

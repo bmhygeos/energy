@@ -8,5 +8,5 @@ id = &"pumped_storage"
 display_name = "STEP"
 description = "STEP : grand stockage hydraulique, près de l'eau et du relief."
 era = 6
-cost = 7500
+cost = 10000
 prerequisites = Array[StringName]([&"batteries"])

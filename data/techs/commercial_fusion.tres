@@ -8,6 +8,6 @@ id = &"commercial_fusion"
 display_name = "Réacteur de fusion commercial"
 description = "Électricité massive sans CO₂ (étape M6b)."
 era = 7
-cost = 18000
+cost = 15000
 prerequisites = Array[StringName]([&"tokamak", &"deuterium", &"breeding_blanket"])
 placeholder = true

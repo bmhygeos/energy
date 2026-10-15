@@ -16,7 +16,7 @@ const LOSS_PER_TILE := 0.002
 const MAX_LOSS := 0.25
 ## Pénalité (€/MWh non livré à une ville raccordée à un réseau doté de
 ## centrales) ; le prix de vente suit le marché (Economy).
-const PENALTY_PER_MWH := 1.0
+const PENALTY_PER_MWH := 5.0
 ## Marge de production demandée aux centrales pilotables.
 const MARGIN := 0.05
 

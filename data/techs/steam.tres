@@ -8,6 +8,6 @@ id = &"steam"
 display_name = "Vapeur"
 description = "Chaudières plus efficaces."
 era = 2
-cost = 1200
+cost = 800
 prerequisites = Array[StringName]([&"biomass", &"mining"])
 modifiers = Dictionary[StringName, float]({&"fuel_use": 0.85})

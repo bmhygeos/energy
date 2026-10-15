@@ -7,6 +7,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/build_menu.tscn" id="5_build"]
 [ext_resource type="PackedScene" path="res://scenes/ui/tech_tree.tscn" id="6_tree"]
 [ext_resource type="Script" path="res://scenes/world/day_night.gd" id="7_daynight"]
+[ext_resource type="PackedScene" path="res://scenes/ui/stats_window.tscn" id="8_stats"]
+[ext_resource type="PackedScene" path="res://scenes/ui/tutorial.tscn" id="9_tuto"]
 
 [node name="Main" type="Node2D"]
 
@@ -28,3 +30,7 @@ script = ExtResource("2_cam")
 [node name="BuildMenu" parent="." instance=ExtResource("5_build")]
 
 [node name="TechTree" parent="." instance=ExtResource("6_tree")]
+
+[node name="StatsWindow" parent="." instance=ExtResource("8_stats")]
+
+[node name="Tutorial" parent="." instance=ExtResource("9_tuto")]

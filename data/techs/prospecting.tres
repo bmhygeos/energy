@@ -8,5 +8,5 @@ id = &"prospecting"
 display_name = "Prospection"
 description = "Révèle les gisements (calque Gisements, panneau d'information) ; préalable aux mines."
 era = 2
-cost = 600
+cost = 400
 prerequisites = Array[StringName]([&"woodcutting"])
