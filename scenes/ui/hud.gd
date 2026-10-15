@@ -13,6 +13,9 @@ const LEGENDS: PackedStringArray = [
 	"Pollution de l'air : faible → irrespirable",
 ]
 
+## Teinte de la météo pendant un événement (détail au survol).
+const EVENT_COLOR := Color("f0a020")
+
 var _overlay_mode := OverlayLayer.Mode.NONE
 var _overlay_buttons: Array[Button] = []
 
@@ -122,6 +125,10 @@ func _on_tick(tick: int) -> void:
 	_weather_label.tooltip_text = "Météo : %s\nVent : %d %% de la normale (éoliennes)\nNébulosité : %d %%\nLumière du jour : %d %% (panneaux solaires)" % [
 		weather.describe(tick), roundi(weather.wind_at(tick) * 100.0),
 		roundi(weather.cloud_at(tick) * 100.0), roundi(Weather.daylight_at(tick) * 100.0)]
+	var ongoing := GameState.events.describe(tick)
+	if not ongoing.is_empty():
+		_weather_label.tooltip_text += "\n\nÉvénements en cours :\n" + "\n".join(ongoing)
+	_weather_label.modulate = EVENT_COLOR if not ongoing.is_empty() else Color.WHITE
 
 
 func _on_speed_changed(speed: int) -> void:
@@ -189,6 +196,7 @@ func _refresh_accounts() -> void:
 		"Taxe carbone : " + _cost(accounts.carbon_tax),
 		"Transport : " + _cost(accounts.transport),
 		"Entretien : " + _cost(accounts.upkeep),
+		"Réparations : " + _cost(accounts.repairs),
 		"",
 		"Prix du marché : %s €/MWh" % Format.decimal(economy.price_at(tick)),
 		"Subvention : %s €/MWh renouvelable" % Format.decimal(Economy.subsidy_at(tick)),

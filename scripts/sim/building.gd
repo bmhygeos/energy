@@ -2,13 +2,14 @@ class_name Building
 extends RefCounted
 ## Bâtiment posé sur la carte (chantier ou terminé). Pure donnée.
 
-enum Status { CONSTRUCTION, RUNNING, NO_INPUT, OUTPUT_FULL, DEPLETED, IDLE, NO_GRID, STANDBY, NO_POWER, NO_WIND, NIGHT }
+enum Status { CONSTRUCTION, RUNNING, NO_INPUT, OUTPUT_FULL, DEPLETED, IDLE, NO_GRID, STANDBY, NO_POWER, NO_WIND, NIGHT, STORM, REPAIR, STRIKE }
 
 const STATUS_NAMES: PackedStringArray = [
 	"En chantier", "En service", "À l'arrêt : manque d'approvisionnement",
 	"À l'arrêt : stock de sortie plein", "À l'arrêt : ressource épuisée", "Inactif",
 	"À l'arrêt : non relié au réseau électrique", "En veille : pas de demande",
 	"À l'arrêt : pas d'électricité", "À l'arrêt : pas de vent", "À l'arrêt : nuit",
+	"À l'arrêt : tempête (mise en sécurité)", "À l'arrêt : en réparation", "À l'arrêt : grève",
 ]
 
 var id: int
@@ -44,6 +45,12 @@ var powered := false
 ## pour un stockage du réseau, flux de la dernière heure (MW, > 0 : charge).
 var stored_mwh := 0.0
 var storage_flow_mw := 0.0
+## Arrêt forcé par un événement (avarie, incident, grève) jusqu'au tick
+## [member outage_until] exclu, avec le statut affiché pendant l'arrêt.
+var outage_until := -1
+var outage_status: Status = Status.REPAIR
+## Alerte « gisement bientôt épuisé » déjà donnée.
+var deposit_warned := false
 
 
 func _init(p_id: int, p_def: BuildingDef, p_anchor: Vector2i) -> void:
@@ -51,6 +58,11 @@ func _init(p_id: int, p_def: BuildingDef, p_anchor: Vector2i) -> void:
 	def = p_def
 	anchor = p_anchor
 	cells = def.footprint(anchor)
+
+
+## Arrêt forcé pendant l'heure [param tick].
+func is_out(tick: int) -> bool:
+	return tick < outage_until
 
 
 func is_complete() -> bool:

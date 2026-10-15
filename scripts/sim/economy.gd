@@ -34,12 +34,15 @@ class Accounts:
 	var carbon_tax := 0.0
 	var transport := 0.0
 	var upkeep := 0.0
+	var repairs := 0.0
 
 	func net() -> float:
-		return sales + subsidies - penalties - carbon_tax - transport - upkeep
+		return sales + subsidies - penalties - carbon_tax - transport - upkeep - repairs
 
 
 var seed_value := 0
+## Multiplicateur du prix (crise de l'énergie), fixé par les événements.
+var price_factor := 1.0
 var today := Accounts.new()
 var yesterday := Accounts.new()
 
@@ -53,7 +56,7 @@ func price_at(tick: int) -> float:
 	var hourly := City.HOURLY[GameDate.hour_of_day(tick)] / _mean(City.HOURLY)
 	var seasonal := City.SEASONAL[GameDate.season(tick)] / _mean(City.SEASONAL)
 	var noise := 1.0 + PRICE_NOISE * (2.0 * Weather.noise(seed_value, NOISE_CHANNEL, NOISE_PERIOD, tick) - 1.0)
-	return BASE_PRICE * (1.0 - HOURLY_WEIGHT + HOURLY_WEIGHT * hourly) * seasonal * noise
+	return price_factor * BASE_PRICE * (1.0 - HOURLY_WEIGHT + HOURLY_WEIGHT * hourly) * seasonal * noise
 
 
 ## Taxe carbone (€/t de CO₂) de l'année de [param tick].
@@ -85,6 +88,11 @@ func settle_hour(tick: int, report: PowerGrid.Report, emissions: float, travel_c
 	today.carbon_tax += tax
 	today.transport += travel_cost
 	return report.revenue + subsidy - report.penalty - tax - travel_cost
+
+
+## Inscrit des réparations (€) aux comptes du jour.
+func pay_repairs(amount: float) -> void:
+	today.repairs += amount
 
 
 ## Clôt la journée : l'entretien [param upkeep] payé, les comptes passent à

@@ -184,7 +184,7 @@ nécessite un navigateur avec WebGL 2.
   transporte rien d'autre ; jamais déposées en entrepôt ni en gare. Le
   panneau d'information signale l'absence de camion blindé ou de site de
   déchets joignable.
-- Les incidents nucléaires arriveront avec les événements (M7).
+- Incidents nucléaires : voir les événements (M7, partie 3).
 
 ## Renouvelables, météo et stockage (M6, partie 2)
 
@@ -262,3 +262,27 @@ nécessite un navigateur avec WebGL 2.
   affiche le **bilan** de la veille ; son survol détaille ventes,
   subventions, pénalités, taxe carbone, transport et entretien, ainsi que
   le prix, la subvention et la taxe actuels.
+
+## Événements (M7, partie 3)
+
+- **Tempête** (12–36 h ; environ tous les 10 jours en automne et en hiver,
+  plus rare au printemps et en été) : ciel couvert, éoliennes mises en
+  sécurité ; chacune a 10 % de risque d'être endommagée (2 à 4 jours de
+  réparation, 5 % de son prix).
+- **Sécheresse** (été, 5–12 jours, environ une par été) : les centrales
+  refroidies par l'eau (charbon, nucléaire) sont limitées à 50 % de leur
+  puissance ; les autres centrales prennent le relais.
+- **Crise de l'énergie** (10–20 jours, environ tous les deux ans) : prix du
+  marché ×1,5.
+- **Grève des mineurs** (3–6 jours, environ une par an, s'il existe des mines
+  de charbon) : mines de charbon à l'arrêt ; les stocks des centrales et des
+  entrepôts font tampon.
+- **Incident nucléaire** (environ un tous les 4 ans par réacteur en service) :
+  réacteur arrêté 10 jours, réparations à 10 % de son prix, satisfaction des
+  villes à moins de 20 tuiles −25 points.
+- **Gisements** : une alerte prévient quand une mine n'a plus qu'environ
+  30 jours d'extraction.
+- Chaque événement est annoncé à son début et à sa fin. Pendant un
+  événement, la météo du bandeau passe en orange et son survol liste les
+  événements en cours. Le panneau d'un bâtiment arrêté donne le délai de
+  reprise. Les réparations apparaissent dans le bilan du jour.

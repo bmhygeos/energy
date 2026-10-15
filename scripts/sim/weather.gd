@@ -20,6 +20,9 @@ const SLOW_PERIOD := 24
 const FAST_PERIOD := 6
 
 var seed_value := 0
+## Tempête en cours jusqu'au tick exclu (fixé par les événements) : vent
+## violent, ciel couvert, éoliennes mises en sécurité.
+var storm_until := -1
 
 
 func _init(p_seed: int = 0) -> void:
@@ -29,14 +32,22 @@ func _init(p_seed: int = 0) -> void:
 ## Facteur global de vent (≈ 0,1 – 1,4 ; moyenne ≈ 0,85 au printemps),
 ## multiplié par le potentiel éolien de la tuile.
 func wind_at(tick: int) -> float:
+	if is_storm(tick):
+		return 1.4
 	var n := 0.6 * _smooth(1, SLOW_PERIOD, tick) + 0.4 * _smooth(2, FAST_PERIOD, tick)
 	return clampf((0.2 + 1.3 * n) * SEASON_WIND[GameDate.season(tick)], 0.05, 1.4)
 
 
 ## Nébulosité 0 (ciel clair) – 1 (couvert).
 func cloud_at(tick: int) -> float:
+	if is_storm(tick):
+		return 1.0
 	var n := 0.7 * _smooth(3, SLOW_PERIOD, tick) + 0.5 * _smooth(4, FAST_PERIOD, tick)
 	return clampf(n - 0.25 + SEASON_CLOUD[GameDate.season(tick)], 0.0, 1.0)
+
+
+func is_storm(tick: int) -> bool:
+	return tick < storm_until
 
 
 ## Lumière du jour 0 (nuit) – 1 (midi), selon l'heure et la saison.
@@ -58,6 +69,8 @@ func sun_at(tick: int) -> float:
 
 ## État du ciel en un mot.
 func sky(tick: int) -> String:
+	if is_storm(tick):
+		return "Tempête"
 	var cloud := cloud_at(tick)
 	if cloud < 0.3:
 		return "Nuit claire" if is_night(tick) else "Ensoleillé"
@@ -66,6 +79,8 @@ func sky(tick: int) -> String:
 
 ## Description courte du ciel et du vent.
 func describe(tick: int) -> String:
+	if is_storm(tick):
+		return "Tempête, vent violent"
 	var wind := wind_at(tick)
 	var breeze := "vent calme"
 	if wind >= 1.1:

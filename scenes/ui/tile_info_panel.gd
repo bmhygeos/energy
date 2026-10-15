@@ -129,6 +129,10 @@ func _building_lines(b: Building) -> PackedStringArray:
 	var state := Building.STATUS_NAMES[b.status]
 	if b.status == Building.Status.RUNNING and def.input_good != Goods.Type.NONE and b.activity < 0.999:
 		state += " (%d %%)" % roundi(b.activity * 100.0)
+	if b.is_out(GameClock.tick):
+		state += " — reprise dans %s" % Format.duration_hours(b.outage_until - GameClock.tick)
+	elif b.status == Building.Status.RUNNING and def.needs_water_access and GameState.events.cooling_factor() < 1.0:
+		state += " — sécheresse : %d %% max" % roundi(GameState.events.cooling_factor() * 100.0)
 	lines.append(state)
 	if def.power_mw > 0.0:
 		lines.append("Électricité : %s / %s MW" % [Format.decimal(b.power_mw), Format.decimal(def.power_mw)])

@@ -15,6 +15,8 @@ const BADGE_COLORS := {
 	Building.Status.DEPLETED: Color("8b8d98"),
 	Building.Status.NO_GRID: Color("e0b400"),
 	Building.Status.NO_POWER: Color("e0b400"),
+	Building.Status.REPAIR: Color("e5484d"),
+	Building.Status.STRIKE: Color("f0a020"),
 }
 const DISCONNECTED_COLOR := Color("3b82f6")
 const SMOKE_COLOR := Color(0.85, 0.85, 0.85, 0.45)

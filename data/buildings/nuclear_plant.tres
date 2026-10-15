@@ -21,6 +21,7 @@ output_good = 5
 output_per_hour = 0.1
 power_mw = 120.0
 power_source = 1
+incident_per_year = 0.25
 buffer_capacity = 20.0
 style = 4
 color = Color(0.86, 0.86, 0.84, 1)

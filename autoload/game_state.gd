@@ -23,6 +23,8 @@ var pollution: Pollution
 var weather: Weather
 ## Marché, taxe carbone, subventions et comptes du jour.
 var economy: Economy
+## Tempêtes, sécheresses, crises, grèves, incidents nucléaires.
+var events: Events
 ## Points de recherche produits pendant la dernière heure.
 var research_rate := 0.0
 ## Villes de la partie (bâtiments portant une City).
@@ -62,6 +64,7 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	research = Research.new(TechDb.DEFS)
 	weather = Weather.new(seed_value)
 	economy = Economy.new(seed_value)
+	events = Events.new(Rng.fork("events"), weather)
 	production.weather = weather
 	grid.weather = weather
 	grid.economy = economy
@@ -316,6 +319,7 @@ func _on_tick(tick: int) -> void:
 		for id in b.def.starting_vehicles:
 			EventBus.vehicle_added.emit(logistics.add_vehicle(b, VehicleDb.get_def(id)))
 		EventBus.building_completed.emit(b)
+	_step_events(tick)
 	var report := production.step(tick)
 	pollution.step()
 	research_rate = report.research
@@ -340,6 +344,21 @@ func _on_tick(tick: int) -> void:
 		EventBus.building_status_changed.emit(b)
 	EventBus.production_stepped.emit(report)
 	EventBus.grid_stepped.emit(last_grid)
+
+
+## Événements de l'heure : effets sur la simulation, réparations, annonces.
+func _step_events(tick: int) -> void:
+	var result := events.step(tick, buildings, production.extraction_factor)
+	production.cooling_factor = events.cooling_factor()
+	grid.cooling_factor = events.cooling_factor()
+	economy.price_factor = events.price_factor()
+	if result.repair_cost > 0.0:
+		economy.pay_repairs(result.repair_cost)
+		_pending_money -= result.repair_cost
+	if not result.status_changed.is_empty():
+		grid.plan_setpoints(tick)
+	for text in result.messages:
+		EventBus.notified.emit(text)
 
 
 func _on_day(day: int) -> void:

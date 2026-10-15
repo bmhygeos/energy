@@ -32,6 +32,9 @@ var research_factor := 1.0
 var waste_factor := 1.0
 ## Vent, nuages et lumière du jour (renouvelables).
 var weather := Weather.new()
+## Part de la puissance permise aux centrales refroidies par l'eau
+## (sécheresse : < 1).
+var cooling_factor := 1.0
 ## Tuiles exploitables par bâtiment (id → tuiles triées par distance).
 var _area_cache: Dictionary[int, Array] = {}
 
@@ -62,6 +65,9 @@ func _run(b: Building, tick: int, report: Report) -> void:
 	if not b.is_complete():
 		b.status = Building.Status.CONSTRUCTION
 		return
+	if b.is_out(tick):
+		b.status = b.outage_status
+		return
 	if def.is_grid_storage():
 		b.status = Building.Status.RUNNING if b.grid_id != 0 else Building.Status.NO_GRID
 		return
@@ -78,8 +84,10 @@ func _run(b: Building, tick: int, report: Report) -> void:
 		BuildingDef.PowerSource.WIND, BuildingDef.PowerSource.SUN:
 			var factor := renewable_factor(map, weather, b, tick)
 			if factor <= EPSILON:
-				b.status = Building.Status.NO_WIND if def.power_source == BuildingDef.PowerSource.WIND \
-					else Building.Status.NIGHT
+				if def.power_source == BuildingDef.PowerSource.WIND:
+					b.status = Building.Status.STORM if weather.is_storm(tick) else Building.Status.NO_WIND
+				else:
+					b.status = Building.Status.NIGHT
 				return
 			b.power_mw = def.power_mw * factor
 			b.activity = factor
@@ -106,7 +114,7 @@ func _run(b: Building, tick: int, report: Report) -> void:
 		if b.power_setpoint <= EPSILON:
 			b.status = Building.Status.STANDBY
 			return
-		fraction = minf(fraction, b.power_setpoint)
+		fraction = minf(fraction, minf(b.power_setpoint, cooling_limit(b)))
 	match def.extraction:
 		BuildingDef.Extraction.FOREST:
 			var got := _harvest_forest(b, output_rate * fraction, report)
@@ -165,10 +173,17 @@ func input_rate_of(def: BuildingDef) -> float:
 static func renewable_factor(p_map: WorldMap, p_weather: Weather, b: Building, tick: int) -> float:
 	match b.def.power_source:
 		BuildingDef.PowerSource.WIND:
+			if p_weather.is_storm(tick):
+				return 0.0
 			return clampf(site_average(p_map, b, p_map.wind) * p_weather.wind_at(tick), 0.0, 1.0)
 		BuildingDef.PowerSource.SUN:
 			return clampf(site_average(p_map, b, p_map.sun) * p_weather.sun_at(tick), 0.0, 1.0)
 	return 1.0
+
+
+## Part de la pleine puissance permise par le refroidissement (sécheresse).
+func cooling_limit(b: Building) -> float:
+	return cooling_factor if b.def.needs_water_access else 1.0
 
 
 ## Chaleur captée (MWh) par une centrale solaire thermique pendant l'heure.

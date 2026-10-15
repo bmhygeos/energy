@@ -71,6 +71,8 @@ var fuel_factor := 1.0
 var weather := Weather.new()
 ## Marché de l'électricité (prix horaire).
 var economy := Economy.new()
+## Part de la puissance permise aux centrales refroidies par l'eau.
+var cooling_factor := 1.0
 ## Réseaux de la dernière heure, par identifiant.
 var networks: Dictionary[int, Network] = {}
 var _line: PackedByteArray
@@ -366,6 +368,10 @@ func plan_setpoints(tick: int) -> void:
 ## Part de la pleine puissance qu'une centrale pilotable peut fournir
 ## pendant l'heure [param tick] (combustible ou chaleur en stock).
 func _available_fraction(b: Building, tick: int) -> float:
+	if b.is_out(tick):
+		return 0.0
+	if b.def.needs_water_access:
+		return minf(cooling_factor, _fuel_fraction(b, fuel_factor))
 	if b.def.power_source == BuildingDef.PowerSource.SOLAR_THERMAL:
 		var heat := b.stored_mwh + Production.heat_collected(map, weather, b, tick)
 		return clampf(heat / b.def.power_mw, 0.0, 1.0)
