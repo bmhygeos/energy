@@ -75,16 +75,21 @@ func describe(tick: int) -> String:
 	return "%s, %s" % [sky(tick), breeze]
 
 
-## Bruit de valeur 0–1 sur le canal [param channel], interpolé en douceur
-## entre des valeurs aléatoires tirées toutes les [param period] heures.
+## Bruit de la météo sur le canal [param channel].
 func _smooth(channel: int, period: int, tick: int) -> float:
+	return noise(seed_value, channel, period, tick)
+
+
+## Bruit de valeur 0–1 déterministe (graine, canal), interpolé en douceur
+## entre des valeurs tirées toutes les [param period] heures.
+static func noise(p_seed: int, channel: int, period: int, tick: int) -> float:
 	var k := floori(float(tick) / period)
 	var t := float(tick - k * period) / period
 	t = t * t * (3.0 - 2.0 * t)
-	return lerpf(_value(channel, k), _value(channel, k + 1), t)
+	return lerpf(_value(p_seed, channel, k), _value(p_seed, channel, k + 1), t)
 
 
-func _value(channel: int, k: int) -> float:
+static func _value(p_seed: int, channel: int, k: int) -> float:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([seed_value, channel, k])
+	rng.seed = hash([p_seed, channel, k])
 	return rng.randf()

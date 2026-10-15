@@ -297,6 +297,7 @@ func _city_lines(city: City) -> PackedStringArray:
 	if GameDate.day_index(tick) > 0:
 		lines.append("Alimentée hier : %d %%" % roundi(city.served_ratio_yesterday * 100.0))
 	lines.append("Satisfaction : %d %% (alimentation et air)" % roundi(city.satisfaction * 100.0))
+	lines.append("Tarif accepté : %d %% du prix du marché" % roundi(Economy.tariff(city.satisfaction) * 100.0))
 	lines.append("Qualité de l'air : %d %%" % roundi(city.air_quality * 100.0))
 	return lines
 

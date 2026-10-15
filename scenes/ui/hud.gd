@@ -171,14 +171,37 @@ func _on_grid(report: PowerGrid.Report) -> void:
 	for good: int in stocks:
 		lines.append("%s en stock : %s t" % [Goods.display_name(good), Format.decimal(stocks[good])])
 	_power_label.tooltip_text = "\n".join(lines)
-	var first_day := GameDate.day_index(GameClock.tick) == 0
-	var revenue := GameState.revenue_today if first_day else GameState.revenue_yesterday
-	var penalty := GameState.penalty_today if first_day else GameState.penalty_yesterday
-	_sales_label.text = "Ventes %s €/j" % Format.thousands(roundi(revenue - penalty))
-	_sales_label.tooltip_text = "%s\nVentes : %s €\nPénalités de délestage : %s €\nPrix : %s €/MWh" % [
+	_refresh_accounts()
+
+
+## Bilan de la veille (du jour en cours le premier jour) et taux du marché.
+func _refresh_accounts() -> void:
+	var tick := GameClock.tick
+	var first_day := GameDate.day_index(tick) == 0
+	var economy := GameState.economy
+	var accounts := economy.today if first_day else economy.yesterday
+	_sales_label.text = "Bilan %s €/j" % Format.thousands(roundi(accounts.net()))
+	var lines := PackedStringArray([
 		"Aujourd'hui (premier jour)" if first_day else "Hier",
-		Format.thousands(roundi(revenue)), Format.thousands(roundi(penalty)),
-		Format.decimal(PowerGrid.PRICE_PER_MWH)]
+		"Ventes d'électricité : %s €" % Format.thousands(roundi(accounts.sales)),
+		"Subventions renouvelables : %s €" % Format.thousands(roundi(accounts.subsidies)),
+		"Pénalités de délestage : " + _cost(accounts.penalties),
+		"Taxe carbone : " + _cost(accounts.carbon_tax),
+		"Transport : " + _cost(accounts.transport),
+		"Entretien : " + _cost(accounts.upkeep),
+		"",
+		"Prix du marché : %s €/MWh" % Format.decimal(economy.price_at(tick)),
+		"Subvention : %s €/MWh renouvelable" % Format.decimal(Economy.subsidy_at(tick)),
+		"Taxe carbone : %s €/t de CO₂" % Format.decimal(Economy.carbon_tax_at(tick)),
+	])
+	if Economy.carbon_tax_at(tick) <= 0.0:
+		lines[lines.size() - 1] += " (dès l'an %d)" % Economy.CARBON_TAX_START_YEAR
+	_sales_label.tooltip_text = "\n".join(lines)
+
+
+static func _cost(amount: float) -> String:
+	var whole := roundi(amount)
+	return ("−%s €" if whole > 0 else "%s €") % Format.thousands(whole)
 
 
 func _refresh_research() -> void:

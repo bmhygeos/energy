@@ -14,9 +14,8 @@ const UPKEEP_PER_TILE_PER_DAY := 1
 ## réseau, plafonnée.
 const LOSS_PER_TILE := 0.002
 const MAX_LOSS := 0.25
-## Prix de vente (€/MWh livré) et pénalité (€/MWh non livré à une ville
-## raccordée à un réseau doté de centrales).
-const PRICE_PER_MWH := 10.0
+## Pénalité (€/MWh non livré à une ville raccordée à un réseau doté de
+## centrales) ; le prix de vente suit le marché (Economy).
 const PENALTY_PER_MWH := 1.0
 ## Marge de production demandée aux centrales pilotables.
 const MARGIN := 0.05
@@ -33,6 +32,8 @@ class Network:
 	## Stockages (batteries, STEP) : chargent les surplus, couvrent les manques.
 	var storages: Array[Building] = []
 	var supply_mw := 0.0
+	## Part renouvelable de la production (MW).
+	var renewable_mw := 0.0
 	var demand_mw := 0.0
 	var delivered_mw := 0.0
 	var loss_ratio := 0.0
@@ -51,6 +52,10 @@ class Report:
 	var penalty := 0.0
 	## Énergie livrée aux villes (vendue), hors consommation propre.
 	var sold_mw := 0.0
+	## Part de l'énergie vendue venant des renouvelables (subventionnée).
+	var renewable_sold_mw := 0.0
+	## Prix de marché de l'heure (€/MWh).
+	var price := 0.0
 	var shed_cities := 0
 	## Énergie mise en stock et restituée pendant l'heure (MWh).
 	var charged_mwh := 0.0
@@ -64,6 +69,8 @@ var penalty_factor := 1.0
 var fuel_factor := 1.0
 ## Météo, pour prévoir la production des renouvelables de l'heure suivante.
 var weather := Weather.new()
+## Marché de l'électricité (prix horaire).
+var economy := Economy.new()
 ## Réseaux de la dernière heure, par identifiant.
 var networks: Dictionary[int, Network] = {}
 var _line: PackedByteArray
@@ -234,13 +241,18 @@ static func _find(parent: PackedInt32Array, c: int) -> int:
 
 ## Règle l'heure [param tick] : livre la production de l'heure aux villes
 ## (délestage des villes qui ne peuvent être servies, les plus petites étant
-## servies d'abord), puis fixe les consignes de l'heure suivante.
+## servies d'abord) au prix du marché, modulé par la satisfaction de chaque
+## ville, puis fixe les consignes de l'heure suivante.
 func step(tick: int, registry: BuildingRegistry) -> Report:
 	refresh_topology(registry)
 	var report := Report.new()
+	report.price = economy.price_at(tick)
 	for net: Network in networks.values():
 		for p in net.producers:
 			net.supply_mw += p.power_mw
+			if p.def.is_renewable():
+				net.renewable_mw += p.power_mw
+		var sold := 0.0
 		var produced := net.supply_mw * (1.0 - net.loss_ratio)
 		# Les stockages complètent la production pour éviter les délestages.
 		var discharge_capacity := 0.0
@@ -269,7 +281,8 @@ func step(tick: int, registry: BuildingRegistry) -> Report:
 			elif d <= available + 0.0001:
 				available -= d
 				net.delivered_mw += d
-				report.sold_mw += d
+				sold += d
+				report.revenue += d * report.price * Economy.tariff(city.satisfaction)
 				city.supply = City.Supply.SERVED
 				city.served_hours_today += 1
 			else:
@@ -284,11 +297,13 @@ func step(tick: int, registry: BuildingRegistry) -> Report:
 			for st in net.storages:
 				st.storage_flow_mw = 0.0
 			report.charged_mwh += _charge(net, produced - used)
+		report.sold_mw += sold
+		if net.supply_mw > 0.0:
+			report.renewable_sold_mw += sold * net.renewable_mw / net.supply_mw
 		report.produced_mw += net.supply_mw
 		report.demand_mw += net.demand_mw
 		report.delivered_mw += net.delivered_mw
 		report.shed_cities += net.shed
-	report.revenue = report.sold_mw * PRICE_PER_MWH
 	plan_setpoints(tick + 1)
 	return report
 

@@ -109,8 +109,9 @@ nécessite un navigateur avec WebGL 2.
   de l'heure suivante est prévue avec la météo). Une centrale sans
   ligne est à l'arrêt (pastille jaune), sans demande elle est en veille et ne
   brûle rien.
-- **Vente** : 10 €/MWh livré. Le bandeau affiche l'énergie livrée / demandée
-  (en rouge en cas de délestage) et les ventes de la veille ; le calque
+- **Vente** : au prix du marché (10 €/MWh en moyenne, voir M7). Le bandeau
+  affiche l'énergie livrée / demandée (en rouge en cas de délestage) et le
+  bilan de la veille ; le calque
   « Réseau » colore lignes, villes et centrales selon leur état.
 
 ## Recherche (M5)
@@ -244,3 +245,20 @@ nécessite un navigateur avec WebGL 2.
   l'heure et la satisfaction moyenne des habitants.
 - Implanter les centrales thermiques loin des villes, ou passer au
   nucléaire et aux renouvelables, garde l'air pur.
+
+## Économie (M7, partie 2)
+
+- **Prix de marché** horaire, 10 €/MWh en moyenne : la moitié du prix suit
+  le profil de la demande (nuit ≈ 7,8 €, pointe du soir ≈ 12,3 €, hors saison), l'hiver
+  est plus cher, et le marché fluctue de ±15 % sur quelques jours.
+- **Tarif selon la satisfaction** : une ville paie de 80 % (mécontente) à
+  120 % (comblée) du prix du marché ; 100 % à mi-satisfaction.
+- **Taxe carbone** sur les émissions de CO₂ : nulle la première année, puis
+  1 €/t l'an 2, +1 €/t chaque année jusqu'à 5 €/t.
+- **Subventions renouvelables** (éolien, solaire, solaire thermique) sur la
+  part renouvelable de l'énergie vendue : 3 €/MWh l'an 1, −0,5 €/MWh par an
+  jusqu'à 1 €/MWh.
+- Les nouveaux taux sont annoncés au début de chaque année. Le bandeau
+  affiche le **bilan** de la veille ; son survol détaille ventes,
+  subventions, pénalités, taxe carbone, transport et entretien, ainsi que
+  le prix, la subvention et la taxe actuels.

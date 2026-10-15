@@ -27,6 +27,7 @@ func _init() -> void:
 	_test_storage()
 	_test_ports()
 	_test_pollution()
+	_test_economy()
 	_test_cities()
 	_test_grid()
 	_test_tech_data()
@@ -585,7 +586,10 @@ func _test_grid() -> void:
 	var r := grid.step(tick, reg)
 	_check(a.city.supply == City.Supply.SERVED and is_equal_approx(r.delivered_mw, a.city.demand_at(tick)),
 		"ville A alimentée")
-	_check(is_equal_approx(r.revenue, r.delivered_mw * PowerGrid.PRICE_PER_MWH) and r.penalty == 0.0, "vente")
+	_check(is_equal_approx(r.price, grid.economy.price_at(tick))
+		and is_equal_approx(r.revenue, r.delivered_mw * r.price * Economy.tariff(a.city.satisfaction))
+		and r.penalty == 0.0, "vente au prix du marché")
+	_check(r.renewable_sold_mw == 0.0, "rien de renouvelable")
 	_check(a.city.served_hours_today == 1, "heure alimentée comptée")
 
 	# Extension vers la ville B (trop gourmande) : délestage.
@@ -1223,3 +1227,66 @@ func _test_pollution() -> void:
 	var dark := City.new("Sans courant", 10.0)
 	dark.end_day(1.0)
 	_check(dark.satisfaction < 0.5, "satisfaction en baisse sans courant")
+
+
+func _test_economy() -> void:
+	var eco := Economy.new(42)
+	var total := 0.0
+	var low := INF
+	var high := 0.0
+	for tick in GameDate.HOURS_PER_YEAR:
+		var p := eco.price_at(tick)
+		total += p
+		low = minf(low, p)
+		high = maxf(high, p)
+	var mean := total / GameDate.HOURS_PER_YEAR
+	_check(absf(mean - Economy.BASE_PRICE) < Economy.BASE_PRICE * 0.05, "prix moyen ≈ prix de base (%.2f)" % mean)
+	_check(low < Economy.BASE_PRICE * 0.75 and high > Economy.BASE_PRICE * 1.3, "prix entre %.1f et %.1f" % [low, high])
+	_check(eco.price_at(19) > eco.price_at(3), "pointe du soir plus chère que la nuit")
+	_check(Economy.new(42).price_at(1234) == eco.price_at(1234), "prix déterministe")
+	var y := GameDate.HOURS_PER_YEAR
+	_check(Economy.carbon_tax_at(0) == 0.0 and Economy.carbon_tax_at(y) == Economy.CARBON_TAX_STEP
+		and Economy.carbon_tax_at(30 * y) == Economy.CARBON_TAX_MAX, "taxe carbone croissante et plafonnée")
+	_check(Economy.subsidy_at(0) == Economy.SUBSIDY_START and Economy.subsidy_at(y) < Economy.SUBSIDY_START
+		and Economy.subsidy_at(30 * y) == Economy.SUBSIDY_MIN, "subvention décroissante et plancher")
+	_check(is_equal_approx(Economy.tariff(0.5), 1.0) and Economy.tariff(1.0) == Economy.TARIFF_MAX
+		and Economy.tariff(0.0) == Economy.TARIFF_MIN, "tarif selon la satisfaction")
+
+	# Comptes : subvention sur la part renouvelable, taxe sur les émissions.
+	var report := PowerGrid.Report.new()
+	report.revenue = 100.0
+	report.penalty = 5.0
+	report.renewable_sold_mw = 10.0
+	var tick := 2 * y
+	var net := eco.settle_hour(tick, report, 20.0, 3.0)
+	var expected := 100.0 + 10.0 * Economy.subsidy_at(tick) - 5.0 - 20.0 * Economy.carbon_tax_at(tick) - 3.0
+	_check(is_equal_approx(net, expected), "solde de l'heure")
+	eco.end_day(50.0)
+	_check(is_equal_approx(eco.yesterday.net(), expected - 50.0) and eco.today.sales == 0.0, "clôture du jour")
+
+	# Réseau mixte : la part vendue renouvelable suit la part produite.
+	var map := _flat_map(Vector2i(32, 32))
+	var reg := BuildingRegistry.new(map)
+	var grid := reg.grid
+	var prod := Production.new(reg)
+	map.wind.fill(1.0)
+	var city := _add_city(reg, Vector2i(16, 6), 5.0)
+	var plant := _built(reg, &"biomass_plant", Vector2i(5, 6))
+	plant.input_stock = plant.def.buffer_capacity
+	var turbine := _built(reg, &"wind_turbine", Vector2i(5, 9))
+	grid.add_cells(TilePlan.l_path(Vector2i(5, 7), Vector2i(16, 7)))
+	grid.add_cells([Vector2i(5, 8)])
+	grid.refresh_topology(reg)
+	_check(turbine.grid_id == city.grid_id and plant.grid_id == city.grid_id, "réseau mixte raccordé")
+	tick = 10
+	grid.plan_setpoints(tick)
+	prod.step(tick)
+	var r := grid.step(tick, reg)
+	var share := turbine.power_mw / (turbine.power_mw + plant.power_mw)
+	_check(turbine.power_mw > 0.0 and is_equal_approx(r.renewable_sold_mw, r.sold_mw * share),
+		"part renouvelable vendue (%.0f %%)" % (share * 100.0))
+	city.city.satisfaction = 1.0
+	grid.plan_setpoints(tick)
+	prod.step(tick)
+	var happy := grid.step(tick, reg)
+	_check(is_equal_approx(happy.revenue, happy.sold_mw * happy.price * Economy.TARIFF_MAX), "ville comblée : tarif majoré")

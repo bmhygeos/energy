@@ -162,6 +162,11 @@ func is_grid_storage() -> bool:
 
 
 ## Centrale pilotable : le réseau lui fixe une consigne.
+## Production renouvelable (vent, soleil), subventionnée.
+func is_renewable() -> bool:
+	return power_source in [PowerSource.WIND, PowerSource.SUN, PowerSource.SOLAR_THERMAL]
+
+
 func is_dispatchable() -> bool:
 	return power_source in [PowerSource.FUEL, PowerSource.SOLAR_THERMAL]
 

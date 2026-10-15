@@ -59,10 +59,10 @@ text = "Réseau 0 / 0 MW"
 
 [node name="SalesLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(125, 0)
+custom_minimum_size = Vector2(135, 0)
 layout_mode = 2
 mouse_filter = 1
-text = "Ventes 0 €/j"
+text = "Bilan 0 €/j"
 
 [node name="ResearchButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true

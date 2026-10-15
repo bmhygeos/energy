@@ -21,21 +21,18 @@ var grid: PowerGrid
 var research: Research
 var pollution: Pollution
 var weather: Weather
+## Marché, taxe carbone, subventions et comptes du jour.
+var economy: Economy
 ## Points de recherche produits pendant la dernière heure.
 var research_rate := 0.0
 ## Villes de la partie (bâtiments portant une City).
 var cities: Array[Building] = []
 ## Bilan électrique de la dernière heure.
 var last_grid: PowerGrid.Report = PowerGrid.Report.new()
-## Ventes et pénalités du jour en cours et de la veille (€).
-var revenue_today := 0.0
-var penalty_today := 0.0
-var revenue_yesterday := 0.0
-var penalty_yesterday := 0.0
 ## Puissance électrique produite pendant la dernière heure (MW).
 var power_mw := 0.0
 ## Montant pas encore débité ou crédité (fractions d'euro : usage des
-## véhicules, ventes, pénalités).
+## véhicules, ventes, subventions, pénalités, taxe carbone).
 var _pending_money := 0.0
 var money: int = DEFAULT_START_MONEY:
 	set(value):
@@ -64,18 +61,16 @@ func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE,
 	pollution = Pollution.new(buildings)
 	research = Research.new(TechDb.DEFS)
 	weather = Weather.new(seed_value)
+	economy = Economy.new(seed_value)
 	production.weather = weather
 	grid.weather = weather
+	grid.economy = economy
 	research_rate = 0.0
 	_apply_modifiers()
 	cities = CityGenerator.populate(buildings, Rng.fork("cities"))
 	grid.refresh_topology(buildings)
 	power_mw = 0.0
 	last_grid = PowerGrid.Report.new()
-	revenue_today = 0.0
-	penalty_today = 0.0
-	revenue_yesterday = 0.0
-	penalty_yesterday = 0.0
 	_pending_money = 0.0
 	money = start_money
 	GameClock.reset()
@@ -333,9 +328,7 @@ func _on_tick(tick: int) -> void:
 		EventBus.vehicle_removed.emit(v)
 		EventBus.notified.emit("%s vendu : +%s €" % [v.def.display_name, Format.thousands(Logistics.refund_of(v))])
 	last_grid = grid.step(tick, buildings)
-	revenue_today += last_grid.revenue
-	penalty_today += last_grid.penalty
-	_pending_money += last_grid.revenue - last_grid.penalty - transport.travel_cost
+	_pending_money += economy.settle_hour(tick, last_grid, pollution.emitted_last_hour, transport.travel_cost)
 	if absf(_pending_money) >= 1.0:
 		var whole := int(_pending_money)
 		money += whole
@@ -349,13 +342,21 @@ func _on_tick(tick: int) -> void:
 	EventBus.grid_stepped.emit(last_grid)
 
 
-func _on_day(_day: int) -> void:
+func _on_day(day: int) -> void:
 	for c in cities:
 		c.city.end_day(pollution.air_quality(c.cells))
-	revenue_yesterday = revenue_today
-	penalty_yesterday = penalty_today
-	revenue_today = 0.0
-	penalty_today = 0.0
 	var upkeep := daily_upkeep()
+	economy.end_day(upkeep)
 	if upkeep > 0:
 		money -= upkeep
+	if day % (GameDate.DAYS_PER_SEASON * GameDate.SEASONS_PER_YEAR) == 0:
+		_announce_year(GameClock.tick)
+
+
+## Nouveaux taux de l'année : taxe carbone et subvention aux renouvelables.
+func _announce_year(tick: int) -> void:
+	var tax := Economy.carbon_tax_at(tick)
+	var text := "An %d : subvention renouvelable %s €/MWh" % [GameDate.year(tick), Format.decimal(Economy.subsidy_at(tick))]
+	if tax > 0.0:
+		text += ", taxe carbone %s €/t de CO₂" % Format.decimal(tax)
+	EventBus.notified.emit(text)
