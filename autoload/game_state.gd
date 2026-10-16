@@ -328,7 +328,9 @@ func _on_tick(tick: int) -> void:
 	var report := production.step(tick)
 	pollution.step()
 	research_rate = report.research
-	if report.research > 0.0:
+	var waiting := research.is_waiting()
+	_count_operation_hours()
+	if report.research > 0.0 or (waiting and research.is_ready(research.current().id)):
 		_on_techs_done(research.add_points(report.research))
 		EventBus.research_changed.emit()
 	var transport := logistics.step()
@@ -350,6 +352,16 @@ func _on_tick(tick: int) -> void:
 		EventBus.building_status_changed.emit(b)
 	EventBus.production_stepped.emit(report)
 	EventBus.grid_stepped.emit(last_grid)
+
+
+## Heures de fonctionnement par type de bâtiment (conditions d'essai).
+func _count_operation_hours() -> void:
+	var running := {}
+	for b in buildings.all():
+		if b.status == Building.Status.RUNNING:
+			running[b.def.id] = true
+	for id: StringName in running:
+		research.operation_hours[id] = research.operation_hours.get(id, 0) + 1
 
 
 ## Événements de l'heure : effets sur la simulation, réparations, annonces.

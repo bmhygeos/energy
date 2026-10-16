@@ -370,12 +370,11 @@ func plan_setpoints(tick: int) -> void:
 func _available_fraction(b: Building, tick: int) -> float:
 	if b.is_out(tick):
 		return 0.0
-	if b.def.needs_water_access:
-		return minf(cooling_factor, _fuel_fraction(b, fuel_factor))
 	if b.def.power_source == BuildingDef.PowerSource.SOLAR_THERMAL:
 		var heat := b.stored_mwh + Production.heat_collected(map, weather, b, tick)
 		return clampf(heat / b.def.power_mw, 0.0, 1.0)
-	return _fuel_fraction(b, fuel_factor)
+	var fraction := minf(_fuel_fraction(b, fuel_factor), Production.ramp_limit(b))
+	return minf(cooling_factor, fraction) if b.def.needs_water_access else fraction
 
 
 ## Part de la pleine puissance que le combustible en stock (et la place
@@ -384,6 +383,8 @@ static func _fuel_fraction(b: Building, fuel_use: float) -> float:
 	var fraction := 1.0
 	if b.def.input_good != Goods.Type.NONE and b.def.input_per_hour > 0.0:
 		fraction = b.input_stock / (b.def.input_per_hour * fuel_use)
+	if b.def.input2_good != Goods.Type.NONE and b.def.input2_per_hour > 0.0:
+		fraction = minf(fraction, b.input2_stock / (b.def.input2_per_hour * fuel_use))
 	if b.def.output_good != Goods.Type.NONE and b.def.output_per_hour > 0.0:
 		fraction = minf(fraction, (b.def.buffer_capacity - b.output_stock) / b.def.output_per_hour)
 	return clampf(fraction, 0.0, 1.0)

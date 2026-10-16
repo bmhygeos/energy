@@ -12,6 +12,7 @@ const SOURCE_COLORS: Dictionary[StringName, Color] = {
 	&"offshore_wind": Color("2f8fd0"),
 	&"solar_farm": Color("f2d14b"),
 	&"solar_thermal_plant": Color("f08a24"),
+	&"fusion_reactor": Color("ff6ad5"),
 }
 const RANGES: PackedInt32Array = [30, 120, 0]
 const RANGE_NAMES: PackedStringArray = ["30 jours", "1 an", "Tout"]

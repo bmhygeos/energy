@@ -28,6 +28,13 @@ var output_stock := 0.0
 ## Quantités promises par des missions en cours : à livrer ici (entrée ou
 ## entrepôt), à enlever d'ici (sortie ; par marchandise pour un entrepôt).
 var reserved_in := 0.0
+## Seconde entrée (def.input2_good) : stock et livraisons promises.
+var input2_stock := 0.0
+## Montée en puissance atteinte (0–1, def.ramp_up_hours) et heures de
+## fonctionnement cumulées.
+var ramp := 0.0
+var operating_hours := 0
+var reserved_in2 := 0.0
 var reserved_out := 0.0
 var store_reserved_out: Dictionary[int, float] = {}
 ## Entrepôt : stock par marchandise (Goods.Type → t).
@@ -58,6 +65,30 @@ func _init(p_id: int, p_def: BuildingDef, p_anchor: Vector2i) -> void:
 	def = p_def
 	anchor = p_anchor
 	cells = def.footprint(anchor)
+
+
+## Stock d'entrée de [param good] (première ou seconde entrée).
+func input_of(good: int) -> float:
+	return input2_stock if good == def.input2_good and good != Goods.Type.NONE else input_stock
+
+
+## Livraisons promises de [param good] (entrepôt : toutes marchandises).
+func reserved_in_of(good: int) -> float:
+	return reserved_in2 if good == def.input2_good and good != Goods.Type.NONE else reserved_in
+
+
+func add_reserved_in(good: int, qty: float) -> void:
+	if good == def.input2_good and good != Goods.Type.NONE:
+		reserved_in2 = maxf(0.0, reserved_in2 + qty) if reserved_in2 + qty > 0.0001 else 0.0
+	else:
+		reserved_in = maxf(0.0, reserved_in + qty) if reserved_in + qty > 0.0001 else 0.0
+
+
+func add_input(good: int, qty: float) -> void:
+	if good == def.input2_good and good != Goods.Type.NONE:
+		input2_stock = minf(def.buffer_capacity, input2_stock + qty)
+	else:
+		input_stock = minf(def.buffer_capacity, input_stock + qty)
 
 
 ## Arrêt forcé pendant l'heure [param tick].

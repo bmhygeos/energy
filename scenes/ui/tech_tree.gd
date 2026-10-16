@@ -173,6 +173,10 @@ func _tooltip(def: TechDef) -> String:
 		for p in def.prerequisites:
 			names.append(TechDb.get_def(p).display_name)
 		lines.append("Prérequis : " + ", ".join(names))
+	if def.requires_hours > 0:
+		lines.append("Condition : %s de fonctionnement d'un %s (%s faites)" % [Format.duration_hours(def.requires_hours),
+			BuildingDb.get_def(def.requires_building).display_name.to_lower(),
+			Format.duration_hours(GameState.research.operation_hours.get(def.requires_building, 0))])
 	return "\n".join(lines)
 
 
@@ -205,7 +209,11 @@ func _refresh() -> void:
 			color = QUEUED_COLOR
 			var pos := research.queue.find(id)
 			state = "En cours" if pos == 0 else "En file (%d)" % (pos + 1)
-			state += " · %s RP" % Format.thousands(def.cost)
+			if pos == 0 and research.is_waiting():
+				state = "Essais %s / %s" % [Format.duration_hours(research.operation_hours.get(def.requires_building, 0)),
+					Format.duration_hours(def.requires_hours)]
+			else:
+				state += " · %s RP" % Format.thousands(def.cost)
 			button.text = "Retirer de la file"
 		else:
 			color = AVAILABLE_COLOR if research.is_available(id) else LOCKED_COLOR

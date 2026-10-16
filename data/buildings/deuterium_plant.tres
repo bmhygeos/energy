@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"deuterium_plant"
+display_name = "Usine de deutérium"
+description = "Extrait le deutérium de l'eau de mer, combustible des réacteurs de fusion. Doit toucher la mer et consomme beaucoup d'électricité."
+category = 0
+size = Vector2i(2, 2)
+cost = 250000
+build_hours = 144
+upkeep_per_day = 800
+lifetime_years = 40
+required_tech = &"deuterium"
+needs_coast = true
+output_good = 6
+output_per_hour = 0.3
+power_demand_mw = 25.0
+buffer_capacity = 30.0
+color = Color(0.62, 0.8, 0.92, 1)
+roof_color = Color(0.3, 0.5, 0.68, 1)
+height = 26.0

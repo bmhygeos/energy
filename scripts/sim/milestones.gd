@@ -26,6 +26,9 @@ class Facts:
 	var research: Research
 
 
+## Victoire : émissions maximales (t de CO₂ sur la journée).
+const FUSION_MAX_EMISSIONS := 200
+
 var defs: Array[Def] = []
 ## Jalons atteints : id → jour (index) de l'atteinte.
 var reached: Dictionary[StringName, int] = {}
@@ -45,7 +48,10 @@ func _init() -> void:
 		Def.new(&"million", "Millionnaire", "Avoir 1 000 000 € en caisse.", _million),
 		Def.new(&"scholar", "Savants", "Acquérir 20 technologies.", _scholar),
 		Def.new(&"metropolis", "Pays prospère", "Atteindre 500 000 habitants.", _metropolis),
-		Def.new(&"fusion", "Ère de la fusion", "Acquérir le réacteur de fusion commercial.", _fusion),
+		Def.new(&"fusion_reactor", "Étoile en bouteille", "Mettre en service un réacteur de fusion.", _fusion_running),
+		Def.new(&"fusion", "Ère de la fusion (victoire)",
+			"Tirer plus de 50 %% de l'électricité de la fusion sur une journée, avec moins de %d t de CO₂." % FUSION_MAX_EMISSIONS,
+			_fusion_era),
 	]
 
 
@@ -94,8 +100,17 @@ static func _metropolis(f: Facts) -> bool:
 	return f.stats.last(&"population") >= 500_000
 
 
-static func _fusion(f: Facts) -> bool:
-	return f.research.is_known(&"commercial_fusion")
+static func _fusion_running(f: Facts) -> bool:
+	return f.buildings.any(func(b: Building) -> bool:
+		return b.def.id == &"fusion_reactor" and b.status == Building.Status.RUNNING)
+
+
+static func _fusion_era(f: Facts) -> bool:
+	var produced := f.stats.last(&"produced")
+	if produced <= 0.0 or not f.stats.mix.has(&"fusion_reactor"):
+		return false
+	var fusion := f.stats.mix[&"fusion_reactor"]
+	return fusion[fusion.size() - 1] > 0.5 * produced and f.stats.last(&"emissions") < FUSION_MAX_EMISSIONS
 
 
 func is_reached(id: StringName) -> bool:

@@ -11,7 +11,7 @@ enum Extraction { NONE, FOREST, DEPOSIT, REFOREST }
 ## demande (pilotable tant que le stock dure).
 enum PowerSource { NONE, FUEL, WIND, SUN, SOLAR_THERMAL }
 ## Forme du dessin provisoire (scenes/world/building_sprite.gd).
-enum Style { BOX, TURBINE, PANELS, CITY, REACTOR, SOLAR_TOWER, BASIN, PORT }
+enum Style { BOX, TURBINE, PANELS, CITY, REACTOR, SOLAR_TOWER, BASIN, PORT, TOKAMAK }
 
 const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique", "Divers"]
 
@@ -70,6 +70,10 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 @export var input_good: Goods.Type = Goods.Type.NONE
 ## Consommation à plein régime (t/h).
 @export var input_per_hour := 0.0
+## Seconde marchandise consommée en même temps (réacteur de fusion :
+## deutérium + lithium), avec son propre tampon de même capacité.
+@export var input2_good: Goods.Type = Goods.Type.NONE
+@export var input2_per_hour := 0.0
 @export var output_good: Goods.Type = Goods.Type.NONE
 ## Production à plein régime (t/h).
 @export var output_per_hour := 0.0
@@ -79,10 +83,21 @@ const CATEGORY_NAMES: PackedStringArray = ["Ressources", "Énergie", "Logistique
 ## Émissions à plein régime (t/h de CO₂ et de particules) : polluent l'air
 ## alentour et sont taxées.
 @export var emission_per_hour := 0.0
-## Incidents par an en fonctionnement continu (centrale nucléaire).
+## Incidents par an en fonctionnement continu (centrale nucléaire, fusion) :
+## nom, arrêt (heures), coût (part du prix) et perte de satisfaction des
+## villes voisines.
 @export var incident_per_year := 0.0
-## Points de recherche produits par heure (laboratoires).
+@export var incident_name := "Incident nucléaire"
+@export var incident_hours := 240
+@export var incident_cost := 0.1
+@export_range(0.0, 1.0) var incident_satisfaction := 0.25
+## Points de recherche produits par heure (laboratoires, tokamak).
 @export var research_per_hour := 0.0
+## Soumis au rendement décroissant des laboratoires (pas le tokamak).
+@export var research_diminishing := true
+## Montée en puissance (heures de fonctionnement de 10 % à 100 %) après la
+## mise en service ou un arrêt forcé (réacteur de fusion).
+@export var ramp_up_hours := 0
 ## Puissance électrique consommée en fonctionnement (MW) : le bâtiment doit
 ## être raccordé et alimenté par le réseau.
 @export var power_demand_mw := 0.0
@@ -129,6 +144,20 @@ func footprint(anchor: Vector2i) -> Array[Vector2i]:
 		for x in size.x:
 			cells.append(origin + Vector2i(x, y))
 	return cells
+
+
+## Marchandises consommées (une ou deux).
+func input_goods() -> Array[int]:
+	var goods: Array[int] = []
+	if input_good != Goods.Type.NONE:
+		goods.append(input_good)
+	if input2_good != Goods.Type.NONE:
+		goods.append(input2_good)
+	return goods
+
+
+func takes(good: int) -> bool:
+	return good != Goods.Type.NONE and (good == input_good or good == input2_good)
 
 
 ## Bâtiment qui échange des marchandises par la route ou le rail.
@@ -185,6 +214,8 @@ func describe_production() -> PackedStringArray:
 		lines.append("Stocke : %s t de %s" % [_num(buffer_capacity), Goods.display_name(input_good).to_lower()])
 	elif input_good != Goods.Type.NONE:
 		lines.append("Consomme : %s t/h de %s" % [_num(input_per_hour), Goods.display_name(input_good).to_lower()])
+	if input2_good != Goods.Type.NONE:
+		lines.append("Consomme : %s t/h de %s" % [_num(input2_per_hour), Goods.display_name(input2_good).to_lower()])
 	if output_good != Goods.Type.NONE:
 		lines.append("Produit : %s t/h de %s" % [_num(output_per_hour), Goods.display_name(output_good).to_lower()])
 	if power_mw > 0.0:

@@ -6,8 +6,8 @@
 script = ExtResource("1_def")
 id = &"advanced_fusion"
 display_name = "Fusion avancée"
-description = "Rendement accru, coûts réduits (étape M6b)."
+description = "Rendement accru : −20 % de combustible pour toutes les centrales."
 era = 7
 cost = 20000
 prerequisites = Array[StringName]([&"commercial_fusion"])
-placeholder = true
+modifiers = Dictionary[StringName, float]({&"fuel_use": 0.8})

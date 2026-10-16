@@ -62,7 +62,7 @@ func setup(p_def: BuildingDef, p_anchor: Vector2i, p_progress: float = 1.0) -> v
 func _update_process() -> void:
 	if def:
 		set_process(status == Building.Status.RUNNING and progress >= 1.0
-			and (def.style in [BuildingDef.Style.TURBINE, BuildingDef.Style.REACTOR] or def.has_chimney))
+			and (def.style in [BuildingDef.Style.TURBINE, BuildingDef.Style.REACTOR, BuildingDef.Style.TOKAMAK] or def.has_chimney))
 
 
 func _process(delta: float) -> void:
@@ -103,6 +103,8 @@ func _draw() -> void:
 			_draw_basin(inner, center)
 		BuildingDef.Style.PORT:
 			_draw_port(inner, center)
+		BuildingDef.Style.TOKAMAK:
+			_draw_tokamak(inner, center)
 		_:
 			_draw_box(inner, def.height * progress, def.color, def.roof_color)
 			if def.has_chimney and progress > 0.6:
@@ -289,6 +291,35 @@ func _draw_reactor(d: PackedVector2Array, center: Vector2) -> void:
 			var t := fmod(_blade_angle / TAU + k / 4.0, 1.0)
 			var r := top_r * (0.7 + 0.8 * t)
 			draw_circle(foot + Vector2(10.0 * t, -h - 8.0 - 50.0 * t), r, Color(1, 1, 1, 0.35 * (1.0 - t)))
+
+
+## Tokamak et réacteur de fusion : hall bas surmonté d'un tore, anneau de
+## plasma lumineux en service.
+func _draw_tokamak(d: PackedVector2Array, center: Vector2) -> void:
+	var h := def.height * 0.45 * progress
+	_draw_box(d, h, def.color, def.color.lightened(0.1))
+	if progress < 0.5:
+		return
+	var grow := clampf((progress - 0.5) * 2.0, 0.0, 1.0)
+	var top := center + Vector2(0, -h)
+	var outer := Vector2(19.0, 9.5) * def.size.x * grow
+	var lift := Vector2(0, -def.height * 0.6 * grow)
+	_draw_ellipse(top, outer, def.roof_color.darkened(0.35))
+	_draw_ellipse(top + lift, outer, def.roof_color)
+	for k in 10:
+		var a := TAU * k / 10.0
+		if sin(a) < -0.2:
+			continue  # bobines cachées derrière le tore
+		var p := top + Vector2(cos(a) * outer.x, sin(a) * outer.y)
+		draw_line(p, p + lift, def.roof_color.darkened(0.15), 4.0)
+	_draw_ellipse(top + lift, outer * 0.45, def.color.darkened(0.45))
+	if progress >= 1.0 and status == Building.Status.RUNNING:
+		var glow := Color(1.0, 0.45, 0.9, 0.55 + 0.25 * sin(_blade_angle * 2.0))
+		var ring := PackedVector2Array()
+		for k in 25:
+			var a := TAU * k / 24.0
+			ring.append(top + lift + Vector2(cos(a) * outer.x * 0.72, sin(a) * outer.y * 0.72))
+		draw_polyline(ring, glow, 3.0, true)
 
 
 func _draw_ellipse(c: Vector2, radii: Vector2, color: Color) -> void:

@@ -170,6 +170,13 @@ func _building_lines(b: Building) -> PackedStringArray:
 	if def.input_good != Goods.Type.NONE:
 		lines.append("Entrée : %s / %s t de %s" % [Format.decimal(b.input_stock),
 			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.input_good).to_lower()])
+	if def.input2_good != Goods.Type.NONE:
+		lines.append("Entrée : %s / %s t de %s" % [Format.decimal(b.input2_stock),
+			Format.thousands(roundi(def.buffer_capacity)), Goods.display_name(def.input2_good).to_lower()])
+	if def.ramp_up_hours > 0 and b.is_complete():
+		lines.append("Montée en puissance : %d %%" % roundi(Production.ramp_limit(b) * 100.0))
+	if b.def.id == &"tokamak" and b.is_complete():
+		lines.append("Fonctionnement cumulé : %s" % Format.duration_hours(GameState.research.operation_hours.get(&"tokamak", 0)))
 		if b.reserved_in > 0.0:
 			lines.append("En route : %s t" % Format.decimal(b.reserved_in))
 	if def.output_good != Goods.Type.NONE:

@@ -64,6 +64,7 @@ func _ready() -> void:
 		_refresh_overlay_locks())
 	_research_button.pressed.connect(func() -> void: get_node("../TechTree").toggle())
 	%StatsButton.pressed.connect(func() -> void: get_node("../StatsWindow").toggle())
+	EventBus.milestone_reached.connect(_on_milestone)
 	for sig: Signal in [EventBus.building_completed, EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh_upkeep())
 	for sig: Signal in [EventBus.vehicle_added, EventBus.vehicle_removed]:
@@ -153,6 +154,20 @@ func _on_money_changed(money: int) -> void:
 			Format.thousands(roundi(economy.yesterday.net())), Format.thousands(GameState.daily_upkeep())]
 
 
+## Victoire « Ère de la fusion » : fenêtre de félicitations, la partie continue.
+func _on_milestone(milestone: Milestones.Def) -> void:
+	if milestone.id != &"fusion":
+		return
+	var dialog := AcceptDialog.new()
+	dialog.title = "Victoire : ère de la fusion"
+	dialog.dialog_text = "La fusion fournit plus de la moitié de l'électricité du pays, presque sans CO₂.\n\nFélicitations ! La partie continue librement."
+	dialog.ok_button_text = "Continuer"
+	add_child(dialog)
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered()
+
+
 ## Saison, demande saisonnière, durée du jour, prochaine saison.
 static func _date_tooltip(tick: int) -> String:
 	var season := GameDate.season(tick)
@@ -172,6 +187,8 @@ func _on_grid(report: PowerGrid.Report) -> void:
 			stocks[good] = stocks.get(good, 0.0) + b.store[good]
 		if b.def.input_good != Goods.Type.NONE:
 			stocks[b.def.input_good] = stocks.get(b.def.input_good, 0.0) + b.input_stock
+		if b.def.input2_good != Goods.Type.NONE:
+			stocks[b.def.input2_good] = stocks.get(b.def.input2_good, 0.0) + b.input2_stock
 		if b.def.output_good != Goods.Type.NONE:
 			stocks[b.def.output_good] = stocks.get(b.def.output_good, 0.0) + b.output_stock
 	var lines := PackedStringArray([
@@ -237,7 +254,11 @@ static func _cost(amount: float) -> String:
 func _refresh_research() -> void:
 	var research := GameState.research
 	var current := research.current()
-	if current:
+	if current and research.is_waiting():
+		_research_button.text = "Essais tokamak"
+		_research_button.tooltip_text = "%s : en attente de %s de fonctionnement d'un tokamak (T)" % [
+			current.display_name, Format.duration_hours(current.requires_hours)]
+	elif current:
 		_research_button.text = "Recherche %d %%" % roundi(research.progress_of(current.id) * 100.0)
 		_research_button.tooltip_text = "%s (T)\n%s RP/h" % [current.display_name, Format.decimal(GameState.research_rate)]
 	else:

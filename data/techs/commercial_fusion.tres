@@ -6,8 +6,9 @@
 script = ExtResource("1_def")
 id = &"commercial_fusion"
 display_name = "Réacteur de fusion commercial"
-description = "Électricité massive sans CO₂ (étape M6b)."
+description = "Réacteur de fusion : électricité massive sans CO₂, à partir de deutérium et de lithium. Exige 720 h de fonctionnement d'un tokamak."
 era = 7
 cost = 15000
 prerequisites = Array[StringName]([&"tokamak", &"deuterium", &"breeding_blanket"])
-placeholder = true
+requires_building = &"tokamak"
+requires_hours = 720

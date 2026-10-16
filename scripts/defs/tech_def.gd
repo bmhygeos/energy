@@ -29,6 +29,11 @@ const MODIFIER_NAMES := {
 @export var modifiers: Dictionary[StringName, float] = {}
 ## Connue dès le début de la partie.
 @export var start_known := false
+## Condition d'essai : la technologie ne s'achève qu'après
+## [member requires_hours] heures de fonctionnement d'un bâtiment
+## [member requires_building] (tokamak avant la fusion commerciale).
+@export var requires_building: StringName
+@export var requires_hours := 0
 ## Contenu prévu dans une étape ultérieure (aucun effet pour l'instant).
 @export var placeholder := false
 

@@ -148,11 +148,14 @@ func supply(b: Building, good: int) -> float:
 	return 0.0
 
 
-## Quantité que le consommateur [param b] peut encore recevoir.
-func demand(b: Building) -> float:
-	if not b.is_complete() or b.def.input_good == Goods.Type.NONE:
+## Quantité de [param good] (par défaut : la première entrée) que le
+## consommateur [param b] peut encore recevoir.
+func demand(b: Building, good: int = -1) -> float:
+	if good < 0:
+		good = b.def.input_good
+	if not b.is_complete() or not b.def.takes(good):
 		return 0.0
-	return b.def.buffer_capacity - b.input_stock - b.reserved_in
+	return b.def.buffer_capacity - b.input_of(good) - b.reserved_in_of(good)
 
 
 ## Place libre (non promise) dans l'entrepôt [param b].
@@ -164,7 +167,7 @@ func storage_room(b: Building) -> float:
 
 ## Marchandises en route vers [param b] (t).
 func incoming(b: Building) -> float:
-	return b.reserved_in
+	return b.reserved_in + b.reserved_in2
 
 
 ## Réservation restante, ramenée à 0 si négative ou résiduelle (arrondis).
@@ -204,7 +207,7 @@ func _put(b: Building, good: int, qty: float) -> void:
 	if is_warehouse(b):
 		b.store[good] = b.store.get(good, 0.0) + qty
 	else:
-		b.input_stock = minf(b.def.buffer_capacity, b.input_stock + qty)
+		b.add_input(good, qty)
 
 
 # --- Trajets ---------------------------------------------------------------
@@ -290,7 +293,7 @@ func diagnose(b: Building) -> String:
 	if is_warehouse(b):
 		var partners := registry.all().filter(func(o: Building) -> bool:
 			return o != b and o.is_complete() and distance(b, o) >= 0 \
-				and (o.def.input_good != Goods.Type.NONE or o.def.output_good != Goods.Type.NONE))
+				and (not o.def.input_goods().is_empty() or o.def.output_good != Goods.Type.NONE))
 		if partners.is_empty():
 			return "aucun fournisseur joignable par la route"
 	if def.output_good != Goods.Type.NONE:
@@ -299,10 +302,10 @@ func diagnose(b: Building) -> String:
 			if def.output_good == Goods.Type.NUCLEAR_WASTE:
 				return "aucun site de stockage des déchets joignable par la route"
 			return "aucun client (centrale, entrepôt) joignable par la route"
-	if def.input_good != Goods.Type.NONE:
-		flows.append(def.input_good)
-		if not _has_partner(b, def.input_good, false):
-			return "aucun fournisseur de %s joignable par la route" % Goods.display_name(def.input_good).to_lower()
+	for good in def.input_goods():
+		flows.append(good)
+		if not _has_partner(b, good, false):
+			return "aucun fournisseur de %s joignable par la route" % Goods.display_name(good).to_lower()
 	var components := {}
 	for c in access:
 		components[roads.component_of(c)] = true
@@ -341,7 +344,7 @@ func _has_partner(b: Building, good: int, as_output: bool) -> bool:
 	for other in registry.all():
 		if other == b or not other.is_complete():
 			continue
-		var trades := (other.def.input_good if as_output else other.def.output_good) == good \
+		var trades := (other.def.takes(good) if as_output else other.def.output_good == good) \
 			or (is_warehouse(other) and not Goods.is_hazardous(good))
 		if trades and distance(b, other) >= 0:
 			return true
@@ -413,7 +416,7 @@ func _update(v: Vehicle, report: Report) -> void:
 			v.prev_grid_pos = v.grid_pos
 			v.wait_hours -= 1
 			if v.wait_hours <= 0:
-				v.destination.reserved_in = _clean(v.destination.reserved_in - v.amount)
+				v.destination.add_reserved_in(v.good, -v.amount)
 				_put(v.destination, v.good, v.cargo)
 				report.delivered += v.cargo
 				_clear_mission(v)
@@ -445,7 +448,7 @@ func _release(v: Vehicle) -> void:
 	if v.state in [Vehicle.State.TO_SOURCE, Vehicle.State.LOADING]:
 		_release_out(v.source, v.good, v.amount)
 	if v.destination:
-		v.destination.reserved_in = _clean(v.destination.reserved_in - v.amount)
+		v.destination.add_reserved_in(v.good, -v.amount)
 
 
 ## Annule la mission (chargement perdu) et renvoie le véhicule au dépôt.
@@ -488,14 +491,21 @@ func _dispatch() -> void:
 func _dispatch_road(available: Array[Vehicle]) -> void:
 	if available.is_empty():
 		return
-	var consumers: Array[Building] = registry.all().filter(func(b: Building) -> bool:
-		return demand(b) >= MIN_LOAD)
-	consumers.sort_custom(func(a: Building, b: Building) -> bool:
-		return _fill_ratio(a) < _fill_ratio(b) if _fill_ratio(a) != _fill_ratio(b) else a.id < b.id)
-	for consumer in consumers:
-		var good := consumer.def.input_good
+	# Besoins (bâtiment, marchandise), les tampons les plus vides d'abord.
+	var needs: Array = []
+	for b in registry.all():
+		for good in b.def.input_goods():
+			if demand(b, good) >= MIN_LOAD:
+				needs.append([b, good])
+	needs.sort_custom(func(x: Array, y: Array) -> bool:
+		var fx := _fill_ratio(x[0], x[1])
+		var fy := _fill_ratio(y[0], y[1])
+		return fx < fy if fx != fy else (x[0].id < y[0].id if x[0] != y[0] else x[1] < y[1]))
+	for pair: Array in needs:
+		var consumer: Building = pair[0]
+		var good: int = pair[1]
 		while not available.is_empty():
-			var need := demand(consumer)
+			var need := demand(consumer, good)
 			if need < MIN_LOAD:
 				break
 			var carriers := available.filter(func(v: Vehicle) -> bool: return can_carry(v, good))
@@ -587,7 +597,7 @@ func _best_hub(from: Building, good: int) -> Building:
 ## rapprocher de leurs clients : pas d'aller-retour entre gares.)
 func _closer_to_client(station: Building, origin: Building, good: int) -> bool:
 	for c in registry.all():
-		if c.def.input_good != good or not c.is_complete():
+		if not c.def.takes(good) or not c.is_complete():
 			continue
 		var d := distance(station, c)
 		if d < 0:
@@ -598,8 +608,8 @@ func _closer_to_client(station: Building, origin: Building, good: int) -> bool:
 	return false
 
 
-func _fill_ratio(b: Building) -> float:
-	return (b.input_stock + b.reserved_in) / b.def.buffer_capacity
+func _fill_ratio(b: Building, good: int) -> float:
+	return (b.input_of(good) + b.reserved_in_of(good)) / b.def.buffer_capacity
 
 
 ## Source joignable la plus proche ayant une charge correcte de [param good] :
@@ -671,7 +681,7 @@ func _start(v: Vehicle, source: Building, destination: Building, good: int, qty:
 	v.source = source
 	v.destination = destination
 	_reserve_out(source, good, qty)
-	destination.reserved_in += qty
+	destination.add_reserved_in(good, qty)
 	var was_idle := v.state == Vehicle.State.IDLE
 	v.set_path(path)
 	if was_idle:

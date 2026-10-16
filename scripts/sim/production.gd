@@ -13,6 +13,8 @@ const EPSILON := 0.0001
 ## Rendement décroissant de la recherche : n laboratoires produisent comme
 ## n^RESEARCH_SCALING laboratoires isolés (coordination, équipes).
 const RESEARCH_SCALING := 0.75
+## Puissance permise au début de la montée en puissance.
+const RAMP_MIN := 0.1
 
 
 ## Bilan d'une heure de production.
@@ -51,17 +53,31 @@ func _init(p_registry: BuildingRegistry) -> void:
 func step(tick: int) -> Report:
 	var report := Report.new()
 	var labs := 0
+	var lab_research := 0.0
 	for b in registry.all():
 		var old := b.status
 		_run(b, tick, report)
 		if b.status != old:
 			report.status_changed.append(b)
 		report.power_mw += b.power_mw
-		if b.status == Building.Status.RUNNING and b.def.research_per_hour > 0.0:
-			report.research += b.def.research_per_hour * research_factor
-			labs += 1
-	report.research *= research_efficiency(labs)
+		if b.status != Building.Status.RUNNING:
+			continue
+		b.operating_hours += 1
+		if b.def.ramp_up_hours > 0:
+			b.ramp = minf(1.0, b.ramp + 1.0 / b.def.ramp_up_hours)
+		if b.def.research_per_hour > 0.0:
+			if b.def.research_diminishing:
+				lab_research += b.def.research_per_hour * research_factor
+				labs += 1
+			else:
+				report.research += b.def.research_per_hour * research_factor
+	report.research += lab_research * research_efficiency(labs)
 	return report
+
+
+## Part de la pleine puissance permise par la montée en puissance.
+static func ramp_limit(b: Building) -> float:
+	return maxf(RAMP_MIN, b.ramp) if b.def.ramp_up_hours > 0 else 1.0
 
 
 ## Rendement de chaque laboratoire quand [param labs] sont en service.
@@ -121,11 +137,17 @@ func _run(b: Building, tick: int, report: Report) -> void:
 			b.status = Building.Status.NO_INPUT
 			return
 		fraction = minf(fraction, b.input_stock / input_rate)
+	var input2_rate := input2_rate_of(def)
+	if def.input2_good != Goods.Type.NONE:
+		if b.input2_stock <= EPSILON:
+			b.status = Building.Status.NO_INPUT
+			return
+		fraction = minf(fraction, b.input2_stock / input2_rate)
 	if def.power_source == BuildingDef.PowerSource.FUEL:
 		if b.power_setpoint <= EPSILON:
 			b.status = Building.Status.STANDBY
 			return
-		fraction = minf(fraction, minf(b.power_setpoint, cooling_limit(b)))
+		fraction = minf(fraction, minf(b.power_setpoint, minf(cooling_limit(b), ramp_limit(b))))
 	match def.extraction:
 		BuildingDef.Extraction.FOREST:
 			var got := _harvest_forest(b, output_rate * fraction, report)
@@ -142,6 +164,7 @@ func _run(b: Building, tick: int, report: Report) -> void:
 		BuildingDef.Extraction.REFOREST:
 			_reforest(b, tick, report)
 	b.input_stock = maxf(0.0, b.input_stock - input_rate * fraction)
+	b.input2_stock = maxf(0.0, b.input2_stock - input2_rate * fraction)
 	b.output_stock = minf(def.buffer_capacity, b.output_stock + output_rate * fraction)
 	b.power_mw = def.power_mw * fraction
 	b.activity = fraction
@@ -175,6 +198,10 @@ func output_rate_of(def: BuildingDef) -> float:
 
 
 ## Consommation horaire de combustible à plein régime, technologies comprises.
+func input2_rate_of(def: BuildingDef) -> float:
+	return def.input2_per_hour * (fuel_factor if def.power_source == BuildingDef.PowerSource.FUEL else 1.0)
+
+
 func input_rate_of(def: BuildingDef) -> float:
 	return def.input_per_hour * (fuel_factor if def.power_source == BuildingDef.PowerSource.FUEL else 1.0)
 

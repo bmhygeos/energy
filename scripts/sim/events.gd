@@ -33,12 +33,10 @@ const CRISIS_PRICE := 1.5
 const STORM_DAMAGE_CHANCE := 0.1
 const STORM_REPAIR_HOURS := Vector2i(48, 96)
 const STORM_REPAIR_COST := 0.05
-## Incident nucléaire : arrêt (heures), coût (part du prix de construction),
-## rayon (tuiles) et perte de satisfaction des villes voisines.
-const INCIDENT_HOURS := 10 * 24
-const INCIDENT_COST := 0.1
+## Incident (nucléaire, confinement de la fusion) : rayon (tuiles) où les
+## villes perdent en satisfaction ; durée, coût et gravité viennent du
+## bâtiment (BuildingDef.incident_*).
 const INCIDENT_RADIUS := 20
-const INCIDENT_SATISFACTION := 0.25
 ## Alerte quand un gisement n'a plus que ce nombre de jours d'extraction.
 const DEPOSIT_WARNING_DAYS := 30.0
 
@@ -107,7 +105,7 @@ func step(tick: int, registry: BuildingRegistry, extraction_factor: float = 1.0)
 	for b in registry.all():
 		if b.def.incident_per_year > 0.0 and b.status == Building.Status.RUNNING \
 				and rng.randf() < b.def.incident_per_year / GameDate.HOURS_PER_YEAR:
-			nuclear_incident(b, tick, registry, report)
+			incident(b, tick, registry, report)
 	if GameDate.hour_of_day(tick) == 0:
 		_check_deposits(registry, extraction_factor, report)
 	return report
@@ -162,20 +160,23 @@ func start(kind: Kind, tick: int, duration: int, registry: BuildingRegistry, rep
 
 
 ## Incident sur [param b] : arrêt, réparation, inquiétude des villes voisines.
-func nuclear_incident(b: Building, tick: int, registry: BuildingRegistry, report: Report) -> void:
-	_put_out(b, tick + INCIDENT_HOURS, Building.Status.REPAIR, report)
-	report.repair_cost += b.def.cost * INCIDENT_COST
-	for c in registry.all():
-		if c.city and Production.footprint_distance(b, c) <= INCIDENT_RADIUS:
-			c.city.satisfaction = maxf(0.0, c.city.satisfaction - INCIDENT_SATISFACTION)
-	report.messages.append("Incident nucléaire en (%d, %d) : réacteur arrêté %s, réparations %s €" % [
-		b.anchor.x, b.anchor.y, Format.duration_hours(INCIDENT_HOURS), Format.thousands(roundi(b.def.cost * INCIDENT_COST))])
+func incident(b: Building, tick: int, registry: BuildingRegistry, report: Report) -> void:
+	var def := b.def
+	_put_out(b, tick + def.incident_hours, Building.Status.REPAIR, report)
+	report.repair_cost += def.cost * def.incident_cost
+	if def.incident_satisfaction > 0.0:
+		for c in registry.all():
+			if c.city and Production.footprint_distance(b, c) <= INCIDENT_RADIUS:
+				c.city.satisfaction = maxf(0.0, c.city.satisfaction - def.incident_satisfaction)
+	report.messages.append("%s en (%d, %d) : arrêt %s, réparations %s €" % [def.incident_name,
+		b.anchor.x, b.anchor.y, Format.duration_hours(def.incident_hours), Format.thousands(roundi(def.cost * def.incident_cost))])
 
 
 func _put_out(b: Building, until: int, status: Building.Status, report: Report) -> void:
 	b.outage_until = until
 	b.outage_status = status
 	b.power_setpoint = 0.0
+	b.ramp = 0.0
 	report.status_changed.append(b)
 
 

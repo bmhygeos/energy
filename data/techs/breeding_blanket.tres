@@ -6,8 +6,7 @@
 script = ExtResource("1_def")
 id = &"breeding_blanket"
 display_name = "Couverture tritigène"
-description = "Production de tritium à partir du lithium (étape M6b)."
+description = "Mine de lithium ; le lithium alimente la couverture du réacteur de fusion, qui en tire le tritium."
 era = 7
 cost = 11000
 prerequisites = Array[StringName]([&"plasma_physics"])
-placeholder = true

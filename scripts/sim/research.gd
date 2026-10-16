@@ -12,6 +12,9 @@ var queue: Array[StringName] = []
 var progress := 0.0
 ## Points accumulés sans recherche en cours, versés à la prochaine.
 var bank := 0.0
+## Heures de fonctionnement cumulées par type de bâtiment (conditions
+## d'essai des technologies).
+var operation_hours: Dictionary[StringName, int] = {}
 
 
 func _init(p_defs: Array[TechDef]) -> void:
@@ -38,6 +41,17 @@ func is_available(id: StringName) -> bool:
 		if not is_known(p):
 			return false
 	return true
+
+
+## Condition d'essai de [param id] remplie (ou absente).
+func is_ready(id: StringName) -> bool:
+	var def := defs[id]
+	return def.requires_hours <= 0 or operation_hours.get(def.requires_building, 0) >= def.requires_hours
+
+
+## Tête de file payée mais en attente de sa condition d'essai.
+func is_waiting() -> bool:
+	return not queue.is_empty() and progress >= defs[queue[0]].cost and not is_ready(queue[0])
 
 
 func current() -> TechDef:
@@ -99,10 +113,15 @@ func dequeue(id: StringName) -> void:
 ## Verse [param points] dans la file ; renvoie les technologies achevées.
 func add_points(points: float) -> Array[TechDef]:
 	var done: Array[TechDef] = []
-	while points > 0.0 and not queue.is_empty():
+	while not queue.is_empty():
 		var def := defs[queue[0]]
-		var need := def.cost - progress
+		var need := maxf(0.0, def.cost - progress)
 		if points >= need:
+			if not is_ready(def.id):
+				# Payée, mais en attente des heures d'essai : le reste en banque.
+				progress = def.cost
+				points -= need
+				break
 			points -= need
 			progress = 0.0
 			queue.pop_front()
@@ -111,6 +130,7 @@ func add_points(points: float) -> Array[TechDef]:
 		else:
 			progress += points
 			points = 0.0
+			break
 	# Technologies gratuites en tête de file.
 	while not queue.is_empty() and defs[queue[0]].cost <= 0:
 		var def := defs[queue.pop_front()]

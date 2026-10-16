@@ -301,12 +301,12 @@ nécessite un navigateur avec WebGL 2.
   - *Environnement* : émissions de CO₂ ; part renouvelable et satisfaction.
   - *Villes et recherche* : population ; recherche produite.
   - Le compteur d'images par seconde a quitté le bandeau pour cette fenêtre.
-- **Jalons du bac à sable** (onglet « Jalons ») : 12 objectifs facultatifs,
+- **Jalons du bac à sable** (onglet « Jalons ») : 13 objectifs facultatifs,
   vérifiés chaque fin de journée et annoncés une fois atteints : premier
   mégawatt, une ville puis toutes les villes alimentées 24 h sur 24, 100 MW
   livrés en moyenne, ère atomique, moitié verte (50 % renouvelable), zéro
   carbone, habitants comblés (80 %), millionnaire, 20 technologies,
-  500 000 habitants, ère de la fusion.
+  500 000 habitants, étoile en bouteille, ère de la fusion (victoire).
 
 ## Tutoriel et info-bulles (M8, partie 2)
 
@@ -347,3 +347,28 @@ et demande des villes année par année.
   (150 €/j).
 - **Délestage** : pénalité portée à 5 €/MWh non livré (la moitié du prix),
   pour que la fiabilité et le stockage comptent.
+
+## Fusion (M6b)
+
+- **Mine de lithium** (80 000 €, Couverture tritigène) : sur les gisements
+  de lithium, rares (déserts, collines) ; 0,2 t/h.
+- **Usine de deutérium** (250 000 €, 2×2, Extraction du deutérium) : doit
+  toucher la mer ; consomme 25 MW ; 0,3 t/h de deutérium.
+- **Tokamak expérimental** (1 200 000 €, 4×4, entretien 6 000 €/j) :
+  engloutit 120 MW mais produit 15 RP/h, hors rendement décroissant des
+  laboratoires. La technologie **Réacteur de fusion commercial** ne s'achève
+  qu'après **720 h de fonctionnement** d'un tokamak : une fois payée, elle
+  attend ses essais (« Essais tokamak » dans le bandeau et l'arbre).
+- **Réacteur de fusion** (4 000 000 €, 5×5, entretien 15 000 €/j) : 500 MW
+  sans CO₂ ni déchets, à partir de 0,1 t/h de deutérium **et** 0,05 t/h de
+  lithium (le tritium est produit dans la couverture). Il démarre à 10 % et
+  monte en puissance sur 30 jours, après la mise en service comme après un
+  arrêt. **Perte de confinement** (environ 2 par an) : plasma arrêté 4 jours,
+  réparations à 1 % du prix, sans effet sur les villes.
+- **Fusion avancée** : −20 % de combustible pour toutes les centrales.
+- Les bâtiments peuvent désormais consommer **deux marchandises** : chacune
+  a son tampon et ses livraisons, le panneau affiche les deux.
+- **Victoire « Ère de la fusion »** (jalon) : plus de 50 % de l'électricité
+  d'une journée tirée de la fusion, avec moins de 200 t de CO₂ ; une fenêtre
+  félicite le joueur et la partie continue. Nouveau jalon « Étoile en
+  bouteille » : premier réacteur de fusion en service.

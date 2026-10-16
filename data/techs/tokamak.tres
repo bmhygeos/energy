@@ -6,8 +6,7 @@
 script = ExtResource("1_def")
 id = &"tokamak"
 display_name = "Tokamak expérimental"
-description = "Réacteur expérimental, gros producteur de recherche (étape M6b)."
+description = "Tokamak expérimental : énorme consommateur d'électricité, gros producteur de recherche. Ses heures de fonctionnement ouvrent la fusion commerciale."
 era = 7
 cost = 12000
 prerequisites = Array[StringName]([&"hts"])
-placeholder = true
