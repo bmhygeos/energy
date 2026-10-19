@@ -92,6 +92,25 @@ Pour ne pas avoir à tout refaire plus tard, dès la V1 :
 - **Logement** : les maisons (bâtiment simple, coût en bois) fixent la population
   maximale.
 
+### Puissance de la cité
+Un **compteur de puissance** dans le HUD affiche la puissance produite par la
+cité et la **puissance par habitant**, l'indicateur de développement qui suit
+toute la partie (fidèle au nom « Energy ») :
+- Chaque ressource produite est convertie en énergie selon son contenu
+  énergétique, puis ramenée à une puissance moyenne (W) :
+  | Ressource | Équivalent | Repère |
+  |---|---|---|
+  | Nourriture | 1 unité = 2 500 kcal ≈ 10,5 MJ | 1 unité / jour ≈ 120 W |
+  | Bois | 1 unité = 10 kg de bois sec ≈ 150 MJ | 0,2 unité / jour ≈ 350 W |
+- Ordre de grandeur attendu : environ 0,5 kW par habitant pour un hameau
+  agricole, quelques kW avec l'artisanat et l'industrie, 10 kW et plus à l'ère
+  moderne ; les paliers suivants ajoutent leurs sources (charbon, électricité…).
+- La production agricole étant saisonnière, le compteur affiche une **moyenne
+  glissante** (30 jours, ou annuelle au choix) plutôt que la valeur instantanée ;
+  l'info-bulle détaille la part de chaque ressource.
+- Les deux valeurs sont enregistrées dans `Statistics` pour leurs graphiques et
+  peuvent servir de conditions de jalons.
+
 ## 5. Zones
 Le joueur **peint des zones** à la souris (rectangle ou pinceau), comme les routes
 en v1, et peut les effacer. Une tuile porte au plus une zone.
@@ -138,13 +157,46 @@ des zones ou des bâtiments et améliore l'exploration.
 | Palier | Population | Nouveaux besoins | Nouvelles zones et bâtiments | Exploration |
 |---|---|---|---|---|
 | 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier | Explorateurs à pied, 1 expédition |
-| 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) | 3 expéditions, plus de vivres |
+| 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (inventions) | 3 expéditions, plus de vivres, chevaux de bât |
 | 3 – Bourg | 400 | Outils, vêtements | Mine de fer, forge, champ de lin/laine (élevage) ; routes, marché | Éclaireurs à cheval |
 | 4 – Ville | 1 500 | Biens variés, santé, ordre | Artisans, commerce avec l'extérieur (argent), impôts | Bateaux, cartographes |
 | 5 – Cité-État | 5 000 | Éducation, culture, énergie | Recherche, puis industrie (où la v1 peut revenir : énergie, réseau) | Puis ère spatiale : satellites, vue globe |
 
 Les paliers 2 à 5 sont **indicatifs** : seul le palier 1 est détaillé ici, les
 suivants seront précisés après avoir joué le premier.
+
+### Palier 2 : hippotraction et inventions
+**Hippotraction** : l'**écurie** (bois, pierre) loge des chevaux de trait,
+élevés à partir de l'élevage (une part de sa production devient des chevaux, que
+l'écurie plafonne). Chaque cheval mange du fourrage (ex. 3 unités de nourriture
+par jour) et sert à deux choses :
+- **Portée** : les chevaux sont attelés automatiquement aux zones les plus
+  éloignées ; une tuile desservie par un attelage voit sa pénalité de distance
+  commencer à 12 tuiles au lieu de 6, et réduite de moitié (−1,5 % par tuile).
+  Le territoire exploitable s'élargit avant les routes du palier 3.
+- **Quantité transportée** : une charrette rapporte autant que 4 porteurs, ce
+  qui libère des habitants pour d'autres activités. Une expédition peut emmener
+  des chevaux de bât qui portent 4 fois plus de vivres qu'un homme, donc va plus
+  loin.
+
+Le panneau « Main-d'œuvre » affiche aussi les chevaux (disponibles, attelés,
+fourrage consommé). Leur travail s'ajoute au compteur de puissance (environ
+700 W par cheval au travail).
+
+**Inventions** : l'**atelier** (bâtiment) accueille quelques habitants actifs,
+affectés comme dans une zone, qui mettent au point **une invention à la fois** :
+un coût en ressources plus une durée en jours de travail. Chaque invention
+débloquée améliore durablement la production :
+
+| Invention | Prérequis | Effet |
+|---|---|---|
+| Collier d'attelage | Écurie | Chevaux plus efficaces : charge et portée +50 % |
+| Charrue | Collier d'attelage | Agriculture +30 % sur les tuiles desservies par un attelage, +10 % ailleurs (araire tirée à la main) |
+| Scie | — | Coupe du bois +40 %, maisons −25 % de bois |
+| Moulin à vent | Pierre | Bâtiment : moud le grain, avec agriculture +20 % et nourriture qui se gâte moitié moins vite ; sa puissance mécanique compte dans le compteur |
+
+D'autres inventions (moulin à eau, assolement, fer) viendront avec les paliers
+suivants ; l'atelier devient la recherche du palier 5.
 
 ## 8. Économie et gouvernance (à partir du palier 3–4)
 - **Argent** : impôts (selon population et satisfaction), commerce des surplus.
@@ -184,11 +236,15 @@ scripts/sim/
   labor.gd         répartition des actifs entre zones (section 6)
   stockpile.gd     stocks de la cité, capacité, pertes
   city_tier.gd     paliers et conditions de passage
+  draft_animals.gd chevaux : élevage, fourrage, attelage aux zones (palier 2)
+  inventions.gd    atelier, mise au point, modificateurs de production (palier 2)
 data/zones/        agriculture.tres, pasture.tres, forestry.tres
+data/inventions/   harness.tres, plough.tres, saw.tres, windmill.tres
 ```
 Interface : outil « Zones » (peinture), panneau « Main-d'œuvre », HUD
-(habitants, actifs, chômeurs, nourriture et bois en jours de réserve), outil
-« Expédition » (choix de la cible, effectif, vivres).
+(habitants, actifs, chômeurs, nourriture et bois en jours de réserve,
+puissance totale et par habitant), outil « Expédition » (choix de la cible,
+effectif, vivres).
 
 ## 11. Étapes de développement
 | # | Étape | Livrable |
@@ -197,9 +253,9 @@ Interface : outil « Zones » (peinture), panneau « Main-d'œuvre », HUD
 | V1 | Planète et territoire | Grille longitude / latitude qui boucle, génération par blocs sur la sphère, climat selon la latitude, états des tuiles, fertilité / pâturage / forêt |
 | V2 | Zones | Peinture et effacement des trois zones, calque de zones |
 | V3 | Population et main-d'œuvre | Habitants, besoins nourriture et bois, répartition automatique, priorités, panneau |
-| V4 | Production et saisons | Rendements, récoltes saisonnières, stocks, gâchis, repousse de la forêt, croissance et famine |
+| V4 | Production et saisons | Rendements, récoltes saisonnières, stocks, gâchis, repousse de la forêt, croissance et famine, compteur de puissance |
 | V5 | Exploration | Expéditions (effectif, vivres, trajet, révélation), annexion des tuiles explorées |
-| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées |
+| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, atelier et inventions (collier, charrue, scie, moulin à vent) |
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 |
 | V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets, puis énergie |
 | V∞ | Ère spatiale | Vue globe 3D, satellites et orbites |
