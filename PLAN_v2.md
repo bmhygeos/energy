@@ -163,7 +163,7 @@ des zones ou des bâtiments et améliore l'exploration.
 | 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier | Explorateurs à pied, 1 expédition |
 | 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (recherche ×2) | 3 expéditions, plus de vivres, chevaux de bât |
 | 3 – Bourg | 400 | Outils, vêtements | Mine de fer, forge, champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5) ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
-| 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; **pétrole** : puits, raffinerie, moteurs ; **cuivre** : mine, lignes électriques ; premières centrales électriques et **barrage hydroélectrique**, réseau (repris de la v1) ; **camions** : routes carrossables, dépôts | Bateaux, cartographes, prospection du pétrole et du cuivre |
+| 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; université (recherche ×10) ; **pétrole** : puits, raffinerie, moteurs ; **cuivre** : mine, lignes électriques ; premières centrales électriques et **barrage hydroélectrique**, réseau (repris de la v1) ; **camions** : routes carrossables, dépôts | Bateaux, cartographes, prospection du pétrole et du cuivre |
 | 5 – Cité-État | 5 000 | Éducation, culture, électricité | Industrie ; **électronique**, informatique (recherche ×20) puis IA : **datacenter** (×100) ; **nucléaire** : mine d'uranium, centrale nucléaire ; **éolienne**, **photovoltaïque** ; **lithium** : mine, batteries, véhicules électriques | Prospection de l'uranium et du lithium ; recherche de la fusée → base de lancement → premier satellite : toute la planète révélée, vue globe |
 
 Les paliers 2 à 5 sont **indicatifs** : seul le palier 1 est détaillé ici, les
@@ -187,12 +187,15 @@ l'arbre :
   | — | 1 – Hameau | — | ×1 | — | Pas de recherche active : les points s'accumulent pour le palier 2 |
   | Atelier | 2 – Village | Palier atteint | ×2 | 100 habitants | Coût en bois et pierre |
   | Laboratoire | 3 – Bourg | Recherche | ×5 | 400 habitants | Demande des outils |
+  | Université | 4 – Ville | Recherche | ×10 | 1 000 habitants | Entretien en argent (impôts) ; prépare le besoin « éducation » du palier 5 |
   | Informatique | 5 – Cité-État | Recherche (électronique) | ×20 | 2 000 habitants | Consomme de l'électricité |
   | Datacenter | 5 – Cité-État | Recherche de l'IA (après l'informatique) | ×100 | 10 000 habitants | Gros consommateur d'électricité ; refroidissement par l'eau (rivière, lac, côte), moins coûteux aux latitudes froides |
 
 - **Coût** : chaque recherche coûte des points (croissants avec le palier, pour
   garder une durée de quelques minutes de jeu) et parfois des ressources (ex. la
-  fusée). Les gisements (charbon, cuivre…) doivent en plus être prospectés.
+  fusée). Gisements et mines sont disponibles dès leur palier, mais le fer, le
+  cuivre, le pétrole, l'uranium et le lithium ne se transforment qu'après la
+  recherche de leurs propriétés (section « Énergies »).
 - L'électricité consommée par l'informatique et le datacenter pèse sur le réseau : la
   recherche rapide demande une production d'énergie à la hauteur.
 
@@ -244,9 +247,24 @@ compteur de puissance par habitant :
 | 5 – Cité-État | Lithium | Mine sur un gisement (salars, roches) | Batteries : stockent le surplus éolien et solaire pour la nuit et les jours sans vent ; véhicules électriques |
 
 - **Gisements** : générés avec la carte dès V1 (dans la graine, comme les
-  autres données de terrain) mais **invisibles** tant que le palier n'est pas
-  atteint (charbon, pétrole, cuivre, uranium, lithium) ; une expédition de prospection les révèle sur les tuiles explorées,
-  et il faut ensuite annexer la tuile pour l'exploiter.
+  autres données de terrain) mais **invisibles** au départ. Toutes les
+  ressources deviennent **prospectables dès leur palier**, et leurs **mines**
+  (ou puits) sont disponibles dès ce palier : une expédition de prospection
+  révèle les gisements sur les tuiles explorées, puis il faut annexer la tuile
+  pour l'exploiter.
+- **Recherche des propriétés** : pour le fer, le cuivre, le pétrole, l'uranium
+  et le lithium, une recherche est nécessaire pour savoir les **transformer et
+  les utiliser** ; avant, le minerai extrait s'accumule sans usage (le charbon
+  s'utilise directement) :
+
+  | Ressource | Palier | Recherche | Ce qu'elle débloque |
+  |---|---|---|---|
+  | Fer | 3 – Bourg | Métallurgie du fer | Forge, outils, rails |
+  | Pétrole | 4 – Ville | Raffinage du pétrole | Raffinerie (carburants, fioul, lampes, moteurs) |
+  | Cuivre | 4 – Ville | Conductivité du cuivre | Lignes électriques, réseau |
+  | Uranium | 5 – Cité-État | Radioactivité | Enrichissement, centrale nucléaire |
+  | Lithium | 5 – Cité-État | Électrochimie du lithium | Batteries, véhicules électriques |
+
 - **Équivalents** pour le compteur : 1 unité de charbon = 10 kg ≈ 290 MJ,
   1 unité de pétrole = 10 kg ≈ 420 MJ ; l'électricité (centrales) est comptée
   directement par sa production en MW.
@@ -338,7 +356,7 @@ scripts/sim/
   stockpile.gd     stocks de la cité, capacité, pertes
   city_tier.gd     paliers et conditions de passage
   draft_animals.gd chevaux : élevage, fourrage, attelage aux zones (palier 2)
-  research.gd      (réécrit) points par habitant, multiplicateurs (atelier → datacenter), arbre, modificateurs de production
+  research.gd      (réécrit) points par habitant, multiplicateurs (atelier, laboratoire, université, informatique, datacenter), arbre, modificateurs de production
 data/zones/        agriculture.tres, pasture.tres, forestry.tres
 data/research/     une définition par recherche (harness, plough, saw, windmill…), prérequis, coût, effets
 ```
