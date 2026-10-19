@@ -58,7 +58,8 @@ La carte ne s'agrandit que par l'**exploration** :
 
 ### La planète (à terme)
 Le monde est une **planète**, pour pouvoir un jour la montrer en globe avec ses
-**satellites** en orbite (dernier palier : observation, météo, communications).
+**satellites** en orbite (dernier palier : le premier satellite révèle toute la
+planète, section 7).
 Pour ne pas avoir à tout refaire plus tard, dès la V1 :
 - **Projection** : grille en longitude / latitude (équirectangulaire, ex.
   1024×512 tuiles) qui **boucle d'est en ouest** ; les pôles sont les bords nord et
@@ -68,7 +69,9 @@ Pour ne pas avoir à tout refaire plus tard, dès la V1 :
   le **climat dépend de la latitude** (glace aux pôles, déserts et forêts
   tropicales près de l'équateur, saisons plus marquées aux latitudes moyennes).
 - **Génération à la demande** par blocs (ex. 32×32) : seuls les blocs explorés
-  sont créés et gardés en mémoire, la graine suffit à recréer le reste.
+  sont créés et gardés en mémoire, la graine suffit à recréer le reste. Quand le
+  satellite révèle la planète, les blocs restent générés à la demande (à
+  l'affichage) ; seul l'état « explorée » est stocké, sous forme compacte.
 - **Vue globe** (plus tard) : scène 3D séparée (sphère texturée à partir de la
   carte connue, zones inconnues en noir), satellites et orbites ; on bascule
   entre la vue locale isométrique et le globe.
@@ -158,13 +161,40 @@ des zones ou des bâtiments et améliore l'exploration.
 | Palier | Population | Nouveaux besoins | Nouvelles zones et bâtiments | Exploration |
 |---|---|---|---|---|
 | 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier | Explorateurs à pied, 1 expédition |
-| 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (inventions) | 3 expéditions, plus de vivres, chevaux de bât |
-| 3 – Bourg | 400 | Outils, vêtements | Mine de fer, forge, champ de lin/laine (élevage) ; routes, marché ; **charbon** : mine, chauffage, machine à vapeur | Éclaireurs à cheval, prospection du charbon |
-| 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; **pétrole** : puits, raffinerie, moteurs ; premières centrales électriques et réseau (repris de la v1) | Bateaux, cartographes, prospection du pétrole |
-| 5 – Cité-État | 5 000 | Éducation, culture, électricité | Recherche, industrie ; **nucléaire** : mine d'uranium, centrale nucléaire | Prospection de l'uranium, puis ère spatiale : satellites, vue globe |
+| 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (recherche ×2) | 3 expéditions, plus de vivres, chevaux de bât |
+| 3 – Bourg | 400 | Outils, vêtements | Mine de fer, forge, champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5) ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
+| 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; **pétrole** : puits, raffinerie, moteurs ; **cuivre** : mine, lignes électriques ; premières centrales électriques et **barrage hydroélectrique**, réseau (repris de la v1) ; **camions** : routes carrossables, dépôts | Bateaux, cartographes, prospection du pétrole et du cuivre |
+| 5 – Cité-État | 5 000 | Éducation, culture, électricité | Industrie ; **électronique**, informatique (recherche ×20) puis IA : **datacenter** (×100) ; **nucléaire** : mine d'uranium, centrale nucléaire ; **éolienne**, **photovoltaïque** ; **lithium** : mine, batteries, véhicules électriques | Prospection de l'uranium et du lithium ; recherche de la fusée → base de lancement → premier satellite : toute la planète révélée, vue globe |
 
 Les paliers 2 à 5 sont **indicatifs** : seul le palier 1 est détaillé ici, les
 suivants seront précisés après avoir joué le premier.
+
+### Recherche
+Toutes les inventions et découvertes, du collier d'attelage au satellite, se
+débloquent par la **recherche**, une seule à la fois, choisie par le joueur dans
+l'arbre :
+- **Points de recherche** : la ville en produit **par habitant** (ex. 1 point
+  par habitant et par jour), modulés par la satisfaction ; une ville qui grandit
+  cherche plus vite.
+- **Multiplicateurs** : des bâtiments de recherche multiplient ces points. Le
+  multiplicateur qui s'applique est celui du meilleur bâtiment ; chaque bâtiment
+  couvre un nombre d'habitants, au-delà duquel les habitants non couverts
+  comptent au multiplicateur inférieur (il faut en construire d'autres quand la
+  ville grandit).
+
+  | Bâtiment | Palier | Débloqué par | Multiplicateur | Couvre | Particularité |
+  |---|---|---|---|---|---|
+  | — | 1 – Hameau | — | ×1 | — | Pas de recherche active : les points s'accumulent pour le palier 2 |
+  | Atelier | 2 – Village | Palier atteint | ×2 | 100 habitants | Coût en bois et pierre |
+  | Laboratoire | 3 – Bourg | Recherche | ×5 | 400 habitants | Demande des outils |
+  | Informatique | 5 – Cité-État | Recherche (électronique) | ×20 | 2 000 habitants | Consomme de l'électricité |
+  | Datacenter | 5 – Cité-État | Recherche de l'IA (après l'informatique) | ×100 | 10 000 habitants | Gros consommateur d'électricité ; refroidissement par l'eau (rivière, lac, côte), moins coûteux aux latitudes froides |
+
+- **Coût** : chaque recherche coûte des points (croissants avec le palier, pour
+  garder une durée de quelques minutes de jeu) et parfois des ressources (ex. la
+  fusée). Les gisements (charbon, cuivre…) doivent en plus être prospectés.
+- L'électricité consommée par l'informatique et le datacenter pèse sur le réseau : la
+  recherche rapide demande une production d'énergie à la hauteur.
 
 ### Palier 2 : hippotraction et inventions
 **Hippotraction** : l'**écurie** (bois, pierre) loge des chevaux de trait,
@@ -184,10 +214,8 @@ Le panneau « Main-d'œuvre » affiche aussi les chevaux (disponibles, attelés,
 fourrage consommé). Leur travail s'ajoute au compteur de puissance (environ
 700 W par cheval au travail).
 
-**Inventions** : l'**atelier** (bâtiment) accueille quelques habitants actifs,
-affectés comme dans une zone, qui mettent au point **une invention à la fois** :
-un coût en ressources plus une durée en jours de travail. Chaque invention
-débloquée améliore durablement la production :
+**Inventions** : premières recherches, accélérées par l'**atelier** (×2). Chaque
+invention débloquée améliore durablement la production :
 
 | Invention | Prérequis | Effet |
 |---|---|---|
@@ -197,7 +225,7 @@ débloquée améliore durablement la production :
 | Moulin à vent | Pierre | Bâtiment : moud le grain, avec agriculture +20 % et nourriture qui se gâte moitié moins vite ; sa puissance mécanique compte dans le compteur |
 
 D'autres inventions (moulin à eau, assolement, fer) viendront avec les paliers
-suivants ; l'atelier devient la recherche du palier 5.
+suivants.
 
 ### Énergies des paliers 3 à 5
 Chaque palier découvre une nouvelle source d'énergie, qui fait grimper le
@@ -205,21 +233,70 @@ compteur de puissance par habitant :
 
 | Palier | Découverte | Extraction | Usages |
 |---|---|---|---|
-| 3 – Bourg | Charbon | Mine sur un gisement (zone, comme la carrière) | Chauffage (remplace une part du bois), forge, machine à vapeur (pompe, scierie, plus tard locomotive) |
-| 4 – Ville | Pétrole | Puits et raffinerie | Lampes (besoin « éclairage »), moteurs (tracteurs et camions qui prolongent l'hippotraction), premières centrales électriques au charbon et au fioul |
+| 3 – Bourg | Charbon | Mine sur un gisement (zone, comme la carrière) | Chauffage (remplace une part du bois), forge, machine à vapeur (pompe, scierie, locomotive) |
+| 4 – Ville | Pétrole | Puits et raffinerie | Lampes (besoin « éclairage »), moteurs (tracteurs, camions), premières centrales électriques au charbon et au fioul |
+| 4 – Ville | Cuivre | Mine sur un gisement | Lignes électriques et réseau : sans cuivre, pas d'électricité |
+| 4 – Ville | Hydroélectricité | Barrage sur une rivière encaissée (relief, débit) | Électricité sans combustible ; production qui suit la pluie et les saisons (météo v1) ; noie les tuiles en amont |
+| 5 – Cité-État | Électronique | Usine (cuivre, puis silicium) | Prérequis du photovoltaïque, de la fusée et du satellite ; pilotage du réseau |
 | 5 – Cité-État | Nucléaire | Mine d'uranium, enrichissement | Centrale nucléaire sur le réseau électrique ; base de l'ère spatiale |
+| 5 – Cité-État | Éolien | Éoliennes (crêtes, côtes) | Électricité qui suit le vent (météo v1) |
+| 5 – Cité-État | Photovoltaïque | Champs solaires (électronique) | Électricité de jour, meilleure près de l'équateur (latitude) |
+| 5 – Cité-État | Lithium | Mine sur un gisement (salars, roches) | Batteries : stockent le surplus éolien et solaire pour la nuit et les jours sans vent ; véhicules électriques |
 
 - **Gisements** : générés avec la carte dès V1 (dans la graine, comme les
   autres données de terrain) mais **invisibles** tant que le palier n'est pas
-  atteint ; une expédition de prospection les révèle sur les tuiles explorées,
+  atteint (charbon, pétrole, cuivre, uranium, lithium) ; une expédition de prospection les révèle sur les tuiles explorées,
   et il faut ensuite annexer la tuile pour l'exploiter.
 - **Équivalents** pour le compteur : 1 unité de charbon = 10 kg ≈ 290 MJ,
   1 unité de pétrole = 10 kg ≈ 420 MJ ; l'électricité (centrales) est comptée
   directement par sa production en MW.
 - **Contreparties** : pollution et santé (reprise du module `Pollution` de la
-  v1), épuisement des gisements, incidents nucléaires (événements v1).
+  v1), épuisement des gisements, incidents nucléaires (événements v1) ;
+  l'hydraulique, l'éolien et le solaire ne polluent pas mais sont variables et
+  demandent de la place.
 - L'électricité reprend le moteur de la v1 (`PowerGrid`, centrales, lignes),
   mis de côté au départ (section 10).
+
+### Transport : portée et quantité transportée
+Chaque palier apporte un mode de transport qui repousse la **portée** (distance
+au-delà de laquelle la pénalité de trajet commence, section 5) et augmente la
+**quantité transportée** (ce qu'un transport rapporte, en « porteurs »
+équivalents, donc moins d'habitants perdus en trajets) :
+
+| Palier | Mode | Infrastructure | Énergie | Portée | Pénalité au-delà | Quantité (porteurs) |
+|---|---|---|---|---|---|---|
+| 1 – Hameau | À pied | — | Nourriture | 6 tuiles | −3 % / tuile | 1 |
+| 2 – Village | Charrette (hippotraction) | Écurie | Fourrage | 12 tuiles | −1,5 % / tuile | 4 |
+| 3 – Bourg | Train | Voies ferrées, gares | Charbon | 6 tuiles autour de chaque gare | −1 % / tuile entre gares | 100 par convoi |
+| 4 – Ville | Camion | Routes, dépôts | Pétrole | 30 tuiles par la route | −0,5 % / tuile | 20 par camion |
+| 5 – Cité-État | Véhicule électrique | Routes, bornes de recharge | Électricité (batteries au lithium) | Comme le camion | Comme le camion | Comme le camion |
+
+- **Train** : la distance d'une zone se compte depuis la **gare la plus proche**
+  reliée au centre, plus une faible pénalité selon la longueur de voie ; une
+  ligne ouvre donc des bassins d'exploitation lointains (mines, forêts), mais
+  seulement autour des gares. Gros volumes, coût fixe élevé, consomme du charbon.
+- **Camion** : plus souple, dessert toute zone reliée par la route, avec une
+  capacité par véhicule plus faible ; consomme du pétrole. Les deux se
+  complètent : le train pour les gros flux, le camion pour la desserte fine.
+- **Véhicule électrique** : remplace progressivement le camion ; même portée et
+  même capacité, mais il roule à l'électricité (pas de pétrole, pas de
+  pollution locale) et ajoute une demande sur le réseau.
+- Les chiffres sont des valeurs de départ, à équilibrer. Le train et les camions
+  reprennent `RailNetwork`, `RoadNetwork`, `Vehicle` et `Logistics` de la v1 ;
+  leur énergie (charbon, pétrole) compte dans le compteur de puissance.
+
+### Palier 5 : la fusée et le premier satellite
+- **Recherche de la fusée** : projet de recherche long,
+  qui demande l'électronique, de l'électricité, du métal et du pétrole (carburant) ; il débloque la **base
+  de lancement spatiale**, grand bâtiment sur une tuile du territoire (de
+  préférence proche de l'équateur, où le lancement coûte moins de carburant).
+- **Premier satellite** : son lancement (coût important en carburant et en
+  matériaux, risque d'échec) fait passer **toutes les tuiles inconnues de la
+  planète à l'état « explorée »**, gisements cachés compris. L'expansion ne
+  dépend plus de l'exploration à pied, mais l'annexion reste contiguë au
+  territoire et limitée par la population.
+- Le lancement débloque la **vue globe** (planète entière, satellite en orbite)
+  et ouvre l'ère spatiale (satellites suivants : météo prévue, communications).
 
 ## 8. Économie et gouvernance (à partir du palier 3–4)
 - **Argent** : impôts (selon population et satisfaction), commerce des surplus.
@@ -245,8 +322,8 @@ On repart du code v1 sur la même base Godot 4 / GDScript typé.
 | `GameClock`, `GameDate`, `Weather` | Conservés |
 | `Statistics`, `Milestones`, `Chart`, fenêtre de statistiques, tutoriel | Conservés, contenus réécrits |
 | `BuildingDef` / `Building` / `BuildingDb` | Conservés pour les bâtiments de ville |
-| `Logistics`, `Roads`, véhicules | Mis de côté, repris au palier 3 |
-| `PowerGrid`, centrales, `Pollution` | Mis de côté, repris aux paliers 4–5 (électricité, nucléaire) |
+| `Logistics`, `RoadNetwork`, `RailNetwork`, véhicules | Mis de côté, repris aux paliers 3 (train) et 4 (camions) |
+| `PowerGrid`, centrales (dont éolien, solaire, batteries et mine de lithium de la v1), `Pollution` | Mis de côté, repris aux paliers 4–5 ; barrage hydroélectrique à créer |
 | `Economy` (électricité), `Research` (ères), `Events` | Retirés ou réécrits |
 
 Nouveaux modules (pure donnée, comme en v1) :
@@ -261,9 +338,9 @@ scripts/sim/
   stockpile.gd     stocks de la cité, capacité, pertes
   city_tier.gd     paliers et conditions de passage
   draft_animals.gd chevaux : élevage, fourrage, attelage aux zones (palier 2)
-  inventions.gd    atelier, mise au point, modificateurs de production (palier 2)
+  research.gd      (réécrit) points par habitant, multiplicateurs (atelier → datacenter), arbre, modificateurs de production
 data/zones/        agriculture.tres, pasture.tres, forestry.tres
-data/inventions/   harness.tres, plough.tres, saw.tres, windmill.tres
+data/research/     une définition par recherche (harness, plough, saw, windmill…), prérequis, coût, effets
 ```
 Interface : outil « Zones » (peinture), panneau « Main-d'œuvre », HUD
 (habitants, actifs, chômeurs, nourriture et bois en jours de réserve,
@@ -274,15 +351,15 @@ effectif, vivres).
 | # | Étape | Livrable |
 |---|---|---|
 | V0 | Nettoyage | Branche `v2`, retrait de l'électricité et de la compagnie, carte et interface conservées |
-| V1 | Planète et territoire | Grille longitude / latitude qui boucle, génération par blocs sur la sphère, climat selon la latitude, états des tuiles, fertilité / pâturage / forêt, gisements cachés (charbon, pétrole, uranium) |
+| V1 | Planète et territoire | Grille longitude / latitude qui boucle, génération par blocs sur la sphère, climat selon la latitude, états des tuiles, fertilité / pâturage / forêt, gisements cachés (charbon, pétrole, cuivre, uranium, lithium) |
 | V2 | Zones | Peinture et effacement des trois zones, calque de zones |
 | V3 | Population et main-d'œuvre | Habitants, besoins nourriture et bois, répartition automatique, priorités, panneau |
 | V4 | Production et saisons | Rendements, récoltes saisonnières, stocks, gâchis, repousse de la forêt, croissance et famine, compteur de puissance |
 | V5 | Exploration | Expéditions (effectif, vivres, trajet, révélation), annexion des tuiles explorées |
-| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, atelier et inventions (collier, charrue, scie, moulin à vent) |
+| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, scie, moulin à vent) |
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 |
-| V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon (palier 3), pétrole et électricité (palier 4), nucléaire (palier 5) |
-| V∞ | Ère spatiale | Vue globe 3D, satellites et orbites |
+| V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
+| V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses
 premiers hivers grâce à ses champs, son élevage et sa coupe de bois.
