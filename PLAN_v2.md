@@ -121,7 +121,7 @@ en v1, et peut les effacer. Une tuile porte au plus une zone.
 
 | Zone | Terrain valide | Travailleurs par tuile | Production | Particularités |
 |---|---|---|---|---|
-| Agriculture | Plaine, berges (fertilité > 0) | 2 | Nourriture, **saisonnière** : semis au printemps, récolte en été et à l'automne, rien en hiver | Gros rendement, mais il faut stocker pour l'hiver ; la fertilité baisse si on cultive sans repos (jachère plus tard) |
+| Agriculture | Plaine, berges (fertilité > 0) | 2 | Nourriture, **saisonnière** : semis au printemps, récolte en été et à l'automne, rien en hiver | Gros rendement, mais il faut stocker pour l'hiver ; la fertilité baisse si on cultive sans repos (assolement au palier 2) |
 | Élevage | Prairie, plaine, collines | 1 | Nourriture **régulière** toute l'année, plus faible par tuile | Lisse l'hiver ; demande beaucoup de surface |
 | Coupe du bois | Forêt | 1 | Bois | La densité de la forêt baisse ; une tuile coupée à blanc devient plaine et repousse lentement si la zone est retirée |
 
@@ -162,7 +162,7 @@ des zones ou des bâtiments et améliore l'exploration.
 |---|---|---|---|---|
 | 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier | Explorateurs à pied, 1 expédition |
 | 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (recherche ×2) | 3 expéditions, plus de vivres, chevaux de bât |
-| 3 – Bourg | 400 | Outils, vêtements | Mine de fer, forge, champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5) ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
+| 3 – Bourg | 400 | Outils, vêtements | Mine de fer, forge, champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5), moulin à eau ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
 | 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; université (recherche ×10) ; **pétrole** : puits, raffinerie, moteurs ; **cuivre** : mine, lignes électriques ; premières centrales électriques et **barrage hydroélectrique**, réseau (repris de la v1) ; **camions** : routes carrossables, dépôts | Bateaux, cartographes, prospection du pétrole et du cuivre |
 | 5 – Cité-État | 5 000 | Éducation, culture, électricité | Industrie ; **électronique**, informatique (recherche ×20) puis IA : **datacenter** (×100) ; **nucléaire** : mine d'uranium, centrale nucléaire ; **éolienne**, **photovoltaïque** ; **lithium** : mine, batteries, véhicules électriques | Prospection de l'uranium et du lithium ; recherche de la fusée → base de lancement → premier satellite : toute la planète révélée, vue globe |
 
@@ -226,9 +226,12 @@ invention débloquée améliore durablement la production :
 | Charrue | Collier d'attelage | Agriculture +30 % sur les tuiles desservies par un attelage, +10 % ailleurs (araire tirée à la main) |
 | Scie | — | Coupe du bois +40 %, maisons −25 % de bois |
 | Moulin à vent | Pierre | Bâtiment : moud le grain, avec agriculture +20 % et nourriture qui se gâte moitié moins vite ; sa puissance mécanique compte dans le compteur |
+| Assolement | Charrue | Rotation des cultures : la fertilité ne baisse plus sur les champs cultivés, agriculture +15 % |
 
-D'autres inventions (moulin à eau, assolement, fer) viendront avec les paliers
-suivants.
+Au palier 3, le **moulin à eau** (prérequis : moulin à vent, tuile en bord de
+rivière) prend le relais : il moud plus que le moulin à vent, sans dépendre du
+vent, et entraîne aussi la scierie et la forge voisines (coupe du bois et
+outils +20 %) ; sa puissance compte dans le compteur.
 
 ### Énergies des paliers 3 à 5
 Chaque palier découvre une nouvelle source d'énergie, qui fait grimper le
@@ -374,7 +377,7 @@ effectif, vivres).
 | V3 | Population et main-d'œuvre | Habitants, besoins nourriture et bois, répartition automatique, priorités, panneau |
 | V4 | Production et saisons | Rendements, récoltes saisonnières, stocks, gâchis, repousse de la forêt, croissance et famine, compteur de puissance |
 | V5 | Exploration | Expéditions (effectif, vivres, trajet, révélation), annexion des tuiles explorées |
-| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, scie, moulin à vent) |
+| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, scie, moulin à vent, assolement) |
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 |
 | V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
