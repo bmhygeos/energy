@@ -104,7 +104,8 @@ toute la partie (fidèle au nom « Energy ») :
   | Bois | 1 unité = 10 kg de bois sec ≈ 150 MJ | 0,2 unité / jour ≈ 350 W |
 - Ordre de grandeur attendu : environ 0,5 kW par habitant pour un hameau
   agricole, quelques kW avec l'artisanat et l'industrie, 10 kW et plus à l'ère
-  moderne ; les paliers suivants ajoutent leurs sources (charbon, électricité…).
+  moderne ; les paliers suivants ajoutent leurs sources (charbon, pétrole,
+  électricité, nucléaire : section 7).
 - La production agricole étant saisonnière, le compteur affiche une **moyenne
   glissante** (30 jours, ou annuelle au choix) plutôt que la valeur instantanée ;
   l'info-bulle détaille la part de chaque ressource.
@@ -158,9 +159,9 @@ des zones ou des bâtiments et améliore l'exploration.
 |---|---|---|---|---|
 | 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier | Explorateurs à pied, 1 expédition |
 | 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (inventions) | 3 expéditions, plus de vivres, chevaux de bât |
-| 3 – Bourg | 400 | Outils, vêtements | Mine de fer, forge, champ de lin/laine (élevage) ; routes, marché | Éclaireurs à cheval |
-| 4 – Ville | 1 500 | Biens variés, santé, ordre | Artisans, commerce avec l'extérieur (argent), impôts | Bateaux, cartographes |
-| 5 – Cité-État | 5 000 | Éducation, culture, énergie | Recherche, puis industrie (où la v1 peut revenir : énergie, réseau) | Puis ère spatiale : satellites, vue globe |
+| 3 – Bourg | 400 | Outils, vêtements | Mine de fer, forge, champ de lin/laine (élevage) ; routes, marché ; **charbon** : mine, chauffage, machine à vapeur | Éclaireurs à cheval, prospection du charbon |
+| 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; **pétrole** : puits, raffinerie, moteurs ; premières centrales électriques et réseau (repris de la v1) | Bateaux, cartographes, prospection du pétrole |
+| 5 – Cité-État | 5 000 | Éducation, culture, électricité | Recherche, industrie ; **nucléaire** : mine d'uranium, centrale nucléaire | Prospection de l'uranium, puis ère spatiale : satellites, vue globe |
 
 Les paliers 2 à 5 sont **indicatifs** : seul le palier 1 est détaillé ici, les
 suivants seront précisés après avoir joué le premier.
@@ -198,6 +199,28 @@ débloquée améliore durablement la production :
 D'autres inventions (moulin à eau, assolement, fer) viendront avec les paliers
 suivants ; l'atelier devient la recherche du palier 5.
 
+### Énergies des paliers 3 à 5
+Chaque palier découvre une nouvelle source d'énergie, qui fait grimper le
+compteur de puissance par habitant :
+
+| Palier | Découverte | Extraction | Usages |
+|---|---|---|---|
+| 3 – Bourg | Charbon | Mine sur un gisement (zone, comme la carrière) | Chauffage (remplace une part du bois), forge, machine à vapeur (pompe, scierie, plus tard locomotive) |
+| 4 – Ville | Pétrole | Puits et raffinerie | Lampes (besoin « éclairage »), moteurs (tracteurs et camions qui prolongent l'hippotraction), premières centrales électriques au charbon et au fioul |
+| 5 – Cité-État | Nucléaire | Mine d'uranium, enrichissement | Centrale nucléaire sur le réseau électrique ; base de l'ère spatiale |
+
+- **Gisements** : générés avec la carte dès V1 (dans la graine, comme les
+  autres données de terrain) mais **invisibles** tant que le palier n'est pas
+  atteint ; une expédition de prospection les révèle sur les tuiles explorées,
+  et il faut ensuite annexer la tuile pour l'exploiter.
+- **Équivalents** pour le compteur : 1 unité de charbon = 10 kg ≈ 290 MJ,
+  1 unité de pétrole = 10 kg ≈ 420 MJ ; l'électricité (centrales) est comptée
+  directement par sa production en MW.
+- **Contreparties** : pollution et santé (reprise du module `Pollution` de la
+  v1), épuisement des gisements, incidents nucléaires (événements v1).
+- L'électricité reprend le moteur de la v1 (`PowerGrid`, centrales, lignes),
+  mis de côté au départ (section 10).
+
 ## 8. Économie et gouvernance (à partir du palier 3–4)
 - **Argent** : impôts (selon population et satisfaction), commerce des surplus.
 - **Décrets** du gouverneur : rationnement, corvée (plus de travailleurs, moins de
@@ -223,7 +246,8 @@ On repart du code v1 sur la même base Godot 4 / GDScript typé.
 | `Statistics`, `Milestones`, `Chart`, fenêtre de statistiques, tutoriel | Conservés, contenus réécrits |
 | `BuildingDef` / `Building` / `BuildingDb` | Conservés pour les bâtiments de ville |
 | `Logistics`, `Roads`, véhicules | Mis de côté, repris au palier 3 |
-| `PowerGrid`, `Economy` (électricité), `Research` (ères), `Events` | Retirés ou réécrits |
+| `PowerGrid`, centrales, `Pollution` | Mis de côté, repris aux paliers 4–5 (électricité, nucléaire) |
+| `Economy` (électricité), `Research` (ères), `Events` | Retirés ou réécrits |
 
 Nouveaux modules (pure donnée, comme en v1) :
 ```
@@ -250,14 +274,14 @@ effectif, vivres).
 | # | Étape | Livrable |
 |---|---|---|
 | V0 | Nettoyage | Branche `v2`, retrait de l'électricité et de la compagnie, carte et interface conservées |
-| V1 | Planète et territoire | Grille longitude / latitude qui boucle, génération par blocs sur la sphère, climat selon la latitude, états des tuiles, fertilité / pâturage / forêt |
+| V1 | Planète et territoire | Grille longitude / latitude qui boucle, génération par blocs sur la sphère, climat selon la latitude, états des tuiles, fertilité / pâturage / forêt, gisements cachés (charbon, pétrole, uranium) |
 | V2 | Zones | Peinture et effacement des trois zones, calque de zones |
 | V3 | Population et main-d'œuvre | Habitants, besoins nourriture et bois, répartition automatique, priorités, panneau |
 | V4 | Production et saisons | Rendements, récoltes saisonnières, stocks, gâchis, repousse de la forêt, croissance et famine, compteur de puissance |
 | V5 | Exploration | Expéditions (effectif, vivres, trajet, révélation), annexion des tuiles explorées |
 | V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, atelier et inventions (collier, charrue, scie, moulin à vent) |
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 |
-| V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets, puis énergie |
+| V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon (palier 3), pétrole et électricité (palier 4), nucléaire (palier 5) |
 | V∞ | Ère spatiale | Vue globe 3D, satellites et orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses
@@ -272,5 +296,6 @@ premiers hivers grâce à ses champs, son élevage et sa coupe de bois.
 
 ~~Agrandissement~~ : **tranché → par l'exploration** (expéditions puis annexion) ; à terme la carte est une planète (section 3).
 
-1. **Fin de partie** : l'énergie (reprise de la v1) comme palier final, ou un
-   autre objectif de cité-État ?
+1. **Fin de partie** : le nucléaire arrive au palier 5 ; l'objectif final
+   est-il la fusion (comme en v1), l'ère spatiale, un seuil de puissance par
+   habitant, ou un autre objectif de cité-État ?
