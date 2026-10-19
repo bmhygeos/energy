@@ -225,7 +225,8 @@ invention débloquée améliore durablement la production :
 | Collier d'attelage | Écurie | Chevaux plus efficaces : charge et portée +50 % |
 | Charrue | Collier d'attelage | Agriculture +30 % sur les tuiles desservies par un attelage, +10 % ailleurs (araire tirée à la main) |
 | Scie | — | Coupe du bois +40 %, maisons −25 % de bois |
-| Moulin à vent | Pierre | Bâtiment : moud le grain, avec agriculture +20 % et nourriture qui se gâte moitié moins vite ; sa puissance mécanique compte dans le compteur |
+| Engrenage | — | Transmission mécanique : treuils à la carrière et au puits (pierre et eau +15 %) ; prérequis des moulins |
+| Moulin à vent | Pierre, engrenage | Bâtiment : moud le grain, avec agriculture +20 % et nourriture qui se gâte moitié moins vite ; sa puissance mécanique compte dans le compteur |
 | Assolement | Charrue | Rotation des cultures : la fertilité ne baisse plus sur les champs cultivés, agriculture +15 % |
 
 Au palier 3, le **moulin à eau** (prérequis : moulin à vent, tuile en bord de
@@ -377,7 +378,7 @@ effectif, vivres).
 | V3 | Population et main-d'œuvre | Habitants, besoins nourriture et bois, répartition automatique, priorités, panneau |
 | V4 | Production et saisons | Rendements, récoltes saisonnières, stocks, gâchis, repousse de la forêt, croissance et famine, compteur de puissance |
 | V5 | Exploration | Expéditions (effectif, vivres, trajet, révélation), annexion des tuiles explorées |
-| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, scie, moulin à vent, assolement) |
+| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, assolement, scie, engrenage, moulin à vent) |
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 |
 | V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
