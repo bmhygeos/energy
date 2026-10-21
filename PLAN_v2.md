@@ -161,8 +161,8 @@ des zones ou des bâtiments et améliore l'exploration.
 | Palier | Population | Nouveaux besoins | Nouvelles zones et bâtiments | Exploration |
 |---|---|---|---|---|
 | 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier | Explorateurs à pied, 1 expédition |
-| 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (recherche ×2) | 3 expéditions, plus de vivres, chevaux de bât |
-| 3 – Bourg | 400 | Outils, vêtements | Mine de fer, forge, champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5), moulin à eau ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
+| 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (recherche ×2) ; mine de fer, forge (outils) | 3 expéditions, plus de vivres, chevaux de bât, prospection du fer |
+| 3 – Bourg | 400 | Outils, vêtements | Champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5), moulin à eau ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
 | 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; université (recherche ×10) ; **pétrole** : puits, raffinerie, moteurs ; **cuivre** : mine, lignes électriques ; premières centrales électriques et **barrage hydroélectrique**, réseau (repris de la v1) ; **camions** : routes carrossables, dépôts | Bateaux, cartographes, prospection du pétrole et du cuivre |
 | 5 – Cité-État | 5 000 | Éducation, culture, électricité | Industrie ; **électronique**, informatique : **centre informatique** (recherche ×20), puis IA : **datacenter** (×100) ; **nucléaire** : mine d'uranium, centrale nucléaire ; **éolienne**, **photovoltaïque** ; **lithium** : mine, batteries, véhicules électriques | Prospection de l'uranium et du lithium ; recherche de la fusée → base de lancement → premier satellite : toute la planète révélée, vue globe |
 
@@ -224,10 +224,11 @@ invention débloquée améliore durablement la production :
 |---|---|---|
 | Collier d'attelage | Écurie | Chevaux plus efficaces : charge et portée +50 % |
 | Charrue | Collier d'attelage | Agriculture +30 % sur les tuiles desservies par un attelage, +10 % ailleurs (araire tirée à la main) |
-| Scie | — | Coupe du bois +40 %, maisons −25 % de bois |
 | Engrenage | — | Transmission mécanique : treuils à la carrière et au puits (pierre et eau +15 %) ; prérequis des moulins |
 | Moulin à vent | Pierre, engrenage | Bâtiment : moud le grain, avec agriculture +20 % et nourriture qui se gâte moitié moins vite ; sa puissance mécanique compte dans le compteur |
 | Assolement | Charrue | Rotation des cultures : la fertilité ne baisse plus sur les champs cultivés, agriculture +15 % |
+| Métallurgie du fer | — | Forge : transforme le fer (mine de fer, disponible dès le palier) en **outils** ; prépare les rails du palier 3 |
+| Outils | Métallurgie du fer | Fabriqués à la forge (scies, haches…) : coupe du bois +40 %, maisons −25 % de bois |
 
 Au palier 3, le **moulin à eau** (prérequis : moulin à vent, tuile en bord de
 rivière) prend le relais : il moud plus que le moulin à vent, sans dépendre du
@@ -240,7 +241,7 @@ compteur de puissance par habitant :
 
 | Palier | Découverte | Extraction | Usages |
 |---|---|---|---|
-| 3 – Bourg | Charbon | Mine sur un gisement (zone, comme la carrière) | Chauffage (remplace une part du bois), forge, machine à vapeur (pompe, scierie, locomotive) |
+| 3 – Bourg | Charbon | Mine sur un gisement (zone, comme la carrière) | Chauffage (remplace une part du bois), forge plus productive (coke), machine à vapeur (pompe, scierie, locomotive) |
 | 4 – Ville | Pétrole | Puits et raffinerie | Lampes (besoin « éclairage »), moteurs (tracteurs, camions), premières centrales électriques au charbon et au fioul |
 | 4 – Ville | Cuivre | Mine sur un gisement | Lignes électriques et réseau : sans cuivre, pas d'électricité |
 | 4 – Ville | Hydroélectricité | Barrage sur une rivière encaissée (relief, débit) | Électricité sans combustible ; production qui suit la pluie et les saisons (météo v1) ; noie les tuiles en amont |
@@ -263,7 +264,7 @@ compteur de puissance par habitant :
 
   | Ressource | Palier | Recherche | Ce qu'elle débloque |
   |---|---|---|---|
-  | Fer | 3 – Bourg | Métallurgie du fer | Forge, outils, rails |
+  | Fer | 2 – Village | Métallurgie du fer | Forge, outils, puis rails au palier 3 |
   | Pétrole | 4 – Ville | Raffinage du pétrole | Raffinerie (carburants, fioul, lampes, moteurs) |
   | Cuivre | 4 – Ville | Conductivité du cuivre | Lignes électriques, réseau |
   | Uranium | 5 – Cité-État | Radioactivité | Enrichissement, centrale nucléaire |
@@ -378,7 +379,7 @@ effectif, vivres).
 | V3 | Population et main-d'œuvre | Habitants, besoins nourriture et bois, répartition automatique, priorités, panneau |
 | V4 | Production et saisons | Rendements, récoltes saisonnières, stocks, gâchis, repousse de la forêt, croissance et famine, compteur de puissance |
 | V5 | Exploration | Expéditions (effectif, vivres, trajet, révélation), annexion des tuiles explorées |
-| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, assolement, scie, engrenage, moulin à vent) |
+| V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, assolement, métallurgie du fer et forge, outils, engrenage, moulin à vent), mine de fer |
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 |
 | V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
