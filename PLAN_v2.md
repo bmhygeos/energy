@@ -161,8 +161,8 @@ des zones ou des bâtiments et améliore l'exploration.
 | Palier | Population | Nouveaux besoins | Nouvelles zones et bâtiments | Exploration |
 |---|---|---|---|---|
 | 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier | Explorateurs à pied, 1 expédition |
-| 2 – Village | 100 | Pierre (maisons en dur), eau | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (recherche ×2) ; mine de fer, forge (outils) | 3 expéditions, plus de vivres, chevaux de bât, prospection du fer |
-| 3 – Bourg | 400 | Outils, vêtements | Champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5), moulin à eau ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
+| 2 – Village | 100 | Pierre (maisons en dur), eau, outils (scies, charrues) | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (recherche ×2) ; mine de fer, forge (outils) | 3 expéditions, plus de vivres, chevaux de bât, prospection du fer |
+| 3 – Bourg | 400 | Vêtements | Champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5), moulin à eau ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
 | 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; université (recherche ×10) ; **pétrole** : puits, raffinerie, moteurs ; **cuivre** : mine, lignes électriques ; premières centrales électriques et **barrage hydroélectrique**, réseau (repris de la v1) ; **camions** : routes carrossables, dépôts | Bateaux, cartographes, prospection du pétrole et du cuivre |
 | 5 – Cité-État | 5 000 | Éducation, culture, électricité | Industrie ; **électronique**, informatique : **centre informatique** (recherche ×20), puis IA : **datacenter** (×100) ; **nucléaire** : mine d'uranium, centrale nucléaire ; **éolienne**, **photovoltaïque** ; **lithium** : mine, batteries, véhicules électriques | Prospection de l'uranium et du lithium ; recherche de la fusée → base de lancement → premier satellite : toute la planète révélée, vue globe |
 
@@ -223,12 +223,18 @@ invention débloquée améliore durablement la production :
 | Invention | Prérequis | Effet |
 |---|---|---|
 | Collier d'attelage | Écurie | Chevaux plus efficaces : charge et portée +50 % |
-| Charrue | Collier d'attelage | Agriculture +30 % sur les tuiles desservies par un attelage, +10 % ailleurs (araire tirée à la main) |
+| Charrue | Collier d'attelage, outils | Outil forgé (soc en fer) : agriculture +30 % sur les tuiles desservies par un attelage, +10 % ailleurs (araire tirée à la main) |
 | Engrenage | — | Transmission mécanique : treuils à la carrière et au puits (pierre et eau +15 %) ; prérequis des moulins |
 | Moulin à vent | Pierre, engrenage | Bâtiment : moud le grain, avec agriculture +20 % et nourriture qui se gâte moitié moins vite ; sa puissance mécanique compte dans le compteur |
 | Assolement | Charrue | Rotation des cultures : la fertilité ne baisse plus sur les champs cultivés, agriculture +15 % |
 | Métallurgie du fer | — | Forge : transforme le fer (mine de fer, disponible dès le palier) en **outils** ; prépare les rails du palier 3 |
-| Outils | Métallurgie du fer | Fabriqués à la forge (scies, haches…) : coupe du bois +40 %, maisons −25 % de bois |
+| Outils | Métallurgie du fer | La forge fabrique la **scie** : coupe du bois +40 %, maisons −25 % de bois ; prérequis de la charrue |
+
+**Besoin « outils »** : les outils sont la **scie** et la **charrue**. Ils
+s'usent : la coupe du bois consomme des scies et l'agriculture des charrues
+(ex. 1 outil par travailleur tous les 60 jours), que la forge produit à partir
+du fer. Sans outils en stock, le bonus de la scie ou de la charrue disparaît sur
+les tuiles concernées, et la satisfaction baisse comme pour les autres besoins.
 
 Au palier 3, le **moulin à eau** (prérequis : moulin à vent, tuile en bord de
 rivière) prend le relais : il moud plus que le moulin à vent, sans dépendre du
