@@ -44,6 +44,7 @@ nécessite un navigateur avec WebGL 2.
 | Construire | bouton du menu « Construction » puis clic sur la carte (le fantôme est vert si le placement est valide, sinon le motif s'affiche en bas) ; Échap ou re-clic sur le bouton pour quitter |
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment |
 | Tracer une zone | bouton de zone du menu (Agriculture, Élevage, Coupe du bois) puis glisser sur la carte (rectangle ; les tuiles non valides sont ignorées) ; « Effacer les zones » puis glisser pour les retirer |
+| Main-d'œuvre | `M` ou bouton « Main-d'œuvre » du bandeau : places, affectés, priorités |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
@@ -81,5 +82,19 @@ météo et interface conservés.
   - **Coupe du bois** (1) : forêt.
 - **Calque des zones** toujours affiché (couleur et liseré) ; aperçu du rectangle
   (vert : peinte, rouge : refusée, motif dans le bandeau d'aide).
-- Pas encore de travailleurs ni de production : population et répartition (V3),
-  rendements et saisons (V4).
+
+### V3 : population et main-d'œuvre
+- **Habitants** : 20 au départ, dont 60 % d'actifs. **Besoins** par jour :
+  1 nourriture et 0,2 bois par habitant (bois ×2 en hiver), affichés dans le
+  bandeau et le panneau ; consommés à partir de V4 (stocks).
+- **Répartition automatique** des actifs entre les types de zone, au prorata
+  priorité × places (tuiles × travailleurs par tuile), plafonnée par les places ;
+  l'excédent va aux autres zones, puis au chômage (signalé en rouge).
+- **Priorités** 0–5 ou automatique (3 pour l'instant ; suivra les stocks en V4).
+- **Réaffectation** : un travailleur retiré d'une zone met 24 h à être de nouveau
+  disponible ; les chômeurs sont affectés tout de suite.
+- Dans une zone, les travailleurs vont d'abord aux **meilleures tuiles** :
+  qualité (fertilité, pâturage ou densité de forêt) × proximité (−3 % par tuile
+  au-delà de 6 du village). Silhouettes sur les tuiles occupées.
+- **Panneau Main-d'œuvre** (M) et onglet **Population** des statistiques.
+- Pas encore de production : rendements, saisons, stocks et croissance en V4.

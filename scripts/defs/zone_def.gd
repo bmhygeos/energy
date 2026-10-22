@@ -4,6 +4,9 @@ extends Resource
 ## coupe du bois) : terrains valides, travailleurs par tuile et couleur du
 ## calque. Équilibrage dans data/zones/*.tres.
 
+## Qualité d'une tuile pour la zone : fertilité, pâturage ou densité de forêt.
+enum Quality { FERTILITY, PASTURE, WOOD }
+
 @export var id: StringName
 @export var display_name := ""
 @export_multiline var description := ""
@@ -15,6 +18,8 @@ extends Resource
 @export_range(0.0, 1.0) var min_fertility := 0.0
 ## Places de travail par tuile (section 6 du plan).
 @export var workers_per_tile := 1
+## Ce qui fait une bonne tuile pour cette zone.
+@export var quality: Quality = Quality.FERTILITY
 ## Couleur de la zone sur la carte.
 @export var color := Color.WHITE
 
@@ -30,6 +35,16 @@ func terrain_error(map: WorldMap, cell: Vector2i) -> String:
 	if min_fertility > 0.0 and map.get_fertility(cell) < min_fertility:
 		return "Terre trop peu fertile"
 	return ""
+
+
+## Qualité de [param cell] pour cette zone, 0–1.
+func quality_at(map: WorldMap, cell: Vector2i) -> float:
+	match quality:
+		Quality.PASTURE:
+			return map.get_pasture(cell)
+		Quality.WOOD:
+			return clampf(map.get_wood(cell) / WorldMap.WOOD_PER_FOREST, 0.0, 1.0)
+	return map.get_fertility(cell)
 
 
 ## Terrains valides, lisibles.

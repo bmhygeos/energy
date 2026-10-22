@@ -1,7 +1,7 @@
 extends CanvasLayer
-## Fenêtre des statistiques (G) : graphiques journaliers par onglet et
-## jalons du bac à sable. Les onglets de graphiques de la v2 (population,
-## stocks, puissance…) viendront avec leurs simulations.
+## Fenêtre des statistiques (G) : graphiques journaliers par onglet
+## (population ; stocks et puissance viendront avec la production) et jalons
+## du bac à sable.
 
 const RANGES: PackedInt32Array = [30, 120, 0]
 const RANGE_NAMES: PackedStringArray = ["30 jours", "1 an", "Tout"]
@@ -109,6 +109,10 @@ func _build() -> void:
 	_tabs = TabContainer.new()
 	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(_tabs)
+	_add_tab("Population", [
+		_chart(&"population", "Habitants et actifs", "habitants"),
+		_chart(&"labor", "Emploi (moyenne du jour)", "travailleurs"),
+	])
 	var scroll := ScrollContainer.new()
 	scroll.name = "Jalons"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -139,8 +143,19 @@ func _add_tab(tab_name: String, charts: Array[Chart]) -> void:
 
 
 func _refresh() -> void:
-	if GameState.stats == null:
+	var stats := GameState.stats
+	if stats == null:
 		return
+	var span := RANGES[_range]
+	var first := maxi(0, stats.days - span) if span > 0 else 0
+	_show(&"population", [
+		Chart.Series.new("Habitants", stats.values(&"population"), Color("5b9bd5")),
+		Chart.Series.new("Actifs", stats.values(&"active"), Color("9ec5ea")),
+	], first)
+	_show(&"labor", [
+		Chart.Series.new("Au travail", stats.values(&"employed"), Color("4caf50")),
+		Chart.Series.new("Chômeurs", stats.values(&"unemployed"), Color("e5484d")),
+	], first)
 	_refresh_milestones()
 
 

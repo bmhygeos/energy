@@ -74,11 +74,11 @@ func _make_steps() -> Array[Step]:
 			func() -> bool: return _overlay_used),
 		Step.new("Construire", "Dans le menu [b]Construction[/b] à gauche, choisissez le [b]Grenier[/b] et placez-le sur votre territoire.\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
 			func() -> bool: return _has(&"granary")),
-		Step.new("Tracer des zones", "Le gouverneur ne bâtit pas chaque ferme : il [b]trace des zones[/b] où les habitants iront travailler. Choisissez [b]Agriculture[/b] (plaines et berges), [b]Élevage[/b] (prairies, collines) ou [b]Coupe du bois[/b] (forêts), puis glissez sur la carte.\n\n[b]Effacer les zones[/b] retire une zone ; une tuile porte au plus une zone.",
+		Step.new("Tracer des zones", "Le gouverneur ne bâtit pas chaque ferme : il [b]trace des zones[/b] où les habitants iront travailler. Choisissez [b]Agriculture[/b] (plaines et berges), [b]Élevage[/b] (prairies, collines) ou [b]Coupe du bois[/b] (forêts), puis glissez sur la carte.\n\nLes habitants actifs s'y répartissent d'eux-mêmes, d'abord sur les meilleures tuiles proches du village. Le panneau [b]Main-d'œuvre[/b] (M) règle la priorité de chaque activité.",
 			func() -> bool: return not GameState.zones.all_cells().is_empty()),
 		Step.new("Suivre la partie", "La fenêtre [b]Statistiques[/b] (G) tracera l'historique de la cité et listera les jalons. Ouvrez-la.",
 			func() -> bool: return _stats_opened),
-		Step.new("À suivre", "Population, travail dans les zones, saisons et exploration arrivent dans les prochaines versions. H rouvre ce tutoriel."),
+		Step.new("À suivre", "Récoltes, stocks, saisons, croissance et exploration arrivent dans les prochaines versions. H rouvre ce tutoriel."),
 	]
 
 

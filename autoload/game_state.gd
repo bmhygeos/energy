@@ -12,6 +12,9 @@ var home: Vector2i
 var buildings: BuildingRegistry
 ## Zones peintes (agriculture, élevage, coupe du bois).
 var zones: ZoneMap
+var population: Population
+## Répartition des actifs entre les zones.
+var labor: Labor
 var weather: Weather
 ## Historique journalier (graphiques) et jalons du bac à sable.
 var stats: Statistics
@@ -38,10 +41,13 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	territory.annex(cells)
 	buildings = BuildingRegistry.new(world_map, territory)
 	zones = ZoneMap.new(world_map, territory, buildings)
+	population = Population.new()
+	labor = Labor.new(zones, home)
 	weather = Weather.new(seed_value)
 	stats = Statistics.new()
 	milestones = Milestones.new()
 	GameClock.reset()
+	labor.step(GameClock.tick, population.active())
 	EventBus.game_started.emit(seed_value)
 
 
@@ -82,7 +88,19 @@ func apply_zones(plan: ZoneMap.Plan) -> int:
 		EventBus.notified.emit(plan.error)
 	if not changed.is_empty():
 		EventBus.zones_changed.emit(changed)
+		_update_labor()
 	return changed.size()
+
+
+## Priorité (0–5 ou Labor.AUTO) du type de zone [param def].
+func set_priority(def: ZoneDef, priority: int) -> void:
+	labor.priorities[def] = priority
+	_update_labor()
+
+
+func _update_labor() -> void:
+	labor.step(GameClock.tick, population.active())
+	EventBus.labor_changed.emit()
 
 
 ## Lance le chantier de [param def] en [param anchor] ; renvoie le bâtiment,
@@ -109,9 +127,18 @@ func demolish(cell: Vector2i) -> bool:
 	return true
 
 
-func _on_tick(_tick: int) -> void:
+func _on_tick(tick: int) -> void:
 	for b in buildings.advance():
 		EventBus.building_completed.emit(b)
+	var before := [labor.employed(), labor.in_transit(), labor.assigned.duplicate()]
+	labor.step(tick, population.active())
+	if before != [labor.employed(), labor.in_transit(), labor.assigned]:
+		EventBus.labor_changed.emit()
+	stats.add(&"population", population.count)
+	stats.add(&"active", population.active())
+	stats.add(&"employed", labor.employed())
+	stats.add(&"unemployed", labor.unemployed())
+	stats.end_hour()
 
 
 func _on_day(day: int) -> void:

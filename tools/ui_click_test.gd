@@ -2,7 +2,8 @@ extends SceneTree
 ## Test de fumée de l'interface avec de vrais événements souris : choix d'un
 ## outil dans le menu, construction et démolition d'un grenier, peinture et
 ## effacement de zones au glisser, Échap,
-## sélection d'une tuile, calques (O), fenêtre des statistiques (G).
+## sélection d'une tuile, calques (O), panneau Main-d'œuvre (M) et fenêtre
+## des statistiques (G).
 ## Nécessite un affichage (pas --headless) ; déplace le pointeur réel.
 ## Lancer : godot -s res://tools/ui_click_test.gd
 
@@ -38,6 +39,14 @@ func _initialize() -> void:
 	await _drag(Vector2(650, 430), Vector2(950, 470))
 	var zoned: int = _gs.zones.all_cells().size()
 	_check(zoned > 3, "zone peinte au glisser (%d tuiles)" % zoned)
+	_check(_gs.labor.employed() > 0, "des chômeurs affectés à la zone (%d)" % _gs.labor.employed())
+	var labor_panel: Node = root.get_node("Main/LaborPanel")
+	root.push_input(_key(KEY_M))
+	await process_frame
+	_check(labor_panel.is_open(), "M ouvre le panneau Main-d'œuvre")
+	root.push_input(_key(KEY_M))
+	await process_frame
+	_check(not labor_panel.is_open(), "M referme le panneau")
 	await _press_tool("Effacer les zones")
 	_check(_map_view._mode == 4, "outil Effacer actif")
 	await _drag(Vector2(600, 400), Vector2(1000, 500))

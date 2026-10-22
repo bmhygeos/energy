@@ -20,6 +20,9 @@ func _init() -> void:
 	_test_construction()
 	_test_zone_defs()
 	_test_zones()
+	_test_population()
+	_test_labor_targets()
+	_test_labor_step()
 	_test_weather()
 	_test_statistics()
 	_test_milestones()
@@ -450,16 +453,113 @@ func _test_zones() -> void:
 	_check(zones.zone_at(Vector2i(1, 1)) == null and zones.all_cells().size() == 3, "zones effacées, les autres intactes")
 
 
+func _test_population() -> void:
+	var pop := Population.new()
+	_check(pop.count == 20 and pop.active() == 12, "hameau : 20 habitants, 12 actifs")
+	pop.count = 25
+	_check(pop.active() == 15, "60 % d'actifs")
+	_check(is_equal_approx(pop.food_need(), 25.0), "1 nourriture par habitant et par jour")
+	_check(is_equal_approx(pop.wood_need(0), 5.0) and is_equal_approx(pop.wood_need(GameDate.WINTER), 10.0),
+		"bois : 0,2 par habitant, double en hiver")
+
+
+## Zones et répartition sur une petite planète de plaine (territoire 8×8).
+func _labor_setup() -> Array:
+	var flat := _flat_map()
+	var zones := ZoneMap.new(flat[0], flat[1], BuildingRegistry.new(flat[0], flat[1]))
+	return [zones, Labor.new(zones, Vector2i(3, 3))]
+
+
+func _paint(zones: ZoneMap, id: StringName, rect: Rect2i) -> void:
+	zones.apply(zones.plan(ZoneDb.get_def(id), rect))
+
+
+func _test_labor_targets() -> void:
+	var setup := _labor_setup()
+	var zones: ZoneMap = setup[0]
+	var labor: Labor = setup[1]
+	var farm := ZoneDb.get_def(&"agriculture")
+	var pasture := ZoneDb.get_def(&"pasture")
+	var forestry := ZoneDb.get_def(&"forestry")
+	_check(labor.targets(12).values().all(func(n: int) -> bool: return n == 0), "aucune zone : aucune place")
+	_paint(zones, &"agriculture", Rect2i(0, 0, 3, 1))  # 6 places
+	_paint(zones, &"pasture", Rect2i(0, 1, 6, 1))  # 6 places
+	var t := labor.targets(6)
+	_check(t[farm] == 3 and t[pasture] == 3, "priorités égales : au prorata des places (%s)" % [t.values()])
+	t = labor.targets(20)
+	_check(t[farm] == 6 and t[pasture] == 6, "plafonné par les places, le reste au chômage")
+	labor.priorities[farm] = 5
+	labor.priorities[pasture] = 1
+	t = labor.targets(6)
+	_check(t[farm] == 5 and t[pasture] == 1, "priorité 5 contre 1 (%s)" % [t.values()])
+	t = labor.targets(9)
+	_check(t[farm] == 6 and t[pasture] == 3, "excédent redistribué quand une zone est pleine (%s)" % [t.values()])
+	labor.priorities[pasture] = 0
+	t = labor.targets(9)
+	_check(t[farm] == 6 and t[pasture] == 0, "priorité 0 : personne")
+	labor.priorities[farm] = Labor.AUTO
+	labor.priorities[pasture] = Labor.AUTO
+	for active in [1, 5, 7, 11]:
+		t = labor.targets(active)
+		_check(t[farm] + t[pasture] + t[forestry] == active, "%d actifs tous affectés (%s)" % [active, t.values()])
+
+
+func _test_labor_step() -> void:
+	var setup := _labor_setup()
+	var zones: ZoneMap = setup[0]
+	var labor: Labor = setup[1]
+	var map := zones.map
+	var farm := ZoneDb.get_def(&"agriculture")
+	var pasture := ZoneDb.get_def(&"pasture")
+	labor.step(0, 12)
+	_check(labor.unemployed() == 12 and labor.employed() == 0, "sans zone : 12 chômeurs")
+	# Deux tuiles d'agriculture : la plus fertile et la plus proche d'abord.
+	var chunk := map._chunk(Vector2i(6, 6))
+	chunk.fertility[map._local(Vector2i(6, 6))] = 0.9
+	_paint(zones, &"agriculture", Rect2i(5, 6, 2, 1))
+	labor.step(1, 2)
+	_check(labor.assigned[farm] == 2 and labor.workers_at == {Vector2i(6, 6): 2},
+		"les chômeurs vont tout de suite à la meilleure tuile (%s)" % [labor.workers_at])
+	labor.step(2, 12)
+	_check(labor.employed() == 4 and labor.unemployed() == 8, "places pleines, 8 chômeurs")
+
+	_paint(zones, &"pasture", Rect2i(0, 0, 8, 1))
+	labor.priorities[farm] = 0
+	labor.step(10, 12)
+	_check(labor.assigned[farm] == 0 and labor.in_transit() == 4 and labor.assigned[pasture] == 8,
+		"retirés de l'agriculture : en route ; les chômeurs vont à l'élevage")
+	labor.step(10 + Labor.REASSIGN_HOURS - 1, 12)
+	_check(labor.in_transit() == 4, "toujours en route avant %d h" % Labor.REASSIGN_HOURS)
+	labor.step(10 + Labor.REASSIGN_HOURS, 12)
+	_check(labor.in_transit() == 0 and labor.unemployed() == 4, "arrivés : disponibles (pas de place)")
+
+	zones.apply(zones.plan(null, Rect2i(0, 0, 4, 1)))
+	labor.step(100, 12)
+	_check(labor.assigned[pasture] == 4 and labor.in_transit() == 4, "zone effacée : travailleurs libérés")
+	labor.step(200, 3)
+	_check(labor.employed() + labor.in_transit() <= 3 and labor.unemployed() == 0, "moins d'actifs : effectifs réduits")
+
+	_check(labor.distance(Vector2i(3 + 9, 3)) == 9 and labor.distance(Vector2i(63, 3)) == 4,
+		"distance au village, longitude bouclée")
+	_check(Labor.distance_factor(6) == 1.0 and is_equal_approx(Labor.distance_factor(10), 0.88),
+		"−3 %% par tuile au-delà de 6")
+
+
 func _test_statistics() -> void:
 	var stats := Statistics.new()
 	stats.series[&"test"] = PackedFloat32Array()
 	_check(stats.last(&"test") == 0.0, "série vide : 0")
 	stats.add(&"test", 2.0)
+	stats.add(&"population", 10.0)
+	stats.end_hour()
 	stats.add(&"test", 3.0)
+	stats.add(&"population", 20.0)
+	stats.end_hour()
 	stats.end_day()
 	stats.end_day()
 	_check(stats.days == 2 and stats.values(&"test") == PackedFloat32Array([5.0, 0.0]),
 		"une valeur par jour clos (somme des heures)")
+	_check(stats.values(&"population")[0] == 15.0, "série moyennée : moyenne horaire")
 
 
 func _test_milestones() -> void:

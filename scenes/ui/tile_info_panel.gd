@@ -22,6 +22,7 @@ func _ready() -> void:
 		sig.connect(func(_b: Building) -> void: _refresh())
 	for sig: Signal in [EventBus.tiles_changed, EventBus.zones_changed]:
 		sig.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
+	EventBus.labor_changed.connect(_refresh)
 	EventBus.tick_advanced.connect(func(_t: int) -> void:
 		if _panel.visible and _shown_building():
 			_refresh())
@@ -51,7 +52,8 @@ func _refresh() -> void:
 	var lines := PackedStringArray()
 	var zone := GameState.zones.zone_at(cell)
 	if zone:
-		lines.append("Zone : %s (%d travailleur%s)" % [zone.display_name, zone.workers_per_tile,
+		lines.append("Zone : %s, %d / %d travailleur%s" % [zone.display_name,
+			GameState.labor.workers_at.get(map.wrap_cell(cell), 0), zone.workers_per_tile,
 			"s" if zone.workers_per_tile > 1 else ""])
 	lines.append_array([
 		Format.coordinates(map.latitude(cell.y), map.longitude(cell.x)),

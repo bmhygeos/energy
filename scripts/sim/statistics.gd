@@ -4,14 +4,17 @@ extends RefCounted
 ## s'accumulent pendant la journée (add), une valeur par série à sa clôture
 ## (end_day). Pure donnée.
 
-## Séries journalières (une valeur par jour clos). Les séries de la v2
-## (population, stocks, puissance…) viendront avec leurs simulations.
-const SERIES: Array[StringName] = []
+## Séries journalières (une valeur par jour clos) : population et emploi en
+## moyenne sur la journée. Stocks et puissance viendront avec la production.
+const SERIES: Array[StringName] = [&"population", &"active", &"employed", &"unemployed"]
+## Séries dont la valeur du jour est la moyenne horaire (sinon : la somme).
+const AVERAGED: Array[StringName] = [&"population", &"active", &"employed", &"unemployed"]
 
 ## Nombre de jours clos.
 var days := 0
 var series: Dictionary[StringName, PackedFloat32Array] = {}
 var _hour_sums: Dictionary[StringName, float] = {}
+var _hours := 0
 
 
 func _init() -> void:
@@ -24,12 +27,19 @@ func add(key: StringName, amount: float) -> void:
 	_hour_sums[key] = _hour_sums.get(key, 0.0) + amount
 
 
-## Clôt la journée : une valeur (somme du jour) par série.
+## Clôt l'heure (diviseur des séries moyennées).
+func end_hour() -> void:
+	_hours += 1
+
+
+## Clôt la journée : une valeur par série (somme du jour, ou moyenne horaire).
 func end_day() -> void:
 	for key: StringName in series:
-		_push(key, _hour_sums.get(key, 0.0))
+		var total: float = _hour_sums.get(key, 0.0)
+		_push(key, total / maxi(1, _hours) if key in AVERAGED else total)
 	days += 1
 	_hour_sums.clear()
+	_hours = 0
 
 
 func values(key: StringName) -> PackedFloat32Array:

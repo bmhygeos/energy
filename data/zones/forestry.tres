@@ -11,4 +11,5 @@ allowed_terrains = Array[int]([1])
 on_banks = false
 min_fertility = 0.0
 workers_per_tile = 1
+quality = 2
 color = Color(0.6, 0.4, 0.2, 1)

@@ -71,6 +71,10 @@ statistics={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":71)]
 }
+labor={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"keycode":77)]
+}
 tutorial={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":72)]

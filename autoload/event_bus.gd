@@ -27,6 +27,8 @@ signal tiles_changed(cells: Array[Vector2i])
 signal zones_changed(cells: Array[Vector2i])
 ## Aperçu de la peinture ou de l'effacement de zones (null : aucun).
 signal zone_plan_previewed(plan: ZoneMap.Plan)
+## Affectation des travailleurs modifiée (Labor).
+signal labor_changed()
 ## Message bref pour le joueur (erreur de construction…).
 signal notified(message: String)
 ## Jalon du bac à sable atteint (Milestones.Def).

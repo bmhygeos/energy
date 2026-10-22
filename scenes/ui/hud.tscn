@@ -35,6 +35,20 @@ layout_mode = 2
 mouse_filter = 1
 text = "Ensoleillé"
 
+[node name="PopulationLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "Habitants 20 · chômeurs 0"
+
+[node name="LaborButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Répartition des travailleurs entre les zones (M)"
+focus_mode = 0
+text = "Main-d'œuvre (M)"
+
 [node name="StatsButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2

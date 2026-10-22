@@ -29,6 +29,7 @@ var _overlay_buttons: Array[Button] = []
 
 @onready var _date_label: Label = %DateLabel
 @onready var _weather_label: Label = %WeatherLabel
+@onready var _population_label: Label = %PopulationLabel
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
 @onready var _legend_gradient: TextureRect = %LegendGradient
@@ -49,6 +50,8 @@ func _ready() -> void:
 	EventBus.game_started.connect(_on_game_started)
 	EventBus.overlay_changed.connect(_on_overlay_changed)
 	%StatsButton.pressed.connect(func() -> void: get_node("../StatsWindow").toggle())
+	%LaborButton.pressed.connect(func() -> void: get_node("../LaborPanel").toggle())
+	EventBus.labor_changed.connect(_refresh_population)
 	_on_tick(GameClock.tick)
 	_on_speed_changed(GameClock.speed)
 	_on_game_started(Rng.seed_value)
@@ -97,6 +100,21 @@ func _on_tick(tick: int) -> void:
 		roundi(weather.cloud_at(tick) * 100.0), roundi(Weather.daylight_at(tick) * 100.0)]
 
 
+## Habitants et chômeurs ; actifs et besoins au survol.
+func _refresh_population() -> void:
+	var population := GameState.population
+	var labor := GameState.labor
+	if population == null:
+		return
+	var unemployed := labor.unemployed()
+	_population_label.text = "Habitants %d  ·  chômeurs %d" % [population.count, unemployed]
+	_population_label.add_theme_color_override("font_color", Color("ff7a6e") if unemployed > 0 else Color.WHITE)
+	var season := GameDate.season(GameClock.tick)
+	_population_label.tooltip_text = "Actifs : %d (%d %% des habitants)\nAu travail : %d  ·  en route : %d\nBesoins par jour : nourriture %s, bois %s" % [
+		population.active(), roundi(Population.ACTIVE_SHARE * 100.0), labor.employed(), labor.in_transit(),
+		Format.decimal(population.food_need()), Format.decimal(population.wood_need(season))]
+
+
 func _on_speed_changed(speed: int) -> void:
 	for value: int in _speed_buttons:
 		_speed_buttons[value].button_pressed = value == speed
@@ -113,6 +131,7 @@ static func _date_tooltip(tick: int) -> String:
 
 func _on_game_started(seed_value: int) -> void:
 	_seed_edit.text = str(seed_value)
+	_refresh_population()
 
 
 func _on_overlay_changed(mode: int) -> void:

@@ -1,17 +1,21 @@
 class_name ZoneLayer
 extends Node2D
-## Calque des zones peintes : couleur de la zone en surimpression et liseré
-## intérieur, sous les décors (arbres) et les bâtiments.
+## Calque des zones peintes : couleur de la zone en surimpression, liseré
+## intérieur et petites silhouettes des travailleurs, sous les décors (arbres)
+## et les bâtiments.
 
 const FILL_ALPHA := 0.35
 const BORDER_ALPHA := 0.9
 ## Réduction du liseré par rapport au losange de la tuile.
 const INSET := 0.82
+const WORKER_COLOR := Color(0.15, 0.12, 0.1, 0.9)
+const WORKER_HEAD := Color(0.95, 0.85, 0.7, 1)
 
 
 func _ready() -> void:
 	EventBus.game_started.connect(func(_s: int) -> void: queue_redraw())
 	EventBus.zones_changed.connect(func(_c: Array[Vector2i]) -> void: queue_redraw())
+	EventBus.labor_changed.connect(queue_redraw)
 
 
 func _draw() -> void:
@@ -29,3 +33,12 @@ func _draw() -> void:
 			inner.append(center + (p - center) * INSET)
 		inner.append(inner[0])
 		draw_polyline(inner, def.color * Color(1, 1, 1, BORDER_ALPHA), 2.0, true)
+		var workers: int = GameState.labor.workers_at.get(c, 0)
+		for k in workers:
+			_draw_worker(center + Vector2((k - (workers - 1) / 2.0) * 14.0, 4.0))
+
+
+## Silhouette d'un travailleur debout en [param feet].
+func _draw_worker(feet: Vector2) -> void:
+	draw_line(feet, feet + Vector2(0, -10), WORKER_COLOR, 4.0)
+	draw_circle(feet + Vector2(0, -13), 3.0, WORKER_HEAD)
