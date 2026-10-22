@@ -20,7 +20,8 @@ func _ready() -> void:
 	for sig: Signal in [EventBus.building_placed, EventBus.building_completed,
 			EventBus.building_removed]:
 		sig.connect(func(_b: Building) -> void: _refresh())
-	EventBus.tiles_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
+	for sig: Signal in [EventBus.tiles_changed, EventBus.zones_changed]:
+		sig.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
 	EventBus.tick_advanced.connect(func(_t: int) -> void:
 		if _panel.visible and _shown_building():
 			_refresh())
@@ -47,7 +48,12 @@ func _refresh() -> void:
 	var def := TerrainDb.get_def(map.get_terrain(cell))
 	var territory := GameState.territory
 	_title.text = "%s  (%s)" % [def.display_name, territory.STATE_NAMES[territory.state_at(cell)].to_lower()]
-	var lines := PackedStringArray([
+	var lines := PackedStringArray()
+	var zone := GameState.zones.zone_at(cell)
+	if zone:
+		lines.append("Zone : %s (%d travailleur%s)" % [zone.display_name, zone.workers_per_tile,
+			"s" if zone.workers_per_tile > 1 else ""])
+	lines.append_array([
 		Format.coordinates(map.latitude(cell.y), map.longitude(cell.x)),
 		"Altitude : %d m" % roundi((map.get_elevation(cell) - map.generator.sea_level) * 8000.0),
 		"Température : %d %%" % roundi(map.get_temperature(cell) * 100.0),

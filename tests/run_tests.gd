@@ -18,6 +18,8 @@ func _init() -> void:
 	_test_building_defs()
 	_test_placement()
 	_test_construction()
+	_test_zone_defs()
+	_test_zones()
 	_test_weather()
 	_test_statistics()
 	_test_milestones()
@@ -385,6 +387,67 @@ func _test_weather() -> void:
 	_check(in_range, "vent et nuages dans leurs bornes")
 	_check(smooth, "vent sans à-coups d'une heure à l'autre")
 	_check(mean > 0.7 and mean < 1.05, "vent moyen proche de la normale (%.2f)" % mean)
+
+
+func _test_zone_defs() -> void:
+	var ids := {}
+	for def in ZoneDb.DEFS:
+		_check(not ids.has(def.id) and ZoneDb.get_def(def.id) == def, "zone %s unique" % def.id)
+		ids[def.id] = true
+		_check(def.workers_per_tile > 0 and not def.allowed_terrains.is_empty(), "zone %s : travailleurs et terrains" % def.id)
+	var farm := ZoneDb.get_def(&"agriculture")
+	_check(farm.workers_per_tile == 2 and TerrainDef.Type.PLAIN in farm.allowed_terrains and farm.on_banks,
+		"agriculture : 2 par tuile, plaine et berges")
+	_check(ZoneDb.get_def(&"forestry").allowed_terrains == [TerrainDef.Type.FOREST], "coupe du bois : forêt")
+	_check(farm.describe_terrains() == "plaine, prairie, berges", "terrains lisibles (%s)" % farm.describe_terrains())
+
+
+func _test_zones() -> void:
+	var flat := _flat_map()
+	var map: WorldMap = flat[0]
+	var territory: Territory = flat[1]
+	var reg := BuildingRegistry.new(map, territory)
+	var zones := ZoneMap.new(map, territory, reg)
+	var farm := ZoneDb.get_def(&"agriculture")
+	var pasture := ZoneDb.get_def(&"pasture")
+	var forestry := ZoneDb.get_def(&"forestry")
+
+	_check(ZoneMap.rect_between(Vector2i(4, 1), Vector2i(2, 3)) == Rect2i(2, 1, 3, 3), "rectangle d'un glisser")
+	var p := zones.plan(farm, Rect2i(0, 0, 3, 2))
+	_check(p.cells.size() == 6 and p.changed.size() == 6 and p.refused == 0, "aperçu : 6 tuiles à peindre")
+	_check(zones.apply(p).size() == 6 and zones.zone_at(Vector2i(2, 1)) == farm, "agriculture peinte")
+	_check(zones.places(farm) == 12 and zones.tile_count(farm) == 6, "places : tuiles × travailleurs")
+	_check(zones.plan(farm, Rect2i(0, 0, 3, 2)).changed.is_empty(), "rien à repeindre")
+
+	p = zones.plan(forestry, Rect2i(0, 0, 1, 1))
+	_check(p.changed.is_empty() and p.refused == 1 and p.error.begins_with("Terrain non valide"), "forêt seulement : %s" % p.error)
+	map.set_terrain(Vector2i(5, 5), TerrainDef.Type.FOREST)
+	_check(zones.apply(zones.plan(forestry, Rect2i(5, 5, 1, 1))).size() == 1, "coupe du bois sur une forêt")
+
+	p = zones.plan(pasture, Rect2i(1, 1, 1, 1))
+	_check(p.changed == [Vector2i(1, 1)], "une autre zone remplace l'ancienne")
+	zones.apply(p)
+	_check(zones.zone_at(Vector2i(1, 1)) == pasture and zones.tile_count(farm) == 5, "au plus une zone par tuile")
+
+	p = zones.plan(farm, Rect2i(6, 0, 4, 1))
+	_check(p.changed.size() == 2 and p.refused == 2 and p.error == "Hors du territoire", "hors du territoire ignoré")
+
+	map.set_terrain(Vector2i(3, 6), TerrainDef.Type.DESERT)
+	_check(not zones.check_cell(farm, Vector2i(3, 6)).is_empty(), "désert sec : pas d'agriculture")
+	map.set_terrain(Vector2i(3, 7), TerrainDef.Type.RIVER)
+	_check(zones.check_cell(farm, Vector2i(3, 6)).is_empty(), "berge du désert cultivable")
+	_check(not zones.check_cell(pasture, Vector2i(3, 6)).is_empty(), "pas d'élevage au désert")
+
+	var b := reg.place(reg.check_placement(_def(), Vector2i(7, 7)))
+	_check(zones.check_cell(farm, Vector2i(7, 7)).begins_with("Bâtiment présent"), "pas de zone sous un bâtiment")
+	reg.remove(b)
+
+	# Abscisses dépliées : la même tuile vue d'un tour de planète plus loin.
+	_check(zones.zone_at(Vector2i(2 + map.size.x, 1)) == farm, "zone retrouvée après un tour de planète")
+	p = zones.plan(null, Rect2i(0, 0, 2, 2))
+	_check(p.changed.size() == 4, "effacement : 4 tuiles zonées")
+	zones.apply(p)
+	_check(zones.zone_at(Vector2i(1, 1)) == null and zones.all_cells().size() == 3, "zones effacées, les autres intactes")
 
 
 func _test_statistics() -> void:

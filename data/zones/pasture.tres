@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/zone_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"pasture"
+display_name = "Élevage"
+description = "Pâturages : nourriture régulière toute l'année, plus faible par tuile."
+allowed_terrains = Array[int]([8, 0, 2])
+on_banks = false
+min_fertility = 0.0
+workers_per_tile = 1
+color = Color(0.55, 0.85, 0.35, 1)

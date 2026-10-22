@@ -43,6 +43,7 @@ nécessite un navigateur avec WebGL 2.
 | Sélectionner une tuile / un bâtiment | clic gauche (re-clic ou Échap pour désélectionner) |
 | Construire | bouton du menu « Construction » puis clic sur la carte (le fantôme est vert si le placement est valide, sinon le motif s'affiche en bas) ; Échap ou re-clic sur le bouton pour quitter |
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment |
+| Tracer une zone | bouton de zone du menu (Agriculture, Élevage, Coupe du bois) puis glisser sur la carte (rectangle ; les tuiles non valides sont ignorées) ; « Effacer les zones » puis glisser pour les retirer |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
@@ -70,3 +71,15 @@ météo et interface conservés.
   plaine et eau garanties ; on ne construit que sur le territoire.
 - **Bâtiments** : seul le grenier est proposé (chantier de 36 h, sans coût, sans
   effet pour l'instant).
+
+### V2 : zones
+- **Trois zones** peintes au glisser (rectangle) et effaçables, au plus une par
+  tuile, sur le territoire, hors des bâtiments (et pas de bâtiment sur une zone) :
+  - **Agriculture** (2 travailleurs par tuile) : plaine, prairie et berges
+    fertiles ;
+  - **Élevage** (1) : prairie, plaine, colline ;
+  - **Coupe du bois** (1) : forêt.
+- **Calque des zones** toujours affiché (couleur et liseré) ; aperçu du rectangle
+  (vert : peinte, rouge : refusée, motif dans le bandeau d'aide).
+- Pas encore de travailleurs ni de production : population et répartition (V3),
+  rendements et saisons (V4).

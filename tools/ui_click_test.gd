@@ -1,6 +1,7 @@
 extends SceneTree
 ## Test de fumée de l'interface avec de vrais événements souris : choix d'un
-## outil dans le menu, construction et démolition d'un grenier, Échap,
+## outil dans le menu, construction et démolition d'un grenier, peinture et
+## effacement de zones au glisser, Échap,
 ## sélection d'une tuile, calques (O), fenêtre des statistiques (G).
 ## Nécessite un affichage (pas --headless) ; déplace le pointeur réel.
 ## Lancer : godot -s res://tools/ui_click_test.gd
@@ -31,6 +32,16 @@ func _initialize() -> void:
 	_check(_map_view._mode == 2, "outil Démolir actif")
 	await _click(spot)
 	_check(_gs.buildings.count() == 0, "grenier démoli au clic")
+
+	await _press_tool("Élevage")
+	_check(_map_view._mode == 3, "outil Zone actif")
+	await _drag(Vector2(650, 430), Vector2(950, 470))
+	var zoned: int = _gs.zones.all_cells().size()
+	_check(zoned > 3, "zone peinte au glisser (%d tuiles)" % zoned)
+	await _press_tool("Effacer les zones")
+	_check(_map_view._mode == 4, "outil Effacer actif")
+	await _drag(Vector2(600, 400), Vector2(1000, 500))
+	_check(_gs.zones.all_cells().size() < zoned, "zones effacées au glisser (%d → %d)" % [zoned, _gs.zones.all_cells().size()])
 
 	var esc := _key(KEY_ESCAPE)
 	root.push_input(esc)
@@ -91,6 +102,15 @@ func _button(pos: Vector2, pressed: bool) -> void:
 	e.position = pos
 	e.global_position = pos
 	root.push_input(e)
+
+
+func _drag(from: Vector2, to: Vector2) -> void:
+	await _move(from)
+	_button(from, true)
+	await process_frame
+	await _move(to)
+	_button(to, false)
+	await process_frame
 
 
 func _click(pos: Vector2) -> void:

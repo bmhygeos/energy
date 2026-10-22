@@ -10,6 +10,8 @@ var territory: Territory
 ## Centre du village (abscisse ramenée sur la planète).
 var home: Vector2i
 var buildings: BuildingRegistry
+## Zones peintes (agriculture, élevage, coupe du bois).
+var zones: ZoneMap
 var weather: Weather
 ## Historique journalier (graphiques) et jalons du bac à sable.
 var stats: Statistics
@@ -35,6 +37,7 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 			cells.append(Vector2i(x, y))
 	territory.annex(cells)
 	buildings = BuildingRegistry.new(world_map, territory)
+	zones = ZoneMap.new(world_map, territory, buildings)
 	weather = Weather.new(seed_value)
 	stats = Statistics.new()
 	milestones = Milestones.new()
@@ -54,8 +57,32 @@ static func random_seed() -> int:
 	return randi_range(100_000, 999_999)
 
 
+## Placement de [param def] en [param anchor] : règles du registre, et pas
+## sur une zone (à effacer d'abord).
 func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Placement:
-	return buildings.check_placement(def, anchor)
+	var placement := buildings.check_placement(def, anchor)
+	if placement.is_valid():
+		for cell in placement.cells:
+			var zone := zones.zone_at(cell)
+			if zone:
+				placement.error = "Zone présente (%s) : effacez-la d'abord" % zone.display_name
+				break
+	return placement
+
+
+## Aperçu de la peinture de [param def] (null : effacement) entre deux tuiles.
+func plan_zones(def: ZoneDef, from: Vector2i, to: Vector2i) -> ZoneMap.Plan:
+	return zones.plan(def, ZoneMap.rect_between(from, to))
+
+
+## Peint ou efface selon [param plan] ; renvoie le nombre de tuiles changées.
+func apply_zones(plan: ZoneMap.Plan) -> int:
+	var changed := zones.apply(plan)
+	if changed.is_empty() and plan.def and not plan.error.is_empty():
+		EventBus.notified.emit(plan.error)
+	if not changed.is_empty():
+		EventBus.zones_changed.emit(changed)
+	return changed.size()
 
 
 ## Lance le chantier de [param def] en [param anchor] ; renvoie le bâtiment,

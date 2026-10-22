@@ -13,9 +13,9 @@ signal tile_hovered(cell: Vector2i)
 ## Tuile sélectionnée au clic ; (-1, -1) pour désélectionner.
 signal tile_selected(cell: Vector2i)
 signal overlay_changed(mode: int)
-## Outil de la souris : BuildTool.Mode, et la définition à construire en
-## mode BUILD (null sinon).
-signal tool_changed(mode: int, def: BuildingDef)
+## Outil de la souris : BuildTool.Mode, et la définition à construire
+## (BuildingDef en mode BUILD) ou à peindre (ZoneDef en mode ZONE), null sinon.
+signal tool_changed(mode: int, def: Resource)
 ## Aperçu du placement sous la souris en mode BUILD (null : aucun).
 signal placement_previewed(placement: BuildingRegistry.Placement)
 signal building_placed(building: Building)
@@ -23,6 +23,10 @@ signal building_completed(building: Building)
 signal building_removed(building: Building)
 ## Le terrain de ces tuiles a changé (défrichement…).
 signal tiles_changed(cells: Array[Vector2i])
+## Zones peintes ou effacées sur ces tuiles.
+signal zones_changed(cells: Array[Vector2i])
+## Aperçu de la peinture ou de l'effacement de zones (null : aucun).
+signal zone_plan_previewed(plan: ZoneMap.Plan)
 ## Message bref pour le joueur (erreur de construction…).
 signal notified(message: String)
 ## Jalon du bac à sable atteint (Milestones.Def).

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/zone_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"agriculture"
+display_name = "Agriculture"
+description = "Champs : nourriture saisonnière (récoltes en été et à l'automne), gros rendement."
+allowed_terrains = Array[int]([0, 8])
+on_banks = true
+min_fertility = 0.05
+workers_per_tile = 2
+color = Color(0.95, 0.8, 0.25, 1)
