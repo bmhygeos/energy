@@ -70,9 +70,9 @@ func _process(delta: float) -> void:
 func _make_steps() -> Array[Step]:
 	return [
 		Step.new("Bienvenue", "Vous êtes le gouverneur d'une future cité-État. Tout commence par un hameau : bientôt, vous tracerez des zones où les habitants travailleront, puis vous explorerez le monde.\n\n[b]Caméra[/b] : ZQSD ou flèches, glisser avec le clic droit, molette pour zoomer.\n[b]Temps[/b] : Espace pour la pause, 1 / 2 / 3 pour les vitesses."),
-		Step.new("Lire la carte", "Un clic sur une tuile affiche son terrain à droite. Les [b]calques[/b] (O ou boutons en bas à droite) montrent le relief, l'eau et les gisements. Affichez-en un.",
+		Step.new("Lire la carte", "Votre territoire est encadré en jaune ; le reste de la planète est encore inconnu. Un clic sur une tuile affiche son terrain à droite. Les [b]calques[/b] (O ou boutons en bas à droite) montrent le relief, la fertilité, le pâturage et l'eau. Affichez-en un.",
 			func() -> bool: return _overlay_used),
-		Step.new("Construire", "Dans le menu [b]Construction[/b] à gauche, choisissez le [b]Grenier[/b] et placez-le sur la carte.\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
+		Step.new("Construire", "Dans le menu [b]Construction[/b] à gauche, choisissez le [b]Grenier[/b] et placez-le sur votre territoire.\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
 			func() -> bool: return _has(&"granary")),
 		Step.new("Suivre la partie", "La fenêtre [b]Statistiques[/b] (G) tracera l'historique de la cité et listera les jalons. Ouvrez-la.",
 			func() -> bool: return _stats_opened),

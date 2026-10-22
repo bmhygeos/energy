@@ -2,23 +2,26 @@ extends CanvasLayer
 ## Bandeau supérieur (date, météo, vitesse, graine) et sélecteur de calque
 ## d'information en bas à droite.
 
+## Légendes et info-bulles des calques (par OverlayLayer.Mode).
 const LEGENDS: PackedStringArray = [
 	"",
-	"Altitude : basse → haute",
+	"Altitude : fonds marins → sommets",
+	"Fertilité (agriculture) : faible → forte",
+	"Pâturage (élevage) : faible → fort",
+	"[color=#3fa0ff]■[/color] accès à l'eau   [color=#1a59d9]■[/color] côte   [color=#c04030]■[/color] sans eau",
+	"Gisements prospectés : [color=#1a1a1a]■[/color] charbon   [color=#b0503a]■[/color] fer   [color=#2b2b55]■[/color] pétrole   [color=#d9822b]■[/color] cuivre   [color=#4be03c]■[/color] uranium   [color=#c45cff]■[/color] lithium",
 	"Potentiel éolien : faible → fort",
 	"Ensoleillement : faible → fort",
-	"[color=#3fa0ff]■[/color] accès à l'eau   [color=#1a59d9]■[/color] côte   [color=#c04030]■[/color] sans eau",
-	"[color=#1a1a1a]■[/color] charbon   [color=#4be03c]■[/color] uranium   [color=#c45cff]■[/color] lithium",
 ]
-
-## Info-bulles des calques (par OverlayLayer.Mode).
 const OVERLAY_TIPS: PackedStringArray = [
 	"Aucun calque (O pour faire défiler)",
 	"Altitude : repérer collines et montagnes",
-	"Potentiel éolien : plus fort sur les côtes et les crêtes",
-	"Ensoleillement : plus fort dans les déserts",
+	"Fertilité : plaines et berges, plus faible au froid",
+	"Pâturage : prairies et collines",
 	"Accès à l'eau : tuiles bordant une rivière, un lac ou la mer",
-	"Gisements de charbon, d'uranium et de lithium",
+	"Gisements révélés par la prospection (aucun au départ)",
+	"Potentiel éolien : plus fort sur les côtes, les crêtes et aux latitudes moyennes",
+	"Ensoleillement : plus fort près de l'équateur et dans les déserts",
 ]
 
 var _overlay_mode := OverlayLayer.Mode.NONE

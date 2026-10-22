@@ -1,7 +1,9 @@
 class_name BuildingRegistry
 extends RefCounted
-## Bâtiments de la partie : occupation des tuiles, règles de placement et
-## chantiers. Pure donnée.
+## Bâtiments de la partie : occupation des tuiles, règles de placement (sur
+## le territoire) et chantiers. Les tuiles des bâtiments sont dans le repère
+## de l'appelant (abscisses dépliées autour du village) ; l'occupation est
+## indexée par tuile ramenée sur la planète. Pure donnée.
 
 
 ## Résultat d'une vérification de placement.
@@ -19,15 +21,16 @@ class Placement:
 
 
 var map: WorldMap
+var territory: Territory
 var _buildings: Dictionary[int, Building] = {}
-## Identifiant du bâtiment par tuile (0 : libre).
-var _occupancy: PackedInt32Array
+## Identifiant du bâtiment par tuile occupée (ramenée sur la planète).
+var _occupancy: Dictionary[Vector2i, int] = {}
 var _next_id := 1
 
 
-func _init(p_map: WorldMap) -> void:
+func _init(p_map: WorldMap, p_territory: Territory) -> void:
 	map = p_map
-	_occupancy.resize(map.cell_count())
+	territory = p_territory
 
 
 func all() -> Array[Building]:
@@ -46,7 +49,7 @@ func get_building(id: int) -> Building:
 func building_at(cell: Vector2i) -> Building:
 	if not map.has_cell(cell):
 		return null
-	return _buildings.get(_occupancy[map.index_of(cell)])
+	return _buildings.get(_occupancy.get(map.wrap_cell(cell), 0))
 
 
 ## Vérifie que [param def] peut être construit ancré en [param anchor].
@@ -65,10 +68,12 @@ func _placement_error(p: Placement) -> String:
 	for cell in p.cells:
 		if not map.has_cell(cell):
 			return "Hors de la carte"
-		var i := map.index_of(cell)
-		if _occupancy[i] != 0:
-			return "Emplacement occupé (%s)" % _buildings[_occupancy[i]].def.display_name
-		var t := map.terrain[i]
+		if not territory.is_territory(cell):
+			return "Hors du territoire"
+		var occupant := building_at(cell)
+		if occupant:
+			return "Emplacement occupé (%s)" % occupant.def.display_name
+		var t := map.get_terrain(cell)
 		var terrain := TerrainDb.get_def(t)
 		if not terrain.buildable:
 			return "Terrain non constructible (%s)" % terrain.display_name.to_lower()
@@ -76,7 +81,7 @@ func _placement_error(p: Placement) -> String:
 			return "Terrain interdit pour ce bâtiment (%s)" % terrain.display_name.to_lower()
 		if t == TerrainDef.Type.FOREST:
 			p.cleared.append(cell)
-		water_found = water_found or map.water_access[i] != 0
+		water_found = water_found or map.has_water_access(cell)
 	if def.needs_water_access and not water_found:
 		return "Nécessite un accès à l'eau"
 	if not def.adjacent_terrains.is_empty() and not _has_adjacent(p.cells, def.adjacent_terrains):
@@ -89,7 +94,7 @@ func _placement_error(p: Placement) -> String:
 func _has_adjacent(cells: Array[Vector2i], terrains: Array[TerrainDef.Type]) -> bool:
 	for cell in cells:
 		for n in map.neighbors(cell, WorldMap.NEIGHBORS_8):
-			if n not in cells and map.terrain[map.index_of(n)] in terrains:
+			if n not in cells and map.get_terrain(n) in terrains:
 				return true
 	return false
 
@@ -101,17 +106,17 @@ func place(p: Placement) -> Building:
 	_next_id += 1
 	_buildings[b.id] = b
 	for cell in b.cells:
-		_occupancy[map.index_of(cell)] = b.id
+		_occupancy[map.wrap_cell(cell)] = b.id
 	for cell in p.cleared:
-		map.terrain[map.index_of(cell)] = TerrainDef.Type.PLAIN
-		map.wood[map.index_of(cell)] = 0.0
+		map.set_terrain(cell, TerrainDef.Type.PLAIN)
+		map.set_wood(cell, 0.0)
 	return b
 
 
 func remove(b: Building) -> void:
 	assert(_buildings.get(b.id) == b, "Bâtiment inconnu")
 	for cell in b.cells:
-		_occupancy[map.index_of(cell)] = 0
+		_occupancy.erase(map.wrap_cell(cell))
 	_buildings.erase(b.id)
 
 

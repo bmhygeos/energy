@@ -1,71 +1,188 @@
 class_name MapGenerator
 extends RefCounted
-## Génération procédurale déterministe de la carte à partir d'une graine.
+## Génération procédurale déterministe de la planète, tuile par tuile.
 ##
-## Étapes : altitude (bruit + pente vers la mer) → mer / lacs / collines /
-## montagnes → rivières → forêts et déserts → vent, soleil, accès à l'eau →
-## gisements. Les seuils sont des quantiles, de sorte que chaque carte
-## contient toujours tous les terrains et tous les gisements.
+## Chaque tuile est un point de la sphère (longitude, latitude) : les bruits
+## 3D y sont échantillonnés, sans raccord à la ligne de changement de date et
+## cohérents avec un futur globe. Le terrain d'une tuile ne dépend que de la
+## graine et de sa position, ce qui permet de générer les blocs à la demande
+## (generate_chunk) dans n'importe quel ordre.
+##
+## Étapes : altitude (continents + relief) → mer, collines, montagnes →
+## température (latitude, altitude) → glace, toundra → lacs et rivières →
+## humidité (bandes sèches subtropicales, équateur humide) → forêt, plaine,
+## prairie, désert → fertilité, pâturage, bois, vent, soleil → gisements.
+## Les seuils sont des quantiles mesurés à la création sur un échantillon de
+## la sphère : chaque planète a les mêmes proportions de terrains.
 
 const T := TerrainDef.Type
 
-## Proportions de la carte (quantiles d'altitude).
-const SEA_FRACTION := 0.22
-const MOUNTAIN_FRACTION := 0.07
-const HILL_FRACTION := 0.14
-## Proportions des terres plates.
-const FOREST_FRACTION := 0.30
+## Proportions de la planète (quantiles d'altitude).
+const SEA_FRACTION := 0.6
+const MOUNTAIN_FRACTION := 0.035
+const HILL_FRACTION := 0.07
+## Proportions des terres (quantiles d'humidité) : forêts, prairies, déserts.
+const FOREST_FRACTION := 0.32
+const PRAIRIE_FRACTION := 0.3
 const DESERT_FRACTION := 0.12
-## Une rivière pour ~1 200 tuiles, au moins 2.
-const TILES_PER_RIVER := 1200
-const MIN_RIVER_SOURCE_SPACING := 10
+## Part des terres en rivière et en lac.
+const RIVER_FRACTION := 0.035
+const LAKE_FRACTION := 0.02
+## Températures (0 : pôle, 1 : équateur) de la banquise, de la glace et de la
+## toundra ; refroidissement au sommet des montagnes ; désert seulement au chaud.
+const SEA_ICE_TEMPERATURE := 0.08
+const ICE_TEMPERATURE := 0.12
+const TUNDRA_TEMPERATURE := 0.26
+const ALTITUDE_COOLING := 0.35
+const DESERT_MIN_TEMPERATURE := 0.45
+## Périodes des bruits (tuiles).
+const CONTINENT_PERIOD := 380.0
+const RELIEF_PERIOD := 70.0
+const MOISTURE_PERIOD := 45.0
+const RIVER_PERIOD := 90.0
+const LAKE_PERIOD := 30.0
+const DETAIL_PERIOD := 12.0
+const DEPOSIT_PERIOD := 9.0
+## Taille de l'échantillon de calibrage des seuils.
+const CALIBRATION_SAMPLES := 4096
 
-## [type, terrains éligibles, proportion des terres, quantité min, max].
+## [type, terrains éligibles, part de la planète, quantité min, max (t)] ;
+## en cas de chevauchement, la première règle l'emporte.
 const DEPOSIT_RULES := [
-	[WorldMap.Deposit.LITHIUM, [T.DESERT, T.HILL], 0.010, 300, 1000],
-	[WorldMap.Deposit.URANIUM, [T.HILL, T.DESERT, T.PLAIN], 0.012, 500, 1500],
-	[WorldMap.Deposit.COAL, [T.PLAIN, T.HILL, T.FOREST], 0.05, 4000, 12000],
+	[WorldMap.Deposit.LITHIUM, [T.DESERT, T.HILL], 0.004, 300, 1000],
+	[WorldMap.Deposit.URANIUM, [T.HILL, T.DESERT, T.PLAIN, T.TUNDRA], 0.004, 500, 1500],
+	[WorldMap.Deposit.COPPER, [T.HILL, T.DESERT, T.PRAIRIE], 0.008, 2000, 6000],
+	[WorldMap.Deposit.OIL, [T.DESERT, T.PLAIN, T.PRAIRIE, T.TUNDRA], 0.008, 3000, 10000],
+	[WorldMap.Deposit.IRON, [T.HILL, T.PLAIN, T.FOREST, T.PRAIRIE, T.TUNDRA], 0.012, 3000, 9000],
+	[WorldMap.Deposit.COAL, [T.PLAIN, T.HILL, T.FOREST, T.PRAIRIE], 0.016, 4000, 12000],
 ]
 
 
-static func generate(size: Vector2i, seed_value: int) -> WorldMap:
-	var map := WorldMap.new(size, seed_value)
+## Champs d'une tuile calculés sans ses voisines.
+class Fields:
+	var terrain := 0
+	var elevation := 0.0
+	var temperature := 0.0
+	var moisture := 0.0
+	var latitude := 0.0
+
+
+var size: Vector2i
+var seed_value: int
+## Seuils mesurés (altitude 0–1, humidité, bruits).
+var sea_level := 0.0
+var hill_level := 0.0
+var mountain_level := 0.0
+var forest_level := 0.0
+var prairie_level := 0.0
+var desert_level := 0.0
+var river_level := 0.0
+var lake_level := 0.0
+var _deposit_levels := PackedFloat32Array()
+var _radius := 1.0
+var _elevation_lo := 0.0
+var _elevation_hi := 1.0
+var _continent: FastNoiseLite
+var _relief: FastNoiseLite
+var _moisture: FastNoiseLite
+var _river: FastNoiseLite
+var _lake: FastNoiseLite
+var _detail: FastNoiseLite
+var _deposits: Array[FastNoiseLite] = []
+
+
+func _init(p_seed: int, p_size: Vector2i) -> void:
+	seed_value = p_seed
+	size = p_size
+	_radius = size.x / TAU
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([seed_value, "map"])
-	_generate_elevation(map, rng)
-	_classify_relief(map)
-	_carve_rivers(map, rng)
-	_place_biomes(map, rng)
-	_compute_water_access(map)
-	_compute_climate(map, rng)
-	_place_deposits(map, rng)
-	for i in map.cell_count():
-		map.variant[i] = rng.randi_range(0, 3)
-		if map.terrain[i] == TerrainDef.Type.FOREST:
-			map.wood[i] = WorldMap.WOOD_PER_FOREST
-	return map
+	rng.seed = hash([seed_value, "planet"])
+	_continent = _make_noise(rng, CONTINENT_PERIOD, 3)
+	_relief = _make_noise(rng, RELIEF_PERIOD, 5)
+	_moisture = _make_noise(rng, MOISTURE_PERIOD, 4)
+	_river = _make_noise(rng, RIVER_PERIOD, 2)
+	_lake = _make_noise(rng, LAKE_PERIOD, 2)
+	_detail = _make_noise(rng, DETAIL_PERIOD, 2)
+	for rule: Array in DEPOSIT_RULES:
+		_deposits.append(_make_noise(rng, DEPOSIT_PERIOD, 2))
+	_calibrate(rng)
 
 
-static func _make_noise(rng: RandomNumberGenerator, size: Vector2i, scale: float) -> FastNoiseLite:
+static func _make_noise(rng: RandomNumberGenerator, period: float, octaves: int) -> FastNoiseLite:
 	var noise := FastNoiseLite.new()
 	noise.seed = rng.randi()
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-	noise.fractal_octaves = 4
-	noise.frequency = scale / maxf(size.x, size.y)
+	noise.fractal_octaves = octaves
+	noise.frequency = 1.0 / period
 	return noise
 
 
-## Remplit [param values] (une valeur par tuile) puis la normalise en 0–1.
-static func _normalize(values: PackedFloat32Array) -> void:
-	var lo := INF
-	var hi := -INF
-	for v in values:
-		lo = minf(lo, v)
-		hi = maxf(hi, v)
-	var span := maxf(hi - lo, 0.0001)
-	for i in values.size():
-		values[i] = (values[i] - lo) / span
+## Point de la sphère (rayon : une unité par tuile à l'équateur) au centre de
+## la tuile.
+func _point(cell: Vector2i) -> Vector3:
+	var lon := (cell.x + 0.5) / size.x * TAU
+	var lat := (0.5 - (cell.y + 0.5) / size.y) * PI
+	return Vector3(cos(lat) * cos(lon), cos(lat) * sin(lon), sin(lat)) * _radius
+
+
+func _noise(n: FastNoiseLite, p: Vector3) -> float:
+	return n.get_noise_3d(p.x, p.y, p.z)
+
+
+func _raw_elevation(p: Vector3) -> float:
+	return _noise(_continent, p) + 0.4 * _noise(_relief, p)
+
+
+## Humidité brute : bruit, bande sèche vers 25° de latitude, équateur humide.
+func _raw_moisture(p: Vector3, latitude: float) -> float:
+	var lat := absf(latitude)
+	return 0.5 + 0.5 * _noise(_moisture, p) - 0.25 * exp(-pow((lat - 25.0) / 10.0, 2)) \
+		+ 0.12 * exp(-pow(lat / 10.0, 2))
+
+
+## Mesure les seuils sur des points tirés uniformément sur la sphère.
+func _calibrate(rng: RandomNumberGenerator) -> void:
+	var cells: Array[Vector2i] = []
+	var raw := PackedFloat32Array()
+	for k in CALIBRATION_SAMPLES:
+		var lat := asin(rng.randf_range(-1.0, 1.0))
+		var y := clampi(int((0.5 - lat / PI) * size.y), 0, size.y - 1)
+		var cell := Vector2i(rng.randi_range(0, size.x - 1), y)
+		cells.append(cell)
+		raw.append(_raw_elevation(_point(cell)))
+	_elevation_lo = _quantile(raw, 0.0)
+	_elevation_hi = _quantile(raw, 1.0)
+	var elevation := PackedFloat32Array()
+	for v in raw:
+		elevation.append(_normalized_elevation(v))
+	sea_level = _quantile(elevation, SEA_FRACTION)
+	hill_level = _quantile(elevation, 1.0 - MOUNTAIN_FRACTION - HILL_FRACTION)
+	mountain_level = _quantile(elevation, 1.0 - MOUNTAIN_FRACTION)
+	var moisture := PackedFloat32Array()
+	var river := PackedFloat32Array()
+	var lake := PackedFloat32Array()
+	for k in cells.size():
+		if elevation[k] < sea_level:
+			continue
+		var p := _point(cells[k])
+		moisture.append(_raw_moisture(p, 90.0 - (cells[k].y + 0.5) * 180.0 / size.y))
+		river.append(absf(_noise(_river, p)))
+		lake.append(_noise(_lake, p))
+	forest_level = _quantile(moisture, 1.0 - FOREST_FRACTION)
+	prairie_level = _quantile(moisture, PRAIRIE_FRACTION + DESERT_FRACTION)
+	desert_level = _quantile(moisture, DESERT_FRACTION)
+	river_level = _quantile(river, RIVER_FRACTION)
+	lake_level = _quantile(lake, 1.0 - LAKE_FRACTION)
+	for k in DEPOSIT_RULES.size():
+		var values := PackedFloat32Array()
+		for cell in cells:
+			values.append(_noise(_deposits[k], _point(cell)))
+		_deposit_levels.append(_quantile(values, 1.0 - float(DEPOSIT_RULES[k][2])))
+
+
+func _normalized_elevation(raw: float) -> float:
+	return clampf((raw - _elevation_lo) / maxf(_elevation_hi - _elevation_lo, 0.0001), 0.0, 1.0)
 
 
 ## Valeur au quantile [param q] (0–1) de [param values].
@@ -77,222 +194,128 @@ static func _quantile(values: PackedFloat32Array, q: float) -> float:
 	return sorted[clampi(int(q * sorted.size()), 0, sorted.size() - 1)]
 
 
-static func _generate_elevation(map: WorldMap, rng: RandomNumberGenerator) -> void:
-	var noise := _make_noise(rng, map.size, 3.0)
-	# La mer borde la carte d'un côté tiré au hasard.
-	var sea_dir := Vector2.from_angle(rng.randf() * TAU)
-	for i in map.cell_count():
-		var c := map.cell_of(i)
-		var uv := (Vector2(c) + Vector2(0.5, 0.5)) / Vector2(map.size) - Vector2(0.5, 0.5)
-		map.elevation[i] = noise.get_noise_2d(c.x, c.y) - 0.9 * uv.dot(sea_dir)
-	_normalize(map.elevation)
+## Terrain, altitude, température et humidité de [param cell] (abscisse
+## quelconque, ramenée sur la planète).
+func fields(cell: Vector2i) -> Fields:
+	cell.x = posmod(cell.x, size.x)
+	var f := Fields.new()
+	var p := _point(cell)
+	f.latitude = 90.0 - (cell.y + 0.5) * 180.0 / size.y
+	f.elevation = _normalized_elevation(_raw_elevation(p))
+	var above_sea := maxf(0.0, f.elevation - sea_level) / maxf(1.0 - sea_level, 0.0001)
+	f.temperature = clampf(1.0 - absf(f.latitude) / 90.0 - ALTITUDE_COOLING * above_sea
+		+ 0.04 * _noise(_detail, p), 0.0, 1.0)
+	f.moisture = _raw_moisture(p, f.latitude)
+	var t := f.temperature
+	if f.elevation < sea_level:
+		f.terrain = T.ICE if t < SEA_ICE_TEMPERATURE else T.SEA
+	elif t < ICE_TEMPERATURE:
+		f.terrain = T.ICE
+	elif f.elevation >= mountain_level:
+		f.terrain = T.MOUNTAIN
+	elif f.elevation < hill_level and _noise(_lake, p) > lake_level:
+		f.terrain = T.LAKE
+	elif absf(_noise(_river, p)) < river_level:
+		f.terrain = T.RIVER
+	elif f.elevation >= hill_level:
+		f.terrain = T.HILL
+	elif t < TUNDRA_TEMPERATURE:
+		f.terrain = T.TUNDRA
+	elif f.moisture >= forest_level:
+		f.terrain = T.FOREST
+	elif f.moisture < desert_level and t >= DESERT_MIN_TEMPERATURE:
+		f.terrain = T.DESERT
+	elif f.moisture < prairie_level:
+		f.terrain = T.PRAIRIE
+	else:
+		f.terrain = T.PLAIN
+	return f
 
 
-static func _classify_relief(map: WorldMap) -> void:
-	var sea_level := _quantile(map.elevation, SEA_FRACTION)
-	var hill_level := _quantile(map.elevation, 1.0 - MOUNTAIN_FRACTION - HILL_FRACTION)
-	var mountain_level := _quantile(map.elevation, 1.0 - MOUNTAIN_FRACTION)
-	for i in map.cell_count():
-		var e := map.elevation[i]
-		if e < sea_level:
-			map.terrain[i] = T.SEA
-		elif e >= mountain_level:
-			map.terrain[i] = T.MOUNTAIN
-		elif e >= hill_level:
-			map.terrain[i] = T.HILL
-		else:
-			map.terrain[i] = T.PLAIN
-	# Les étendues d'eau qui ne touchent pas le bord de la carte sont des lacs.
-	var seen := PackedByteArray()
-	seen.resize(map.cell_count())
-	for i in map.cell_count():
-		if map.terrain[i] != T.SEA or seen[i]:
-			continue
-		var region := _flood(map, map.cell_of(i), seen)
-		var touches_border := false
-		for c in region:
-			if c.x == 0 or c.y == 0 or c.x == map.size.x - 1 or c.y == map.size.y - 1:
-				touches_border = true
-				break
-		if not touches_border:
-			for c in region:
-				map.terrain[map.index_of(c)] = T.LAKE
-
-
-## Composante connexe (4-voisinage) de même terrain que [param start].
-static func _flood(map: WorldMap, start: Vector2i, seen: PackedByteArray) -> Array[Vector2i]:
-	var type := map.get_terrain(start)
-	var region: Array[Vector2i] = [start]
-	seen[map.index_of(start)] = 1
-	var head := 0
-	while head < region.size():
-		var c := region[head]
-		head += 1
-		for n in map.neighbors(c):
-			var ni := map.index_of(n)
-			if not seen[ni] and map.terrain[ni] == type:
-				seen[ni] = 1
-				region.append(n)
-	return region
-
-
-static func _carve_rivers(map: WorldMap, rng: RandomNumberGenerator) -> void:
-	var count := maxi(2, map.cell_count() / TILES_PER_RIVER)
-	var candidates: Array[Vector2i] = []
-	for i in map.cell_count():
-		if map.terrain[i] == T.MOUNTAIN or map.terrain[i] == T.HILL:
-			candidates.append(map.cell_of(i))
-	# Sources : les plus hautes d'abord, avec un peu de hasard, bien espacées.
-	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return map.elevation[map.index_of(a)] > map.elevation[map.index_of(b)])
-	var sources: Array[Vector2i] = []
-	var start := rng.randi_range(0, mini(5, candidates.size() - 1)) if candidates else 0
-	for i in range(start, candidates.size()):
-		if sources.size() >= count:
-			break
-		var c := candidates[i]
-		if sources.all(func(s: Vector2i) -> bool: return s.distance_to(c) >= MIN_RIVER_SOURCE_SPACING):
-			sources.append(c)
-	for s in sources:
-		_carve_river(map, s, rng)
-
-
-## Descend la pente depuis [param source] jusqu'à une étendue d'eau ; une
-## cuvette sans issue devient un lac.
-static func _carve_river(map: WorldMap, source: Vector2i, rng: RandomNumberGenerator) -> void:
-	var path: Array[Vector2i] = [source]
-	var on_path := {source: true}
-	var current := source
-	for step in map.cell_count():
-		var reached_water := false
-		for n in map.neighbors(current):
-			if not on_path.has(n) and map.is_water(n):
-				reached_water = true
-		if reached_water:
-			break
-		var best := Vector2i(-1, -1)
-		var best_e := INF
-		for n in map.neighbors(current):
-			if on_path.has(n):
+## Génère le bloc [param coord] (en blocs) de la planète.
+func generate_chunk(coord: Vector2i) -> WorldMap.Chunk:
+	var n := WorldMap.CHUNK_SIZE
+	var origin := coord * n
+	# Terrains du bloc et d'une bordure d'une tuile, pour l'accès à l'eau.
+	var border := PackedByteArray()
+	border.resize((n + 2) * (n + 2))
+	var inner: Array[Fields] = []
+	inner.resize(n * n)
+	for y in range(-1, n + 1):
+		for x in range(-1, n + 1):
+			var cell := origin + Vector2i(x, y)
+			if cell.y < 0 or cell.y >= size.y:
+				border[(y + 1) * (n + 2) + x + 1] = T.ICE
 				continue
-			var e := map.elevation[map.index_of(n)] + rng.randf() * 0.01
-			if e < best_e:
-				best_e = e
-				best = n
-		if best.x < 0:
-			break
-		if best_e > map.elevation[map.index_of(current)] + 0.01:
-			# Cuvette : la rivière s'y jette dans un petit lac.
-			map.terrain[map.index_of(current)] = T.LAKE
-			path.pop_back()
-			break
-		path.append(best)
-		on_path[best] = true
-		current = best
-	for c in path:
-		map.terrain[map.index_of(c)] = T.RIVER
+			var f := fields(cell)
+			border[(y + 1) * (n + 2) + x + 1] = f.terrain
+			if x >= 0 and y >= 0 and x < n and y < n:
+				inner[y * n + x] = f
+	var chunk := WorldMap.Chunk.new()
+	for y in n:
+		for x in n:
+			var i := y * n + x
+			var cell := origin + Vector2i(x, y)
+			var f := inner[i]
+			var def := TerrainDb.get_def(f.terrain)
+			chunk.terrain[i] = f.terrain
+			chunk.elevation[i] = f.elevation
+			chunk.temperature[i] = f.temperature
+			chunk.variant[i] = posmod(hash(Vector3i(cell.x, cell.y, seed_value)), 4)
+			if not def.is_water:
+				for o in WorldMap.NEIGHBORS_8:
+					var t := border[(y + 1 + o.y) * (n + 2) + x + 1 + o.x]
+					if TerrainDb.is_water(t):
+						chunk.water_access[i] = 1
+					if t == T.SEA:
+						chunk.coastal[i] = 1
+			_fill_attributes(chunk, i, cell, f, def)
+			_place_deposit(chunk, i, cell)
+	return chunk
 
 
-static func _place_biomes(map: WorldMap, rng: RandomNumberGenerator) -> void:
-	var moisture_noise := _make_noise(rng, map.size, 4.0)
-	var heat_noise := _make_noise(rng, map.size, 2.5)
-	var moisture := PackedFloat32Array()
-	var aridity := PackedFloat32Array()
-	moisture.resize(map.cell_count())
-	aridity.resize(map.cell_count())
-	for i in map.cell_count():
-		var c := map.cell_of(i)
-		moisture[i] = moisture_noise.get_noise_2d(c.x, c.y)
-		aridity[i] = heat_noise.get_noise_2d(c.x, c.y) - 0.6 * moisture[i]
-	_normalize(moisture)
-	_normalize(aridity)
-	var flat := PackedInt32Array()
-	for i in map.cell_count():
-		if map.terrain[i] == T.PLAIN or map.terrain[i] == T.HILL:
-			flat.append(i)
-	# Déserts sur les plaines les plus arides, forêts sur les plus humides.
-	var arid_values := PackedFloat32Array()
-	for i in flat:
-		arid_values.append(aridity[i])
-	var desert_level := _quantile(arid_values, 1.0 - DESERT_FRACTION)
-	for i in flat:
-		if map.terrain[i] == T.PLAIN and aridity[i] >= desert_level:
-			map.terrain[i] = T.DESERT
-	var wet_values := PackedFloat32Array()
-	for i in flat:
-		if map.terrain[i] != T.DESERT:
-			wet_values.append(moisture[i])
-	var forest_level := _quantile(wet_values, 1.0 - FOREST_FRACTION)
-	for i in flat:
-		if map.terrain[i] != T.DESERT and moisture[i] >= forest_level:
-			map.terrain[i] = T.FOREST
-	# L'ensoleillement suit l'aridité (calculé ici pour réutiliser le bruit).
-	for i in map.cell_count():
-		map.sun[i] = aridity[i]
+## Fertilité, pâturage, bois, vent et soleil d'une tuile.
+func _fill_attributes(chunk: WorldMap.Chunk, i: int, cell: Vector2i, f: Fields, def: TerrainDef) -> void:
+	var p := _point(cell)
+	var detail := _noise(_detail, p)
+	var t := f.temperature
+	if not def.is_water:
+		var fertility := def.fertility * clampf((t - 0.2) / 0.35, 0.0, 1.0) + 0.1 * detail
+		if chunk.water_access[i] and def.fertility > 0.0:
+			fertility += 0.15  # berges
+		chunk.fertility[i] = clampf(fertility, 0.0, 1.0) if def.fertility > 0.0 else 0.0
+		var pasture := def.pasture * clampf((t - 0.12) / 0.3, 0.0, 1.0) + 0.1 * detail
+		chunk.pasture[i] = clampf(pasture, 0.0, 1.0) if def.pasture > 0.0 else 0.0
+	if f.terrain == T.FOREST:
+		var density := 0.45 + 0.55 * (f.moisture - forest_level) / maxf(1.0 - forest_level, 0.01) + 0.1 * detail
+		chunk.wood[i] = roundf(WorldMap.WOOD_PER_FOREST * clampf(density, 0.3, 1.0))
+	var lat := absf(f.latitude)
+	var above_sea := maxf(0.0, f.elevation - sea_level) / maxf(1.0 - sea_level, 0.0001)
+	var westerlies := 0.15 * exp(-pow((lat - 50.0) / 15.0, 2))
+	var w := 0.2 + 0.5 * above_sea + 0.15 * detail + westerlies
+	if f.terrain == T.SEA:
+		w = 0.7 + 0.15 * detail + westerlies
+	elif chunk.coastal[i]:
+		w += 0.2
+	if f.terrain == T.FOREST:
+		w -= 0.1
+	chunk.wind[i] = clampf(w, 0.0, 1.0)
+	var s := 0.2 + 0.6 * cos(deg_to_rad(lat)) + 0.25 * (0.5 - f.moisture)
+	if f.terrain == T.DESERT:
+		s += 0.1
+	chunk.sun[i] = clampf(s, 0.0, 1.0)
 
 
-static func _compute_water_access(map: WorldMap) -> void:
-	for i in map.cell_count():
-		var c := map.cell_of(i)
-		if map.is_water(c):
+func _place_deposit(chunk: WorldMap.Chunk, i: int, cell: Vector2i) -> void:
+	var p := _point(cell)
+	for k in DEPOSIT_RULES.size():
+		var rule: Array = DEPOSIT_RULES[k]
+		if chunk.terrain[i] not in rule[1]:
 			continue
-		for n in map.neighbors(c, WorldMap.NEIGHBORS_8):
-			var t := map.get_terrain(n)
-			if TerrainDb.is_water(t):
-				map.water_access[i] = 1
-			if t == T.SEA:
-				map.coastal[i] = 1
-
-
-static func _compute_climate(map: WorldMap, rng: RandomNumberGenerator) -> void:
-	var gust_noise := _make_noise(rng, map.size, 6.0)
-	for i in map.cell_count():
-		var c := map.cell_of(i)
-		var t := map.terrain[i]
-		var e := map.elevation[i]
-		var w := 0.15 + 0.6 * e + 0.15 * gust_noise.get_noise_2d(c.x, c.y)
-		if t == T.SEA:
-			w = 0.75 + 0.15 * gust_noise.get_noise_2d(c.x, c.y)
-		elif map.coastal[i]:
-			w += 0.2
-		if t == T.FOREST:
-			w -= 0.1
-		map.wind[i] = clampf(w, 0.0, 1.0)
-		var s := 0.25 + 0.6 * map.sun[i]
-		if t == T.DESERT:
-			s += 0.15
-		elif t == T.MOUNTAIN:
-			s += 0.05
-		map.sun[i] = clampf(s, 0.0, 1.0)
-
-
-static func _place_deposits(map: WorldMap, rng: RandomNumberGenerator) -> void:
-	var land := 0
-	for i in map.cell_count():
-		if not map.is_water(map.cell_of(i)):
-			land += 1
-	for rule: Array in DEPOSIT_RULES:
-		var kind: int = rule[0]
-		var eligible: Array = rule[1]
-		var noise := _make_noise(rng, map.size, 9.0)
-		var cells := PackedInt32Array()
-		var scores := PackedFloat32Array()
-		for i in map.cell_count():
-			if map.deposit[i] == WorldMap.Deposit.NONE and map.terrain[i] in eligible:
-				var c := map.cell_of(i)
-				cells.append(i)
-				scores.append(noise.get_noise_2d(c.x, c.y))
-		if cells.is_empty():
+		var v := _noise(_deposits[k], p)
+		if v < _deposit_levels[k]:
 			continue
-		var wanted := maxi(3, roundi(land * float(rule[2])))
-		var level := _quantile(scores, 1.0 - float(wanted) / cells.size())
-		var top := scores[0]
-		for s in scores:
-			top = maxf(top, s)
-		for k in cells.size():
-			if scores[k] < level:
-				continue
-			var richness := inverse_lerp(level, top, scores[k]) if top > level else 1.0
-			var amount := lerpf(float(rule[3]), float(rule[4]), richness)
-			map.deposit[cells[k]] = kind
-			map.deposit_amount[cells[k]] = roundi(amount / 100.0) * 100
+		var richness := clampf((v - _deposit_levels[k]) / 0.2, 0.0, 1.0)
+		chunk.deposit[i] = rule[0]
+		chunk.deposit_amount[i] = roundi(lerpf(float(rule[3]), float(rule[4]), richness) / 100.0) * 100
+		return

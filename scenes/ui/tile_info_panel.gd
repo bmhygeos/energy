@@ -44,31 +44,36 @@ func _refresh() -> void:
 		return
 	_panel.show()
 	_panel.modulate.a = 1.0 if cell == _selected else 0.8
-	var i := map.index_of(cell)
-	var def := TerrainDb.get_def(map.terrain[i])
-	_title.text = "%s  (%d, %d)" % [def.display_name, cell.x, cell.y]
+	var def := TerrainDb.get_def(map.get_terrain(cell))
+	var territory := GameState.territory
+	_title.text = "%s  (%s)" % [def.display_name, territory.STATE_NAMES[territory.state_at(cell)].to_lower()]
 	var lines := PackedStringArray([
-		"Altitude : %d m" % roundi(map.elevation[i] * 2000.0),
-		"Vent : %d %%" % roundi(map.wind[i] * 100.0),
-		"Ensoleillement : %d %%" % roundi(map.sun[i] * 100.0),
+		Format.coordinates(map.latitude(cell.y), map.longitude(cell.x)),
+		"Altitude : %d m" % roundi((map.get_elevation(cell) - map.generator.sea_level) * 8000.0),
+		"Température : %d %%" % roundi(map.get_temperature(cell) * 100.0),
 	])
 	if not def.is_water:
+		lines.append("Fertilité : %d %%" % roundi(map.get_fertility(cell) * 100.0))
+		lines.append("Pâturage : %d %%" % roundi(map.get_pasture(cell) * 100.0))
 		var water := "non"
-		if map.coastal[i]:
+		if map.is_coastal(cell):
 			water = "oui (côte)"
-		elif map.water_access[i]:
+		elif map.has_water_access(cell):
 			water = "oui"
 		lines.append("Accès à l'eau : " + water)
-		lines.append("Constructible : " + ("oui" if def.buildable else "non"))
-	if map.terrain[i] == TerrainDef.Type.FOREST:
-		lines.append("Bois sur pied : %s t" % Format.thousands(roundi(map.wood[i])))
-	var kind := map.deposit[i]
-	if kind != WorldMap.Deposit.NONE:
-		lines.append("Gisement : %s, %s t" % [
-			WorldMap.DEPOSIT_NAMES[kind], Format.thousands(roundi(map.deposit_amount[i]))])
+		lines.append("Constructible : " + ("oui" if def.buildable and territory.is_territory(cell) else "non"))
+	if map.get_terrain(cell) == TerrainDef.Type.FOREST:
+		lines.append("Bois sur pied : %s t" % Format.thousands(roundi(map.get_wood(cell))))
+	lines.append("Vent : %d %%  ·  soleil : %d %%" % [roundi(map.get_wind(cell) * 100.0), roundi(map.get_sun(cell) * 100.0)])
+	if territory.is_prospected(cell):
+		var kind := territory.known_deposit(cell)
+		lines.append("Gisement : " + ("aucun" if kind == WorldMap.Deposit.NONE else "%s, %s t" % [
+			WorldMap.DEPOSIT_NAMES[kind], Format.thousands(roundi(map.get_deposit_amount(cell)))]))
+	else:
+		lines.append("Gisements : non prospecté")
 	var b := _shown_building()
 	if b:
-		_title.text = "%s  (%d, %d)" % [b.def.display_name, cell.x, cell.y]
+		_title.text = b.def.display_name
 		var head := _building_lines(b)
 		head.append("Sur : " + def.display_name.to_lower())
 		head.append("")

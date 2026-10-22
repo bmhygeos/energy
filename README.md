@@ -21,7 +21,7 @@ python3 -m http.server -d build/web 8060      # tester la version web : http://l
 
 # Outils
 godot --headless -s res://tools/generate_tile_art.gd        # régénère assets/tiles/*.png
-godot --headless -s res://tools/render_map_preview.gd -- 42 /tmp/carte.png   # aperçu d'une carte
+godot --headless -s res://tools/render_map_preview.gd -- 42 /tmp/planete.png 2   # planète (1 pixel / 2 tuiles) et site de départ
 ```
 
 L'export nécessite les modèles d'export Godot 4.7.2 (Éditeur → Gérer les
@@ -45,16 +45,28 @@ nécessite un navigateur avec WebGL 2.
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
-| Calque d'information | `O` (relief, vent, soleil, eau, gisements) ou boutons en bas à droite |
+| Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
 | Nouvelle carte | champ « Graine » + Générer, ou Aléatoire |
 
-## État de la v2 (V0 : nettoyage)
+## État de la v2
 
-- **Carte** : génération par graine, terrains, relief, vent, soleil, eau et
-  gisements (visibles d'emblée en attendant l'exploration).
-- **Temps** : tick d'une heure, saisons, météo, jour et nuit.
-- **Bâtiments** : seul le **grenier** est proposé (chantier de 36 h, sans
-  coût) ; il n'a pas encore d'effet. Les bâtiments de la ville (maisons,
-  grenier…) prendront sens avec la population et les stocks (V3–V4).
-- **Statistiques et jalons** : fenêtre conservée, contenus à écrire avec les
-  simulations de la v2.
+### V0 : nettoyage
+Électricité, compagnie, recherche, véhicules, routes et villes retirés ; temps,
+météo et interface conservés.
+
+### V1 : planète et territoire
+- **Planète** de 1024×512 tuiles en longitude / latitude, qui boucle d'est en
+  ouest (pôles au nord et au sud de la grille). Générée à la demande par blocs
+  de 32×32 à partir de la graine : bruit 3D sur la sphère (sans couture),
+  continents, collines, montagnes, rivières et lacs.
+- **Climat selon la latitude** : glace aux pôles, toundra, forêts, plaines et
+  prairies, déserts vers les tropiques ; l'altitude refroidit.
+- **Attributs** par tuile : fertilité (plaines, berges), pâturage (prairies,
+  collines), densité de forêt (bois sur pied), vent, ensoleillement.
+- **Gisements** (charbon, fer, pétrole, cuivre, uranium, lithium) générés avec
+  la planète mais **cachés** jusqu'à la prospection (expéditions, V5).
+- **États des tuiles** : inconnue (noire), explorée (assombrie), territoire
+  (encadré en jaune). Départ : 12×12 tuiles aux latitudes tempérées, avec forêt,
+  plaine et eau garanties ; on ne construit que sur le territoire.
+- **Bâtiments** : seul le grenier est proposé (chantier de 36 h, sans coût, sans
+  effet pour l'instant).

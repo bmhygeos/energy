@@ -11,6 +11,9 @@ const DEFS: Array[TerrainDef] = [
 	preload("res://data/terrains/lake.tres"),
 	preload("res://data/terrains/sea.tres"),
 	preload("res://data/terrains/desert.tres"),
+	preload("res://data/terrains/prairie.tres"),
+	preload("res://data/terrains/tundra.tres"),
+	preload("res://data/terrains/ice.tres"),
 ]
 
 

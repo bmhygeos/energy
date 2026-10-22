@@ -1,5 +1,6 @@
 extends Node2D
-## Rendu de la carte (sols, décors, overlays, bâtiments) et interactions à la
+## Rendu des tuiles connues de la planète (sols, décors, brume, overlays,
+## bâtiments), dans le repère de GameState.display_cell, et interactions à la
 ## souris selon l'outil actif : sélection, construction, démolition.
 
 ## Opacité des décors (arbres, sommets) quand un overlay est affiché.
@@ -15,6 +16,7 @@ var _placement: BuildingRegistry.Placement
 @onready var _ground: TileMapLayer = $Ground
 @onready var _decor: TileMapLayer = $Decor
 @onready var _overlay: OverlayLayer = $Overlay
+@onready var _fog: FogLayer = $Fog
 @onready var _buildings: BuildingsLayer = $Buildings
 
 
@@ -36,18 +38,23 @@ func _load_map(p_map: WorldMap) -> void:
 	map = p_map
 	_ground.clear()
 	_decor.clear()
-	for i in map.cell_count():
-		_paint_cell(map.cell_of(i))
+	for cell in GameState.territory.known_cells():
+		_paint_cell(GameState.display_cell(cell))
 	_overlay.set_map(map)
+	_fog.refresh()
 	_set_hovered(Vector2i(-1, -1))
 	_set_selected(Vector2i(-1, -1))
 	EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
 
 
+## Peint [param cell] (repère de la vue), ou l'efface si elle est inconnue.
 func _paint_cell(cell: Vector2i) -> void:
-	var i := map.index_of(cell)
-	var def := TerrainDb.get_def(map.terrain[i])
-	var v := map.variant[i]
+	if not GameState.territory.is_known(cell):
+		_ground.erase_cell(cell)
+		_decor.erase_cell(cell)
+		return
+	var def := TerrainDb.get_def(map.get_terrain(cell))
+	var v := map.get_variant(cell)
 	_ground.set_cell(cell, TerrainTileSet.GROUND_SOURCE, Vector2i(v, def.type))
 	if def.decor_row >= 0:
 		_decor.set_cell(cell, TerrainTileSet.DECOR_SOURCE, Vector2i(v, def.decor_row))
@@ -122,12 +129,12 @@ func _update_placement() -> void:
 	EventBus.placement_previewed.emit(p)
 
 
-## Tuile sous la souris, ou (-1, -1) hors de la carte ou au-dessus de l'interface.
+## Tuile connue sous la souris, ou (-1, -1) ailleurs ou au-dessus de l'interface.
 func _cell_under_mouse() -> Vector2i:
 	if map == null or get_viewport().gui_get_hovered_control() != null:
 		return Vector2i(-1, -1)
 	var cell := _ground.local_to_map(_ground.get_local_mouse_position())
-	return cell if map.has_cell(cell) else Vector2i(-1, -1)
+	return cell if GameState.territory.is_known(cell) else Vector2i(-1, -1)
 
 
 func _set_hovered(cell: Vector2i) -> void:

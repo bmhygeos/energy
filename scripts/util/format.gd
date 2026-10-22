@@ -22,3 +22,9 @@ static func duration_hours(hours: int) -> String:
 ## Nombre à [param digits] décimales avec virgule : 12.34 → "12,3".
 static func decimal(value: float, digits: int = 1) -> String:
 	return ("%.*f" % [digits, value]).replace(".", ",")
+
+
+## Position géographique : (45.3, -12.8) → "45° N, 13° O".
+static func coordinates(latitude: float, longitude: float) -> String:
+	return "%d° %s, %d° %s" % [absi(roundi(latitude)), "N" if latitude >= 0.0 else "S",
+		absi(roundi(longitude)), "E" if longitude >= 0.0 else "O"]

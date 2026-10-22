@@ -28,10 +28,12 @@ static func footprint_diamond(origin: Vector2i, size: Vector2i) -> PackedVector2
 	])
 
 
-## Rectangle monde englobant une carte de [param size] tuiles.
-static func world_bounds(size: Vector2i) -> Rect2:
-	var left := map_to_world(Vector2(0, size.y - 1)).x - HALF.x
-	var right := map_to_world(Vector2(size.x - 1, 0)).x + HALF.x
-	var top := map_to_world(Vector2.ZERO).y - HALF.y
-	var bottom := map_to_world(Vector2(size.x - 1, size.y - 1)).y + HALF.y
+## Rectangle monde englobant les tuiles de [param cells].
+static func world_bounds(cells: Rect2i) -> Rect2:
+	var o := Vector2(cells.position)
+	var e := Vector2(cells.end - Vector2i.ONE)
+	var left := map_to_world(Vector2(o.x, e.y)).x - HALF.x
+	var right := map_to_world(Vector2(e.x, o.y)).x + HALF.x
+	var top := map_to_world(o).y - HALF.y
+	var bottom := map_to_world(e).y + HALF.y
 	return Rect2(left, top, right - left, bottom - top)

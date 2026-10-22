@@ -10,7 +10,10 @@ func _init() -> void:
 	_test_tick_accumulator()
 	_test_game_date()
 	_test_iso_matches_tilemap()
-	_test_map_generation()
+	_test_planet_generation()
+	_test_planet_chunks()
+	_test_start_site()
+	_test_territory()
 	_test_format()
 	_test_building_defs()
 	_test_placement()
@@ -68,41 +71,176 @@ func _test_iso_matches_tilemap() -> void:
 	layer.free()
 
 
-func _test_map_generation() -> void:
-	var size := Vector2i(64, 64)
-	var a := MapGenerator.generate(size, 1234)
-	var b := MapGenerator.generate(size, 1234)
-	var c := MapGenerator.generate(size, 999)
-	_check(a.terrain == b.terrain and a.wind == b.wind and a.deposit_amount == b.deposit_amount,
-		"même graine → même carte")
-	_check(a.terrain != c.terrain, "graines différentes → cartes différentes")
+const PLANET := Vector2i(1024, 512)
 
-	for seed_value in [1, 2, 3, 42, 777]:
-		var map := MapGenerator.generate(size, seed_value)
+
+## Générateur d'une planète de plaine aux attributs contrôlés.
+class FlatGenerator extends MapGenerator:
+	func _init(p_size: Vector2i) -> void:
+		super(0, p_size)
+
+	func generate_chunk(_coord: Vector2i) -> WorldMap.Chunk:
+		var chunk := WorldMap.Chunk.new()
+		chunk.terrain.fill(TerrainDef.Type.PLAIN)
+		chunk.wind.fill(0.3)
+		chunk.sun.fill(0.5)
+		chunk.fertility.fill(0.7)
+		return chunk
+
+
+func _test_planet_generation() -> void:
+	var a := MapGenerator.new(1234, PLANET)
+	var b := MapGenerator.new(1234, PLANET)
+	var c := MapGenerator.new(999, PLANET)
+	var same := true
+	var differs := false
+	for k in 300:
+		var cell := Vector2i((k * 389) % PLANET.x, (k * 157) % PLANET.y)
+		same = same and a.fields(cell).terrain == b.fields(cell).terrain \
+			and a.fields(cell).elevation == b.fields(cell).elevation
+		differs = differs or a.fields(cell).terrain != c.fields(cell).terrain
+	_check(same, "même graine → même planète")
+	_check(differs, "graines différentes → planètes différentes")
+	_check(a.fields(Vector2i(PLANET.x + 5, 100)).elevation == a.fields(Vector2i(5, 100)).elevation,
+		"la longitude boucle")
+
+	# Raccord est-ouest : pas plus de différence d'altitude à la couture qu'ailleurs.
+	var seam := 0.0
+	var inside := 0.0
+	for y in range(8, PLANET.y - 8, 4):
+		seam += absf(a.fields(Vector2i(PLANET.x - 1, y)).elevation - a.fields(Vector2i(0, y)).elevation)
+		inside += absf(a.fields(Vector2i(511, y)).elevation - a.fields(Vector2i(512, y)).elevation)
+	_check(seam < 2.0 * inside + 0.01, "pas de couture à la ligne de changement de date (%.3f / %.3f)" % [seam, inside])
+
+	for seed_value in [1, 2, 42]:
+		var gen := MapGenerator.new(seed_value, PLANET)
 		var present := {}
-		var deposits := {}
-		var errors := PackedStringArray()
-		for i in map.cell_count():
-			var cell := map.cell_of(i)
-			var t := map.terrain[i]
-			present[t] = true
-			if map.wind[i] < 0.0 or map.wind[i] > 1.0 or map.sun[i] < 0.0 or map.sun[i] > 1.0:
-				errors.append("attribut hors 0–1 en %s" % cell)
-			var touches_water := map.neighbors(cell, WorldMap.NEIGHBORS_8) \
+		var polar_ice := 0
+		var polar := 0
+		var temperate_ice := 0
+		var deserts := {tropics = 0, elsewhere = 0}
+		for y in range(0, PLANET.y, 4):
+			for x in range(0, PLANET.x, 4):
+				var f := gen.fields(Vector2i(x, y))
+				present[f.terrain] = true
+				var lat := absf(f.latitude)
+				if lat > 84.0:
+					polar += 1
+					polar_ice += 1 if f.terrain == TerrainDef.Type.ICE else 0
+				elif lat < 45.0 and f.terrain == TerrainDef.Type.ICE:
+					temperate_ice += 1
+				if f.terrain == TerrainDef.Type.DESERT:
+					deserts[&"tropics" if lat < 45.0 else &"elsewhere"] += 1
+		var missing := PackedStringArray()
+		for def in TerrainDb.DEFS:
+			if not present.has(def.type):
+				missing.append(def.display_name)
+		_check(missing.is_empty(), "planète %d : tous les terrains %s" % [seed_value, missing])
+		_check(polar_ice > 0.9 * polar, "planète %d : glace aux pôles (%d / %d)" % [seed_value, polar_ice, polar])
+		_check(temperate_ice == 0, "planète %d : pas de glace sous 45° (%d)" % [seed_value, temperate_ice])
+		_check(deserts.tropics > 3 * deserts.elsewhere, "planète %d : déserts vers les tropiques %s" % [seed_value, deserts])
+
+
+func _test_planet_chunks() -> void:
+	var map := WorldMap.new(PLANET, 42)
+	_check(map.generated_count() == 0, "aucun bloc avant le premier accès")
+	var cell := Vector2i(PLANET.x - 1, 200)
+	var t := map.get_terrain(cell)
+	_check(map.generated_count() == 1, "bloc généré à la demande")
+	_check(map.get_terrain(cell + Vector2i(PLANET.x, 0)) == t and map.generated_count() == 1,
+		"abscisse ramenée sur la planète")
+	_check(map.unwrap_near(Vector2i(2, 5), PLANET.x - 3) == Vector2i(PLANET.x + 2, 5)
+		and map.unwrap_near(Vector2i(PLANET.x - 2, 5), 3) == Vector2i(-2, 5), "copie la plus proche")
+	_check(is_equal_approx(map.latitude(0), 90.0 - 90.0 / PLANET.y) and map.latitude(PLANET.y - 1) < -89.0,
+		"latitudes : nord en haut")
+	_check(map.longitude(0) < -179.0 and map.longitude(PLANET.x - 1) > 179.0, "longitudes")
+
+	# Blocs voisins de la couture (accès à l'eau aux bords compris).
+	var errors := PackedStringArray()
+	var found := {}
+	var chunks: Array[Vector2i] = [Vector2i(31, 6), Vector2i(0, 6)]
+	for k in 120:
+		chunks.append(Vector2i((k * 13) % 32, 3 + (k * 7) % 10))
+	for chunk in chunks:
+		for i in WorldMap.CHUNK_SIZE * WorldMap.CHUNK_SIZE:
+			var c := chunk * WorldMap.CHUNK_SIZE + Vector2i(i % WorldMap.CHUNK_SIZE, i / WorldMap.CHUNK_SIZE)
+			var terrain := map.get_terrain(c)
+			if terrain != map.generator.fields(c).terrain:
+				errors.append("terrain du bloc ≠ générateur en %s" % c)
+			for v in [map.get_wind(c), map.get_sun(c), map.get_fertility(c), map.get_pasture(c)]:
+				if v < 0.0 or v > 1.0:
+					errors.append("attribut hors 0–1 en %s" % c)
+			var touches_water := map.neighbors(c, WorldMap.NEIGHBORS_8) \
 				.any(func(n: Vector2i) -> bool: return map.is_water(n))
-			if bool(map.water_access[i]) != (touches_water and not map.is_water(cell)):
-				errors.append("accès à l'eau incohérent en %s" % cell)
-			var kind := map.deposit[i]
+			if map.has_water_access(c) != (touches_water and not map.is_water(c)):
+				errors.append("accès à l'eau incohérent en %s" % c)
+			if (terrain == TerrainDef.Type.FOREST) != (map.get_wood(c) > 0.0):
+				errors.append("bois incohérent en %s" % c)
+			var kind := map.get_deposit(c)
 			if kind != WorldMap.Deposit.NONE:
-				deposits[kind] = true
-				if not TerrainDb.get_def(t).buildable or map.deposit_amount[i] <= 0:
-					errors.append("gisement invalide en %s" % cell)
-		_check(errors.is_empty(), "carte %d cohérente %s" % [seed_value, errors.slice(0, 3)])
-		for t in [TerrainDef.Type.PLAIN, TerrainDef.Type.FOREST, TerrainDef.Type.HILL,
-				TerrainDef.Type.MOUNTAIN, TerrainDef.Type.RIVER, TerrainDef.Type.SEA,
-				TerrainDef.Type.DESERT]:
-			_check(present.has(t), "carte %d contient %s" % [seed_value, TerrainDb.get_def(t).display_name])
-		_check(deposits.size() == 3, "carte %d contient les 3 gisements" % seed_value)
+				found[kind] = true
+				if not TerrainDb.get_def(terrain).buildable or map.get_deposit_amount(c) <= 0:
+					errors.append("gisement invalide en %s" % c)
+		if found.size() == WorldMap.Deposit.size() - 1 and chunk.x > 0:
+			break
+	_check(errors.is_empty(), "blocs cohérents %s" % [errors.slice(0, 3)])
+	_check(found.size() == WorldMap.Deposit.size() - 1, "les 6 gisements existent (%d)" % found.size())
+
+	map.set_terrain(cell, TerrainDef.Type.PLAIN)
+	var neighbor := cell + Vector2i(1, 0)
+	map.set_terrain(neighbor, TerrainDef.Type.PLAIN)
+	for n in map.neighbors(cell, WorldMap.NEIGHBORS_8):
+		map.set_terrain(n, TerrainDef.Type.PLAIN)
+	_check(not map.has_water_access(cell), "plus d'eau autour")
+	map.set_terrain(neighbor, TerrainDef.Type.LAKE)
+	_check(map.has_water_access(cell) and not map.has_water_access(neighbor),
+		"un lac voisin (de l'autre côté de la couture) donne l'accès à l'eau")
+
+
+func _test_start_site() -> void:
+	for seed_value in [1, 2, 3, 42, 777, 123456]:
+		var map := WorldMap.new(PLANET, seed_value)
+		var home := StartSite.find(map.generator)
+		var rect := StartSite.territory_rect(home)
+		_check(rect.size == Vector2i(12, 12) and rect.has_point(home), "territoire 12×12 autour du village")
+		var lat := absf(map.latitude(home.y))
+		_check(lat >= StartSite.MIN_LATITUDE - 1.0 and lat <= StartSite.MAX_LATITUDE + 1.0,
+			"graine %d : latitude tempérée (%.0f°)" % [seed_value, lat])
+		var changed := StartSite.ensure(map, rect)
+		var counts := StartSite._counts(rect, func(c: Vector2i) -> int: return map.get_terrain(c))
+		_check(counts.forest >= StartSite.MIN_FOREST and counts.water >= StartSite.MIN_WATER
+			and counts.farmland > 0, "graine %d : forêt, plaine et eau %s (%d retouches)" % [seed_value, counts, changed.size()])
+	var flat := WorldMap.new(Vector2i(64, 64), 0, FlatGenerator.new(Vector2i(64, 64)))
+	var rect := StartSite.territory_rect(Vector2i(20, 20))
+	var changed := StartSite.ensure(flat, rect)
+	var counts := StartSite._counts(rect, func(c: Vector2i) -> int: return flat.get_terrain(c))
+	_check(changed.size() == StartSite.MIN_FOREST + 1 and counts.water == 1 and counts.forest == StartSite.MIN_FOREST,
+		"plaine nue : forêt et lac ajoutés %s" % counts)
+
+
+func _test_territory() -> void:
+	var map := WorldMap.new(Vector2i(64, 64), 0, FlatGenerator.new(Vector2i(64, 64)))
+	var territory := Territory.new(map)
+	var a := Vector2i(63, 10)
+	var b := Vector2i(64, 10)  # = (0, 10)
+	_check(territory.state_at(a) == Territory.State.UNKNOWN and not territory.is_known(b), "inconnue au départ")
+	territory.annex([a] as Array[Vector2i])
+	territory.explore([a, b, Vector2i(5, -1)] as Array[Vector2i])
+	_check(territory.is_territory(a), "l'exploration ne retire pas une tuile du territoire")
+	_check(territory.state_at(Vector2i(0, 10)) == Territory.State.EXPLORED, "explorée (abscisse ramenée)")
+	_check(territory.count(Territory.State.EXPLORED) == 1 and territory.count(Territory.State.TERRITORY) == 1,
+		"comptes par état")
+	var known := territory.known_cells()
+	known.sort()
+	_check(known == [Vector2i(0, 10), Vector2i(63, 10)], "tuiles connues ramenées %s" % [known])
+	var chunk := map._chunk(a)
+	chunk.deposit[map._local(a)] = WorldMap.Deposit.IRON
+	chunk.deposit_amount[map._local(a)] = 5000.0
+	_check(territory.known_deposit(a) == WorldMap.Deposit.NONE, "gisement caché avant prospection")
+	territory.prospect([a, Vector2i(30, 30)] as Array[Vector2i])
+	_check(territory.known_deposit(a) == WorldMap.Deposit.IRON and territory.is_territory(a),
+		"gisement révélé par la prospection, état conservé")
+	_check(not territory.is_prospected(Vector2i(30, 30)), "pas de prospection d'une tuile inconnue")
 
 
 func _test_format() -> void:
@@ -111,13 +249,16 @@ func _test_format() -> void:
 	_check(Format.duration_hours(48) == "2 j" and Format.duration_hours(36) == "36 h", "durées")
 
 
-## Petite carte de plaine aux attributs contrôlés.
-func _flat_map(size := Vector2i(8, 8)) -> WorldMap:
-	var map := WorldMap.new(size)
-	map.terrain.fill(TerrainDef.Type.PLAIN)
-	map.wind.fill(0.3)
-	map.sun.fill(0.5)
-	return map
+## Petite planète de plaine dont le carré (0, 0)–(7, 7) est le territoire.
+func _flat_map() -> Array:
+	var map := WorldMap.new(Vector2i(64, 64), 0, FlatGenerator.new(Vector2i(64, 64)))
+	var territory := Territory.new(map)
+	var cells: Array[Vector2i] = []
+	for y in 8:
+		for x in 8:
+			cells.append(Vector2i(x, y))
+	territory.annex(cells)
+	return [map, territory]
 
 
 func _test_building_defs() -> void:
@@ -146,20 +287,23 @@ func _def(size := Vector2i.ONE, build_hours := 10) -> BuildingDef:
 
 
 func _test_placement() -> void:
-	var map := _flat_map()
-	var reg := BuildingRegistry.new(map)
+	var flat := _flat_map()
+	var map: WorldMap = flat[0]
+	var reg := BuildingRegistry.new(map, flat[1])
 	var small := _def()
 	var big := _def(Vector2i(2, 2))
 	var wide := _def(Vector2i(2, 1))
 
 	_check(reg.check_placement(small, Vector2i(2, 2)).is_valid(), "plaine libre : valide")
-	_check(not reg.check_placement(big, Vector2i(0, 3)).is_valid(), "emprise hors carte")
-	_check(not reg.check_placement(wide, Vector2i(0, 3)).is_valid(), "2×1 hors carte à x=0")
+	_check(reg.check_placement(big, Vector2i(3, 0)).error == "Hors de la carte", "emprise au-delà du pôle")
+	_check(reg.check_placement(wide, Vector2i(0, 3)).error == "Hors du territoire",
+		"2×1 à x=0 : déborde du territoire (de l'autre côté de la couture)")
+	_check(reg.check_placement(small, Vector2i(8, 3)).error == "Hors du territoire", "hors du territoire")
 	_check(reg.check_placement(wide, Vector2i(1, 0)).is_valid(), "2×1 en (0..1, 0)")
 
-	map.terrain[map.index_of(Vector2i(3, 3))] = TerrainDef.Type.MOUNTAIN
+	map.set_terrain(Vector2i(3, 3), TerrainDef.Type.MOUNTAIN)
 	_check(not reg.check_placement(small, Vector2i(3, 3)).is_valid(), "montagne non constructible")
-	map.terrain[map.index_of(Vector2i(3, 3))] = TerrainDef.Type.HILL
+	map.set_terrain(Vector2i(3, 3), TerrainDef.Type.HILL)
 	_check(reg.check_placement(small, Vector2i(3, 3)).is_valid(), "colline constructible")
 	var plain_only := _def()
 	plain_only.allowed_terrains = [TerrainDef.Type.PLAIN]
@@ -168,7 +312,7 @@ func _test_placement() -> void:
 	var near_forest := _def()
 	near_forest.adjacent_terrains = [TerrainDef.Type.FOREST]
 	_check(not reg.check_placement(near_forest, Vector2i(5, 5)).is_valid(), "pas de forêt voisine")
-	map.terrain[map.index_of(Vector2i(6, 6))] = TerrainDef.Type.FOREST
+	map.set_terrain(Vector2i(6, 6), TerrainDef.Type.FOREST)
 	_check(reg.check_placement(near_forest, Vector2i(5, 5)).is_valid(), "forêt voisine (diagonale)")
 	var on_forest := reg.check_placement(small, Vector2i(6, 6))
 	_check(on_forest.is_valid() and on_forest.cleared == [Vector2i(6, 6)], "forêt à défricher")
@@ -178,7 +322,7 @@ func _test_placement() -> void:
 	var wet := _def(Vector2i(2, 2))
 	wet.needs_water_access = true
 	_check(not reg.check_placement(wet, Vector2i(7, 1)).is_valid(), "sans eau")
-	map.water_access[map.index_of(Vector2i(6, 0))] = 1
+	map.set_terrain(Vector2i(5, 0), TerrainDef.Type.LAKE)
 	_check(reg.check_placement(wet, Vector2i(7, 1)).is_valid(), "une tuile près de l'eau suffit")
 
 	var b := reg.place(reg.check_placement(big, Vector2i(7, 1)))
@@ -195,7 +339,8 @@ func _test_placement() -> void:
 
 
 func _test_construction() -> void:
-	var reg := BuildingRegistry.new(_flat_map())
+	var flat := _flat_map()
+	var reg := BuildingRegistry.new(flat[0], flat[1])
 	var quick := _def(Vector2i.ONE, 10)
 	var slow := _def(Vector2i.ONE, 30)
 	var a := reg.place(reg.check_placement(quick, Vector2i(1, 1)))

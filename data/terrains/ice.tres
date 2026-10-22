@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TerrainDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/terrain_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+type = 10
+display_name = "Glace"
+color = Color(0.88, 0.92, 0.96, 1)
+buildable = false
+is_water = false
+decor_row = -1
+fertility = 0.0
+pasture = 0.0

@@ -1,7 +1,7 @@
 extends Camera2D
 ## Caméra de la carte : déplacement clavier (ZQSD/WASD selon la disposition,
 ## flèches), glisser avec le bouton du milieu ou droit, zoom à la molette
-## centré sur le curseur, bornée à la carte.
+## centré sur le curseur, bornée aux tuiles connues.
 
 @export var pan_speed := 900.0  ## Pixels écran par seconde.
 @export var zoom_min := 0.25
@@ -17,10 +17,20 @@ func _ready() -> void:
 	reset_view()
 
 
+## Zoom par défaut, centré sur le village.
 func reset_view() -> void:
-	_bounds = Iso.world_bounds(GameState.map_size)
+	refresh_bounds()
 	zoom = Vector2.ONE * 0.5
-	position = _bounds.get_center()
+	position = Iso.map_to_world(Vector2(GameState.display_cell(GameState.home)))
+
+
+## Bornes du déplacement : rectangle englobant les tuiles connues.
+func refresh_bounds() -> void:
+	var cells := GameState.territory.known_cells()
+	var rect := Rect2i(GameState.display_cell(cells[0]), Vector2i.ONE)
+	for c in cells:
+		rect = rect.expand(GameState.display_cell(c))
+	_bounds = Iso.world_bounds(Rect2i(rect.position, rect.size + Vector2i.ONE))
 
 
 func _process(delta: float) -> void:

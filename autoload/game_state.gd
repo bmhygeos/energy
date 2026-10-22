@@ -1,10 +1,14 @@
 extends Node
 ## État global de la partie en cours.
 
-const DEFAULT_MAP_SIZE := Vector2i(64, 64)
+## Planète en longitude / latitude (tuiles), multiple de WorldMap.CHUNK_SIZE.
+const PLANET_SIZE := Vector2i(1024, 512)
 
-var map_size: Vector2i = DEFAULT_MAP_SIZE
 var world_map: WorldMap
+## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
+var territory: Territory
+## Centre du village (abscisse ramenée sur la planète).
+var home: Vector2i
 var buildings: BuildingRegistry
 var weather: Weather
 ## Historique journalier (graphiques) et jalons du bac à sable.
@@ -18,16 +22,31 @@ func _ready() -> void:
 	new_game(random_seed())
 
 
-func new_game(seed_value: int, size: Vector2i = DEFAULT_MAP_SIZE) -> void:
+func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	Rng.set_seed(seed_value)
-	map_size = size
-	world_map = MapGenerator.generate(size, seed_value)
-	buildings = BuildingRegistry.new(world_map)
+	world_map = WorldMap.new(size, seed_value)
+	home = StartSite.find(world_map.generator)
+	var rect := StartSite.territory_rect(home)
+	StartSite.ensure(world_map, rect)
+	territory = Territory.new(world_map)
+	var cells: Array[Vector2i] = []
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			cells.append(Vector2i(x, y))
+	territory.annex(cells)
+	buildings = BuildingRegistry.new(world_map, territory)
 	weather = Weather.new(seed_value)
 	stats = Statistics.new()
 	milestones = Milestones.new()
 	GameClock.reset()
 	EventBus.game_started.emit(seed_value)
+
+
+## Tuile [param cell] dans le repère de la vue : abscisse dépliée autour du
+## village et décalée d'un tour de planète, donc toujours positive (les
+## tuiles (-1, -1) restent libres pour dire « aucune tuile »).
+func display_cell(cell: Vector2i) -> Vector2i:
+	return world_map.unwrap_near(cell, home.x + world_map.size.x)
 
 
 ## Graine aléatoire lisible (6 chiffres).

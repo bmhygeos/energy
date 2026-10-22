@@ -70,6 +70,12 @@ func _draw_ground(img: Image, origin: Vector2i, def: TerrainDef) -> void:
 					c = c.darkened(0.04 * absf(noise))
 				T.MOUNTAIN:
 					c = c.darkened(0.12 * absf(noise))
+				T.ICE:
+					var crack := absf(sin(cx * 0.21 - cy * 0.6 + phase))
+					c = c.darkened(0.12) if crack < 0.04 else c.lightened(0.04 * noise)
+				T.PRAIRIE, T.TUNDRA:
+					var tuft := sin(cx * 0.7 + phase) * sin(cy * 1.3)
+					c = c.lightened(0.08) if tuft > 0.8 else c.darkened(0.04 * absf(noise))
 				_:
 					c = c.lightened(0.06 * noise) if absf(noise) > 0.85 else c.darkened(0.03 * absf(noise))
 			# Éclairage venant du nord-ouest et bord inférieur assombri.

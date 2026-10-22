@@ -10,3 +10,5 @@ color = Color(0.87, 0.76, 0.5, 1)
 buildable = true
 is_water = false
 decor_row = -1
+fertility = 0.05
+pasture = 0.1
