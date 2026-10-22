@@ -21,6 +21,7 @@ const DONE_COLOR := Color("4caf50")
 var _steps: Array[Step] = []
 var _index := 0
 var _stats_opened := false
+var _overlay_used := false
 var _dismissed := false
 var _elapsed := 0.0
 var _panel: PanelContainer
@@ -35,9 +36,12 @@ func _ready() -> void:
 	layer = 1
 	_steps = _make_steps()
 	_build()
+	EventBus.overlay_changed.connect(func(mode: int) -> void:
+		_overlay_used = _overlay_used or mode != OverlayLayer.Mode.NONE)
 	EventBus.game_started.connect(func(_s: int) -> void:
 		_index = 0
 		_stats_opened = false
+		_overlay_used = false
 		_panel.visible = not _dismissed
 		_show_step())
 	_show_step()
@@ -65,53 +69,19 @@ func _process(delta: float) -> void:
 
 func _make_steps() -> Array[Step]:
 	return [
-		Step.new("Bienvenue", "Vous dirigez une compagnie d'électricité : produire, transporter, vendre aux villes, puis rechercher de meilleures technologies.\n\n[b]Caméra[/b] : ZQSD ou flèches, glisser avec le clic droit, molette pour zoomer.\n[b]Temps[/b] : Espace pour la pause, 1 / 2 / 3 pour les vitesses.\n\nMettez le jeu en pause pendant que vous construisez."),
-		Step.new("Couper du bois", "Dans le menu [b]Construction[/b] à gauche, choisissez [b]Bûcheron[/b] (Ressources) et placez-le à côté d'une forêt : il coupe le bois à 2 tuiles.\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
-			_has_lumberjack),
-		Step.new("Brûler le bois", "Placez une [b]Centrale biomasse[/b] (Énergie) non loin du bûcheron : elle transforme le bois en électricité.",
-			_has_biomass_plant),
-		Step.new("Transporter", "Les marchandises voyagent par la route. Placez un [b]Dépôt de véhicules[/b] (Logistique) : il arrive avec deux charrettes. Tracez ensuite des [b]routes[/b] (bouton Route, glisser) reliant bûcheron, dépôt et centrale.",
-			_has_depot_and_road),
-		Step.new("Premières livraisons", "Les charrettes vont chercher le bois et le livrent à la centrale. Accélérez le temps et attendez la première livraison.\n\nUn clic sur un bâtiment ouvre son panneau : état, stocks et diagnostic du transport.",
-			_wood_delivered),
-		Step.new("Alimenter une ville", "Tracez une [b]ligne électrique[/b] (bouton Ligne HT, glisser) de la centrale jusqu'à une ville. Chaque MWh livré est vendu ; une ville privée de courant coûte des pénalités et perd en satisfaction.\n\nLe calque [b]Réseau[/b] (O) montre ce qui est alimenté.",
-			_city_served),
-		Step.new("Rechercher", "Ouvrez l'[b]arbre technologique[/b] (T) et choisissez une technologie. Les points de recherche viennent des [b]laboratoires[/b] : construisez-en un, raccordé au réseau (il consomme de l'électricité).",
-			_researching),
-		Step.new("Suivre la partie", "Le bandeau résume la trésorerie, le réseau et le bilan d'hier : survolez-les pour le détail. La fenêtre [b]Statistiques[/b] (G) trace l'historique et liste les jalons. Ouvrez-la.",
+		Step.new("Bienvenue", "Vous êtes le gouverneur d'une future cité-État. Tout commence par un hameau : bientôt, vous tracerez des zones où les habitants travailleront, puis vous explorerez le monde.\n\n[b]Caméra[/b] : ZQSD ou flèches, glisser avec le clic droit, molette pour zoomer.\n[b]Temps[/b] : Espace pour la pause, 1 / 2 / 3 pour les vitesses."),
+		Step.new("Lire la carte", "Un clic sur une tuile affiche son terrain à droite. Les [b]calques[/b] (O ou boutons en bas à droite) montrent le relief, l'eau et les gisements. Affichez-en un.",
+			func() -> bool: return _overlay_used),
+		Step.new("Construire", "Dans le menu [b]Construction[/b] à gauche, choisissez le [b]Grenier[/b] et placez-le sur la carte.\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
+			func() -> bool: return _has(&"granary")),
+		Step.new("Suivre la partie", "La fenêtre [b]Statistiques[/b] (G) tracera l'historique de la cité et listera les jalons. Ouvrez-la.",
 			func() -> bool: return _stats_opened),
-		Step.new("À vous de jouer", "La demande des villes croît chaque année et varie avec l'heure et la saison. Charbon et nucléaire produisent beaucoup, mais polluent ou demandent des précautions ; éolien et solaire dépendent de la météo, le stockage lisse leur production. Taxe carbone, subventions, tempêtes et sécheresses pèsent sur vos comptes.\n\nPas de victoire imposée : visez les jalons, jusqu'à la fusion. H rouvre ce tutoriel."),
+		Step.new("À suivre", "Population, zones, saisons et exploration arrivent dans les prochaines versions. H rouvre ce tutoriel."),
 	]
 
 
 func _has(id: StringName) -> bool:
 	return GameState.buildings.all().any(func(b: Building) -> bool: return b.def.id == id)
-
-
-func _has_lumberjack() -> bool:
-	return _has(&"lumberjack")
-
-
-func _has_biomass_plant() -> bool:
-	return _has(&"biomass_plant")
-
-
-func _has_depot_and_road() -> bool:
-	return GameState.roads.tile_count() > 0 \
-		and GameState.buildings.all().any(func(b: Building) -> bool: return b.def.is_road_depot())
-
-
-func _wood_delivered() -> bool:
-	return GameState.buildings.all().any(func(b: Building) -> bool:
-		return b.def.id == &"biomass_plant" and b.input_stock > 0.0)
-
-
-func _city_served() -> bool:
-	return GameState.cities.any(func(c: Building) -> bool: return c.city.supply == City.Supply.SERVED)
-
-
-func _researching() -> bool:
-	return GameState.research.current() != null
 
 
 func _build() -> void:

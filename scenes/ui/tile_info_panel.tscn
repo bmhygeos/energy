@@ -45,7 +45,3 @@ text = "…"
 autowrap_mode = 3
 clip_text = true
 
-[node name="Actions" type="VBoxContainer" parent="Panel/Margin/VBox"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2

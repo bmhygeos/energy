@@ -11,10 +11,6 @@ var _selected := Vector2i(-1, -1)
 var _mode := BuildTool.Mode.SELECT
 var _build_def: BuildingDef
 var _placement: BuildingRegistry.Placement
-## Tracé de route, de voie ou de ligne : tuile de départ du glisser ((-1, -1) : pas de glisser).
-var _trace_start := Vector2i(-1, -1)
-var _trace_end := Vector2i(-1, -1)
-var _trace_plan: TilePlan
 
 @onready var _ground: TileMapLayer = $Ground
 @onready var _decor: TileMapLayer = $Decor
@@ -63,27 +59,11 @@ func _process(_delta: float) -> void:
 	_set_hovered(_cell_under_mouse())
 	if _mode == BuildTool.Mode.BUILD:
 		_update_placement()
-	elif _is_trace_mode():
-		_update_trace_plan()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
-	if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
-		if not _is_trace_mode() or _trace_start.x < 0:
-			return
-		_update_trace_plan()
-		if _trace_plan:
-			match _mode:
-				BuildTool.Mode.ROAD:
-					GameState.build_road(_trace_plan)
-				BuildTool.Mode.RAIL:
-					GameState.build_rail(_trace_plan)
-				_:
-					GameState.build_line(_trace_plan)
-		_trace_start = Vector2i(-1, -1)
-		_trace_plan = null
-	elif mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+	if mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
 		_click(_cell_under_mouse())
 	elif event.is_action_pressed("ui_cancel") \
 			and (_mode != BuildTool.Mode.SELECT or _selected.x >= 0):
@@ -107,18 +87,8 @@ func _click(cell: Vector2i) -> void:
 				_placement = null  # force le recalcul de l'aperçu
 		BuildTool.Mode.DEMOLISH:
 			var b := GameState.buildings.building_at(cell)
-			if b:
-				var refund := GameState.demolish(cell)
-				if refund >= 0:
-					EventBus.notified.emit("%s démoli : +%s €" % [b.def.display_name, Format.thousands(refund)])
-			elif GameState.roads.has_road(cell) or GameState.rails.has_rail(cell) \
-					or GameState.grid.has_line(cell):
-				GameState.demolish(cell)
-		BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.RAIL:
-			if cell.x >= 0:
-				_trace_start = cell
-				_trace_end = cell
-				_trace_plan = null
+			if b and GameState.demolish(cell):
+				EventBus.notified.emit("%s démoli" % b.def.display_name)
 		_:
 			_set_selected(Vector2i(-1, -1) if cell == _selected else cell)
 
@@ -127,17 +97,12 @@ func _on_tool_changed(mode: int, def: BuildingDef) -> void:
 	_mode = mode as BuildTool.Mode
 	_build_def = def
 	_placement = null
-	_trace_start = Vector2i(-1, -1)
-	_trace_plan = null
-	EventBus.tile_plan_previewed.emit(null)
 	if _mode == BuildTool.Mode.BUILD:
 		_set_selected(Vector2i(-1, -1))
 		_update_placement()
 	else:
 		_buildings.hide_ghost()
 		EventBus.placement_previewed.emit(null)
-	if _is_trace_mode():
-		_set_selected(Vector2i(-1, -1))
 
 
 ## Recalcule l'aperçu de placement sous la souris ; ne le publie que s'il a
@@ -155,37 +120,6 @@ func _update_placement() -> void:
 	_placement = p
 	_buildings.show_ghost(_build_def, _hovered, p.is_valid())
 	EventBus.placement_previewed.emit(p)
-
-
-func _is_trace_mode() -> bool:
-	return _mode in [BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.RAIL]
-
-
-## Recalcule l'aperçu du tracé (glisser en cours, sinon la tuile survolée) ;
-## ne le publie que s'il a changé.
-func _update_trace_plan() -> void:
-	if _hovered.x >= 0:
-		_trace_end = _hovered
-	var start := _trace_start if _trace_start.x >= 0 else _hovered
-	if start.x < 0:
-		if _trace_plan:
-			_trace_plan = null
-			EventBus.tile_plan_previewed.emit(null)
-		return
-	var end := _trace_end if _trace_start.x >= 0 else _hovered
-	var plan: TilePlan
-	match _mode:
-		BuildTool.Mode.ROAD:
-			plan = GameState.plan_road(start, end)
-		BuildTool.Mode.RAIL:
-			plan = GameState.plan_rail(start, end)
-		_:
-			plan = GameState.plan_line(start, end)
-	if _trace_plan and _trace_plan.cells == plan.cells and _trace_plan.error == plan.error \
-			and _trace_plan.cost == plan.cost:
-		return
-	_trace_plan = plan
-	EventBus.tile_plan_previewed.emit(plan)
 
 
 ## Tuile sous la souris, ou (-1, -1) hors de la carte ou au-dessus de l'interface.

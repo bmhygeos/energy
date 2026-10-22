@@ -6,7 +6,6 @@ signal tick_advanced(tick: int)
 signal day_changed(day_index: int)
 signal season_changed(season: int, year: int)
 signal speed_changed(speed: int)
-signal money_changed(money: int)
 ## Nouvelle partie : la carte (GameState.world_map) vient d'être générée.
 signal game_started(seed: int)
 ## Tuile sous la souris ; (-1, -1) hors de la carte.
@@ -26,28 +25,5 @@ signal building_removed(building: Building)
 signal tiles_changed(cells: Array[Vector2i])
 ## Message bref pour le joueur (erreur de construction…).
 signal notified(message: String)
-## Bilan de l'heure de production écoulée (Production.Report).
-signal production_stepped(report: Production.Report)
-## Statut d'un bâtiment (Building.Status) modifié.
-signal building_status_changed(building: Building)
-## Routes construites ou supprimées sur ces tuiles.
-signal roads_changed(cells: Array[Vector2i])
-## Voies ferrées construites ou supprimées sur ces tuiles.
-signal rails_changed(cells: Array[Vector2i])
-signal vehicle_added(vehicle: Vehicle)
-signal vehicle_removed(vehicle: Vehicle)
-## Aperçu du tracé en mode ROAD, RAIL ou LINE (null : aucun).
-signal tile_plan_previewed(plan: TilePlan)
-## Lignes électriques construites ou supprimées sur ces tuiles.
-signal lines_changed(cells: Array[Vector2i])
-## Raccordements au réseau électrique modifiés.
-signal grid_changed()
-## Bilan électrique de l'heure écoulée (PowerGrid.Report).
-signal grid_stepped(report: PowerGrid.Report)
-## File ou progression de la recherche modifiée.
-signal research_changed()
-signal tech_unlocked(tech: TechDef)
-## État de la flotte modifié sans ajout ni retrait (vente différée…).
-signal vehicles_changed()
 ## Jalon du bac à sable atteint (Milestones.Def).
 signal milestone_reached(milestone: Milestones.Def)

@@ -35,42 +35,6 @@ layout_mode = 2
 mouse_filter = 1
 text = "Ensoleillé"
 
-[node name="MoneyLabel" type="Label" parent="TopBar/Margin/Row"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
-layout_mode = 2
-text = "0 €"
-
-[node name="UpkeepLabel" type="Label" parent="TopBar/Margin/Row"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(145, 0)
-layout_mode = 2
-mouse_filter = 1
-tooltip_text = "Entretien journalier : bâtiments en service, routes, véhicules"
-text = "Entretien 0 €/j"
-
-[node name="PowerLabel" type="Label" parent="TopBar/Margin/Row"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 0)
-layout_mode = 2
-mouse_filter = 1
-tooltip_text = "Puissance livrée / demandée par les villes raccordées"
-text = "Réseau 0 / 0 MW"
-
-[node name="SalesLabel" type="Label" parent="TopBar/Margin/Row"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(135, 0)
-layout_mode = 2
-mouse_filter = 1
-text = "Bilan 0 €/j"
-
-[node name="ResearchButton" type="Button" parent="TopBar/Margin/Row"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 0)
-layout_mode = 2
-focus_mode = 0
-text = "Recherche (T)"
-
 [node name="StatsButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2

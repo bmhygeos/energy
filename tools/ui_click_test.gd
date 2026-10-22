@@ -1,8 +1,7 @@
 extends SceneTree
 ## Test de fumée de l'interface avec de vrais événements souris : choix d'un
-## outil dans le menu, construction d'une centrale et d'un bûcheron, tracé
-## d'une ligne HT au glisser, Échap, sélection d'une tuile, bâtiment
-## verrouillé, arbre technologique (T, clic sur une technologie).
+## outil dans le menu, construction et démolition d'un grenier, Échap,
+## sélection d'une tuile, calques (O), fenêtre des statistiques (G).
 ## Nécessite un affichage (pas --headless) ; déplace le pointeur réel.
 ## Lancer : godot -s res://tools/ui_click_test.gd
 
@@ -22,30 +21,18 @@ func _initialize() -> void:
 	for i in 5:
 		await process_frame
 
-	await _press_tool("Centrale biomasse")
+	await _press_tool("Grenier")
 	_check(_map_view._mode == 1, "outil Construire actif")
-	var n := _gs.buildings.count() as int
-	await _click(await _find_spot(BuildingDb.get_def(&"biomass_plant")))
-	_check(_gs.buildings.count() == n + 1, "centrale construite au clic")
+	var spot := await _find_spot(BuildingDb.get_def(&"granary"))
+	await _click(spot)
+	_check(_gs.buildings.count() == 1, "grenier construit au clic")
 
-	await _press_tool("Bûcheron")
-	n = _gs.buildings.count()
-	await _click(await _find_spot(BuildingDb.get_def(&"lumberjack")))
-	_check(_gs.buildings.count() == n + 1, "bûcheron construit au clic")
+	await _press_tool("Démolir")
+	_check(_map_view._mode == 2, "outil Démolir actif")
+	await _click(spot)
+	_check(_gs.buildings.count() == 0, "grenier démoli au clic")
 
-	await _press_tool("Ligne HT")
-	_check(_map_view._mode == 4, "outil Ligne HT actif")
-	await _move(Vector2(700, 600))
-	_button(Vector2(700, 600), true)
-	await _move(Vector2(900, 650))
-	_button(Vector2(900, 650), false)
-	await process_frame
-	_check(_gs.grid.tile_count() > 1, "ligne tracée au glisser (%d tuiles)" % _gs.grid.tile_count())
-
-	var esc := InputEventKey.new()
-	esc.keycode = KEY_ESCAPE
-	esc.physical_keycode = KEY_ESCAPE
-	esc.pressed = true
+	var esc := _key(KEY_ESCAPE)
 	root.push_input(esc)
 	await process_frame
 	_check(_map_view._mode == 0, "Échap : retour à la sélection")
@@ -53,53 +40,21 @@ func _initialize() -> void:
 	_check(_map_view._selected.x >= 0, "tuile sélectionnée au clic")
 
 	var hud: Node = root.get_node("Main/HUD")
-	# Indices de OverlayLayer.Mode (non référençable ici : le script est compilé
-	# avant les autoloads).
-	var deposits_mode := 5
-	var deposits_button: Button = hud._overlay_buttons[deposits_mode]
-	_check(deposits_button.disabled, "calque Gisements verrouillé avant Prospection")
-	var o_key := InputEventKey.new()
-	o_key.keycode = KEY_O
-	o_key.physical_keycode = KEY_O
-	o_key.pressed = true
-	_check(deposits_button.text == "Gisements", "bouton du calque Gisements")
+	var seen := {}
 	for i in hud._overlay_buttons.size():
-		root.push_input(o_key)
+		root.push_input(_key(KEY_O))
 		await process_frame
-		_check(hud._overlay_mode != deposits_mode, "O saute le calque Gisements")
-	var mine_button: Button = null
-	for b in root.get_node("Main/BuildMenu").find_children("*", "Button", true, false):
-		if (b as Button).text.begins_with("Mine de charbon"):
-			mine_button = b
-	_check(mine_button != null and mine_button.disabled, "mine verrouillée sans la technologie")
+		seen[hud._overlay_mode] = true
+		_check(not hud._overlay_buttons[i].disabled, "calque %d disponible" % i)
+	_check(seen.size() == hud._overlay_buttons.size(), "O fait défiler tous les calques")
 
-	var key := InputEventKey.new()
-	key.keycode = KEY_T
-	key.physical_keycode = KEY_T
-	key.pressed = true
-	root.push_input(key)
-	for i in 3:
-		await process_frame
-	var tree: Node = root.get_node("Main/TechTree")
-	_check(tree.is_open(), "T ouvre l'arbre technologique")
-	var tech_button: Button = tree._buttons[&"mining"]
-	await _click(tech_button.get_global_rect().get_center())
-	_check(_gs.research.queue == [&"prospecting", &"mining"], "clic : technologie et prérequis en file (%s)" % [_gs.research.queue])
-	var nodes: Array = tree._nodes.values()
-	var overlaps := 0
-	for a: GraphNode in nodes:
-		for b: GraphNode in nodes:
-			if a != b and Rect2(a.position_offset, a.size).grow(-1).intersects(Rect2(b.position_offset, b.size).grow(-1)):
-				overlaps += 1
-	_check(overlaps == 0, "aucun nœud de l'arbre n'en recouvre un autre (%d)" % overlaps)
-	_gs._on_techs_done(_gs.research.add_points(5000.0))
-	for i in 2:
-		await process_frame
-	_check(not mine_button.disabled, "mine déverrouillée après la recherche")
-	_check(not deposits_button.disabled, "calque Gisements disponible après Prospection")
+	var stats: Node = root.get_node("Main/StatsWindow")
+	root.push_input(_key(KEY_G))
+	await process_frame
+	_check(stats.is_open(), "G ouvre les statistiques")
 	root.push_input(esc)
 	await process_frame
-	_check(not tree.is_open(), "Échap ferme l'arbre")
+	_check(not stats.is_open(), "Échap ferme les statistiques")
 
 	print("Interface : %s" % ("OK" if _failures == 0 else "%d échec(s)" % _failures))
 	quit(1 if _failures > 0 else 0)
@@ -111,14 +66,22 @@ func _check(condition: bool, label: String) -> void:
 		printerr("ÉCHEC : ", label)
 
 
+func _key(code: Key) -> InputEventKey:
+	var e := InputEventKey.new()
+	e.keycode = code
+	e.physical_keycode = code
+	e.pressed = true
+	return e
+
+
 func _move(pos: Vector2) -> void:
 	Input.warp_mouse(pos)
 	var m := InputEventMouseMotion.new()
 	m.position = pos
 	m.global_position = pos
 	root.push_input(m)
-	await process_frame
-	await process_frame
+	for i in 3:
+		await process_frame
 
 
 func _button(pos: Vector2, pressed: bool) -> void:

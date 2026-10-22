@@ -1,19 +1,8 @@
 extends CanvasLayer
-## Fenêtre des statistiques (G) : graphiques journaliers par onglet
-## (électricité, finances, environnement, villes et recherche) et jalons du
-## bac à sable.
+## Fenêtre des statistiques (G) : graphiques journaliers par onglet et
+## jalons du bac à sable. Les onglets de graphiques de la v2 (population,
+## stocks, puissance…) viendront avec leurs simulations.
 
-## Couleurs des sources dans le mix électrique (sinon couleur du bâtiment).
-const SOURCE_COLORS: Dictionary[StringName, Color] = {
-	&"biomass_plant": Color("a07a45"),
-	&"coal_plant": Color("85858f"),
-	&"nuclear_plant": Color("b37feb"),
-	&"wind_turbine": Color("5ec8e5"),
-	&"offshore_wind": Color("2f8fd0"),
-	&"solar_farm": Color("f2d14b"),
-	&"solar_thermal_plant": Color("f08a24"),
-	&"fusion_reactor": Color("ff6ad5"),
-}
 const RANGES: PackedInt32Array = [30, 120, 0]
 const RANGE_NAMES: PackedStringArray = ["30 jours", "1 an", "Tout"]
 const REACHED_COLOR := Color("4caf50")
@@ -120,24 +109,6 @@ func _build() -> void:
 	_tabs = TabContainer.new()
 	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(_tabs)
-	_add_tab("Électricité", [
-		_chart(&"mix", "Production par source et demande", "MWh/j"),
-		_chart(&"shed", "Délestages", "villes × h"),
-	])
-	_add_tab("Finances", [
-		_chart(&"money", "Trésorerie", "€"),
-		_chart(&"flows", "Recettes et dépenses du jour", "€"),
-		_chart(&"price", "Prix moyen du marché", "€/MWh"),
-	])
-	_add_tab("Environnement", [
-		_chart(&"emissions", "Émissions de CO₂", "t/j"),
-		_chart(&"shares", "Renouvelable et satisfaction", "%"),
-	])
-	_add_tab("Villes et recherche", [
-		_chart(&"population", "Population", "habitants"),
-		_chart(&"research", "Recherche produite", "RP/j"),
-	])
-	_charts[&"shares"].fixed_max = 100.0
 	var scroll := ScrollContainer.new()
 	scroll.name = "Jalons"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -168,33 +139,8 @@ func _add_tab(tab_name: String, charts: Array[Chart]) -> void:
 
 
 func _refresh() -> void:
-	var stats := GameState.stats
-	if stats == null:
+	if GameState.stats == null:
 		return
-	var span := RANGES[_range]
-	var first := maxi(0, stats.days - span) if span > 0 else 0
-	var mix: Array[Chart.Series] = []
-	for id: StringName in stats.mix:
-		var def := BuildingDb.get_def(id)
-		mix.append(Chart.Series.new(def.display_name, stats.mix[id], SOURCE_COLORS.get(id, def.color), true))
-	mix.append(Chart.Series.new("Demande", stats.values(&"demand"), Color.WHITE))
-	_show(&"mix", mix, first)
-	_show(&"shed", [Chart.Series.new("Villes délestées", stats.values(&"shed_hours"), Color("e5484d"))], first)
-	_show(&"money", [Chart.Series.new("Argent", stats.values(&"money"), Color("f2d14b"))], first)
-	_show(&"flows", [
-		Chart.Series.new("Ventes", stats.values(&"sales"), Color("4caf50")),
-		Chart.Series.new("Subventions", stats.values(&"subsidies"), Color("5ec8e5")),
-		Chart.Series.new("Dépenses", stats.values(&"costs"), Color("e5484d")),
-		Chart.Series.new("Bilan", stats.values(&"net"), Color.WHITE),
-	], first)
-	_show(&"price", [Chart.Series.new("Prix", stats.values(&"price"), Color("f0a020"))], first)
-	_show(&"emissions", [Chart.Series.new("CO₂", stats.values(&"emissions"), Color("a0a0a8"))], first)
-	_show(&"shares", [
-		Chart.Series.new("Part renouvelable", stats.values(&"renewable_share"), Color("4caf50")),
-		Chart.Series.new("Satisfaction", stats.values(&"satisfaction"), Color("f2d14b")),
-	], first)
-	_show(&"population", [Chart.Series.new("Habitants", stats.values(&"population"), Color("5b9bd5"))], first)
-	_show(&"research", [Chart.Series.new("Recherche", stats.values(&"research"), Color("b37feb"))], first)
 	_refresh_milestones()
 
 
