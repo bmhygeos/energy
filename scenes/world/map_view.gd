@@ -2,7 +2,8 @@ extends Node2D
 ## Rendu des tuiles connues de la planète (sols, décors, brume, overlays,
 ## bâtiments), dans le repère de GameState.display_cell, et interactions à la
 ## souris selon l'outil actif : sélection, construction, démolition,
-## peinture et effacement de zones (glisser : rectangle).
+## peinture et effacement de zones, annexion (glisser : rectangle) et choix
+## de la cible d'une expédition (tuiles inconnues comprises).
 
 ## Opacité des décors (arbres, sommets) quand un overlay est affiché.
 const DECOR_DIMMED_ALPHA := 0.35
@@ -18,12 +19,15 @@ var _placement: BuildingRegistry.Placement
 var _drag_start := Vector2i(-1, -1)
 var _drag_end := Vector2i(-1, -1)
 var _zone_plan: ZoneMap.Plan
+var _annex_plan: Territory.AnnexPlan
+var _expedition_hover := Vector2i(-1, -1)
 
 @onready var _ground: TileMapLayer = $Ground
 @onready var _decor: TileMapLayer = $Decor
 @onready var _overlay: OverlayLayer = $Overlay
 @onready var _fog: FogLayer = $Fog
 @onready var _buildings: BuildingsLayer = $Buildings
+@onready var _expeditions: ExpeditionLayer = $Expeditions
 
 
 func _ready() -> void:
@@ -37,6 +41,7 @@ func _ready() -> void:
 		for cell in cells:
 			_paint_cell(cell))
 	EventBus.tool_changed.connect(_on_tool_changed)
+	EventBus.territory_changed.connect(_fog.refresh)
 	_load_map(GameState.world_map)
 
 
@@ -74,18 +79,28 @@ func _process(_delta: float) -> void:
 		_update_placement()
 	elif _is_zone_mode():
 		_update_zone_plan()
+	elif _mode == BuildTool.Mode.ANNEX:
+		_update_annex_plan()
+	elif _mode == BuildTool.Mode.EXPEDITION:
+		_update_expedition_preview()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
 	if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
-		if not _is_zone_mode() or _drag_start.x < 0:
+		if not _is_drag_mode() or _drag_start.x < 0:
 			return
-		_update_zone_plan()
-		if _zone_plan:
-			GameState.apply_zones(_zone_plan)
+		if _mode == BuildTool.Mode.ANNEX:
+			_update_annex_plan()
+			if _annex_plan:
+				GameState.apply_annex(_annex_plan)
+			_annex_plan = null
+		else:
+			_update_zone_plan()
+			if _zone_plan:
+				GameState.apply_zones(_zone_plan)
+			_zone_plan = null
 		_drag_start = Vector2i(-1, -1)
-		_zone_plan = null
 	elif mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
 		_click(_cell_under_mouse())
 	elif event.is_action_pressed("ui_cancel") \
@@ -112,11 +127,16 @@ func _click(cell: Vector2i) -> void:
 			var b := GameState.buildings.building_at(cell)
 			if b and GameState.demolish(cell):
 				EventBus.notified.emit("%s démoli" % b.def.display_name)
-		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE:
+		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.ANNEX:
 			if cell.x >= 0:
 				_drag_start = cell
 				_drag_end = cell
 				_zone_plan = null
+				_annex_plan = null
+		BuildTool.Mode.EXPEDITION:
+			if cell.x >= 0:
+				EventBus.expedition_target_clicked.emit(cell)
+				_expedition_hover = Vector2i(-1, -1)
 		_:
 			_set_selected(Vector2i(-1, -1) if cell == _selected else cell)
 
@@ -128,8 +148,12 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 	_placement = null
 	_drag_start = Vector2i(-1, -1)
 	_zone_plan = null
+	_annex_plan = null
+	_expedition_hover = Vector2i(-1, -1)
+	_expeditions.clear_previews()
 	EventBus.zone_plan_previewed.emit(null)
-	if _is_zone_mode():
+	EventBus.annex_plan_previewed.emit(null)
+	if _is_drag_mode() or _mode == BuildTool.Mode.EXPEDITION:
 		_set_selected(Vector2i(-1, -1))
 	if _mode == BuildTool.Mode.BUILD:
 		_set_selected(Vector2i(-1, -1))
@@ -160,6 +184,42 @@ func _is_zone_mode() -> bool:
 	return _mode == BuildTool.Mode.ZONE or _mode == BuildTool.Mode.ERASE_ZONE
 
 
+## Outils qui se glissent sur un rectangle.
+func _is_drag_mode() -> bool:
+	return _is_zone_mode() or _mode == BuildTool.Mode.ANNEX
+
+
+## Aperçu de l'annexion (glisser en cours, sinon la tuile survolée).
+func _update_annex_plan() -> void:
+	if _hovered.x >= 0:
+		_drag_end = _hovered
+	var start := _drag_start if _drag_start.x >= 0 else _hovered
+	if start.x < 0:
+		if _annex_plan:
+			_annex_plan = null
+			_expeditions.show_annex([])
+			EventBus.annex_plan_previewed.emit(null)
+		return
+	var end := _drag_end if _drag_start.x >= 0 else _hovered
+	var plan := GameState.plan_annex(start, end)
+	if _annex_plan and _annex_plan.cells == plan.cells and _annex_plan.refused == plan.refused:
+		return
+	_annex_plan = plan
+	_expeditions.show_annex(plan.cells)
+	EventBus.annex_plan_previewed.emit(plan)
+
+
+## Trajet prévu vers la tuile survolée (outil Expédition).
+func _update_expedition_preview() -> void:
+	if _hovered == _expedition_hover:
+		return
+	_expedition_hover = _hovered
+	if _hovered.x < 0:
+		_expeditions.show_path([], Vector2i(-1, -1))
+	else:
+		_expeditions.show_path(GameState.exploration.plan_path(GameState.display_cell(GameState.home), _hovered), _hovered)
+
+
 ## Recalcule l'aperçu de la peinture (glisser en cours, sinon la tuile
 ## survolée) ; ne le publie que s'il a changé.
 func _update_zone_plan() -> void:
@@ -179,11 +239,14 @@ func _update_zone_plan() -> void:
 	EventBus.zone_plan_previewed.emit(plan)
 
 
-## Tuile connue sous la souris, ou (-1, -1) ailleurs ou au-dessus de l'interface.
+## Tuile connue sous la souris (ou toute tuile de la carte pour l'outil
+## Expédition), ou (-1, -1) ailleurs ou au-dessus de l'interface.
 func _cell_under_mouse() -> Vector2i:
 	if map == null or get_viewport().gui_get_hovered_control() != null:
 		return Vector2i(-1, -1)
 	var cell := _ground.local_to_map(_ground.get_local_mouse_position())
+	if _mode == BuildTool.Mode.EXPEDITION:
+		return cell if map.has_cell(cell) else Vector2i(-1, -1)
 	return cell if GameState.territory.is_known(cell) else Vector2i(-1, -1)
 
 

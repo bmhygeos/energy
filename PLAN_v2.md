@@ -50,9 +50,8 @@ La carte ne s'agrandit que par l'**exploration** :
   l'eau au début), révèle les tuiles dans son rayon de vue, puis revient ; sans
   vivres, elle rentre plus tôt. Plus tard : risques (pertes, rencontres).
 - **Annexion** : une tuile explorée qui touche le territoire peut y être
-  intégrée contre un coût (nourriture et bois au début, puis argent ou
-  influence). La surface annexable est limitée par la population (ex. 6 tuiles
-  par habitant) : le territoire suit les besoins de la ville.
+  intégrée, sans coût. La surface annexable est limitée par la population
+  (8 tuiles par habitant) : le territoire suit les besoins de la ville.
 - Les paliers (section 7) améliorent l'exploration : plus d'explorateurs, vivres
   pour des expéditions plus longues, éclaireurs à cheval, bateaux, cartographes.
 
@@ -121,7 +120,7 @@ en v1, et peut les effacer. Une tuile porte au plus une zone.
 
 | Zone | Terrain valide | Travailleurs par tuile | Production | Particularités |
 |---|---|---|---|---|
-| Agriculture | Plaine, berges (fertilité > 0) | 2 | Nourriture, **saisonnière** : semis au printemps, récolte en été et à l'automne, rien en hiver | Gros rendement, mais il faut stocker pour l'hiver ; la fertilité baisse si on cultive sans repos (assolement au palier 2) |
+| Agriculture | Plaine, berges (fertilité > 0) | 2 | Nourriture, **saisonnière** : récoltes du printemps à l'automne, rien en hiver | Gros rendement, mais il faut stocker pour l'hiver ; la fertilité baisse si on cultive sans repos (assolement au palier 2) |
 | Élevage | Prairie, plaine, collines | 1 | Nourriture **régulière** toute l'année, plus faible par tuile | Lisse l'hiver ; demande beaucoup de surface |
 | Coupe du bois | Forêt | 1 | Bois | La densité de la forêt baisse ; une tuile coupée à blanc devient plaine et repousse lentement si la zone est retirée |
 

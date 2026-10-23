@@ -23,6 +23,9 @@ func _ready() -> void:
 	EventBus.game_started.connect(func(_s: int) -> void: _refresh())
 	EventBus.season_changed.connect(func(_s: int, _y: int) -> void: _refresh())
 	EventBus.population_changed.connect(_refresh)
+	EventBus.expeditions_changed.connect(func() -> void:
+		if GameState.exploration.expeditions.is_empty() or GameClock.tick % GameDate.HOURS_PER_DAY == 0:
+			_refresh())
 	_refresh()
 
 
@@ -104,7 +107,7 @@ func _build() -> void:
 		cells.append(priority)
 		_rows[def] = cells
 	var note := Label.new()
-	note.text = "Répartition au prorata priorité × places ; changer de zone prend %d h.\nAuto : priorité haute quand la nourriture (ou le bois) manque, basse hors saison." % Labor.REASSIGN_HOURS
+	note.text = "Répartition au prorata priorité × places (comptées au plus jusqu'au nombre d'actifs) ;\nchanger de zone prend %d h. Auto : priorité haute quand la nourriture (ou le bois)\nmanque ; personne hors saison ni quand le stock est plein." % Labor.REASSIGN_HOURS
 	note.modulate = MUTED_COLOR
 	note.add_theme_font_size_override("font_size", 13)
 	box.add_child(note)
@@ -118,9 +121,12 @@ func _refresh() -> void:
 	var unemployed := labor.unemployed()
 	_summary.text = "Habitants %d  ·  actifs %d  ·  au travail %d  ·  en route %d  ·  chômeurs %d" % [
 		population.count, population.active(), labor.employed(), labor.in_transit(), unemployed]
+	var explorers := GameState.exploration.members_out()
+	if explorers > 0:
+		_summary.text += "  ·  en expédition %d" % explorers
 	_summary.add_theme_color_override("font_color", UNEMPLOYED_COLOR if unemployed > 0 else Color.WHITE)
 	var season := GameDate.season(GameClock.tick)
-	_needs.text = "Besoins : nourriture %s /j  ·  bois %s /j%s" % [Format.decimal(population.food_need()),
+	_needs.text = "Besoins : nourriture %s /j  ·  bois %s /j%s" % [Format.decimal(GameState.food_need()),
 		Format.decimal(population.wood_need(season)), " (hiver)" if season == GameDate.WINTER else ""]
 	for def: ZoneDef in _rows:
 		var row := _rows[def]

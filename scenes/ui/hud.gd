@@ -117,9 +117,9 @@ func _refresh_population() -> void:
 	var unemployed := labor.unemployed()
 	_population_label.text = "Habitants %d / %d" % [population.count, GameState.housing]
 	_population_label.add_theme_color_override("font_color", WARNING_COLOR if unemployed > 0 else Color.WHITE)
-	_population_label.tooltip_text = "Habitants / logements\nActifs : %d (%d %%)  ·  au travail : %d  ·  en route : %d  ·  chômeurs : %d\nSatisfaction : %d %% (besoins couverts hier : nourriture %d %%, bois %d %%)" % [
+	_population_label.tooltip_text = "Habitants / logements\nActifs : %d (%d %%)  ·  au travail : %d  ·  en route : %d  ·  chômeurs : %d  ·  en expédition : %d\nSatisfaction : %d %% (besoins couverts hier : nourriture %d %%, bois %d %%)" % [
 		population.active(), roundi(Population.ACTIVE_SHARE * 100.0), labor.employed(), labor.in_transit(), unemployed,
-		roundi(population.satisfaction * 100.0), roundi(population.food_coverage * 100.0), roundi(population.wood_coverage * 100.0)]
+		GameState.exploration.members_out(), roundi(population.satisfaction * 100.0), roundi(population.food_coverage * 100.0), roundi(population.wood_coverage * 100.0)]
 	_refresh_tier()
 	_refresh_power()
 
@@ -146,7 +146,7 @@ func _refresh_stocks() -> void:
 	var labels := [_food_label, _wood_label]
 	var days := [GameState.food_days(), GameState.wood_days()]
 	var alerts := [Labor.FOOD_ALERT_DAYS, Labor.WOOD_ALERT_DAYS]
-	var needs := [GameState.population.food_need(), GameState.population.wood_need(GameDate.season(tick))]
+	var needs := [GameState.food_need(), GameState.population.wood_need(GameDate.season(tick))]
 	for good in labels.size():
 		var label: Label = labels[good]
 		var d: float = days[good]

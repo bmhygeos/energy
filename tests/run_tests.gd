@@ -14,6 +14,8 @@ func _init() -> void:
 	_test_planet_chunks()
 	_test_start_site()
 	_test_territory()
+	_test_exploration()
+	_test_annex()
 	_test_format()
 	_test_building_defs()
 	_test_placement()
@@ -253,6 +255,77 @@ func _test_territory() -> void:
 	_check(territory.known_deposit(a) == WorldMap.Deposit.IRON and territory.is_territory(a),
 		"gisement révélé par la prospection, état conservé")
 	_check(not territory.is_prospected(Vector2i(30, 30)), "pas de prospection d'une tuile inconnue")
+
+
+func _test_exploration() -> void:
+	var flat := _flat_map()
+	var map: WorldMap = flat[0]
+	var territory: Territory = flat[1]
+	var exploration := Exploration.new(territory)
+	var home := Vector2i(4, 4)
+	var path := exploration.plan_path(home, Vector2i(24, 14))
+	_check(path[0] == home and path[-1] == Vector2i(24, 14) and path.size() == 21, "trajet en ligne droite (%d tuiles)" % path.size())
+	var ok := true
+	for k in range(1, path.size()):
+		var step := path[k] - path[k - 1]
+		ok = ok and maxi(absi(step.x), absi(step.y)) == 1
+	_check(ok, "trajet de proche en proche")
+	# Un lac barre le chemin : arrêt devant l'eau.
+	map.set_terrain(Vector2i(14, 4), TerrainDef.Type.LAKE)
+	var blocked := exploration.plan_path(home, Vector2i(20, 4))
+	_check(blocked[-1] == Vector2i(13, 4), "arrêt devant le lac (%s)" % blocked[-1])
+	map.set_terrain(Vector2i(14, 4), TerrainDef.Type.RIVER)
+	_check(exploration.plan_path(home, Vector2i(20, 4))[-1] == Vector2i(20, 4), "rivière passée à gué")
+	map.set_terrain(Vector2i(14, 4), TerrainDef.Type.PLAIN)
+	_check(is_equal_approx(exploration.round_trip_days(home, Vector2i(12, 4)), 4.0), "aller-retour : 8 tuiles de plaine = 4 jours")
+	# Expédition : 2 explorateurs, de quoi marcher 6 jours vers une cible à 16 jours aller-retour.
+	var e := exploration.launch(home, Vector2i(36, 4), 2, 12.0)
+	_check(e != null and exploration.members_out() == 2 and not exploration.can_launch(), "expédition lancée, une seule à la fois")
+	_check(territory.is_known(Vector2i(7, 7)) and not territory.is_known(Vector2i(16, 4)), "vue autour du départ")
+	var hours := 0
+	var turned := false
+	var max_reach := 0
+	while not exploration.expeditions.is_empty() and hours < 24 * 40:
+		var report := exploration.step_hour()
+		turned = turned or not report.turned.is_empty()
+		max_reach = maxi(max_reach, e.cell().x)
+		hours += 1
+	_check(turned and e.reason == Exploration.Reason.FOOD, "demi-tour faute de vivres")
+	_check(exploration.expeditions.is_empty() and e.cell() == home, "retour au village (%d h)" % hours)
+	_check(max_reach >= 15 and max_reach <= 18, "assez loin pour revenir (x max %d)" % max_reach)
+	_check(e.food >= 0.0 and e.food < 1.5, "vivres presque épuisés au retour (%.2f)" % e.food)
+	_check(territory.is_known(Vector2i(max_reach + 3, 4)) and not territory.is_known(Vector2i(max_reach + 5, 4)),
+		"tuiles révélées dans le rayon de vue")
+	_check(e.revealed > 0 and territory.count(Territory.State.EXPLORED) == territory.known_cells().size() - 64,
+		"tuiles révélées comptées (%d)" % e.revealed)
+	_check(territory.state_at(home) == Territory.State.TERRITORY, "le territoire reste territoire")
+	# Cible atteinte avec des vivres en trop.
+	e = exploration.launch(home, Vector2i(10, 4), 1, 20.0)
+	while not exploration.expeditions.is_empty():
+		exploration.step_hour()
+	_check(e.reason == Exploration.Reason.TARGET and e.food > 15.0, "objectif atteint, vivres rapportés (%.1f)" % e.food)
+
+
+func _test_annex() -> void:
+	var flat := _flat_map()
+	var territory: Territory = flat[1]
+	var explored: Array[Vector2i] = []
+	for y in 12:
+		for x in range(8, 12):
+			explored.append(Vector2i(x, y))
+	explored.append(Vector2i(20, 20))
+	territory.explore(explored)
+	var plan := territory.plan_annex(Rect2i(8, 0, 2, 8), 100)
+	_check(plan.cells.size() == 16 and plan.refused == 0, "rectangle exploré au bord du territoire : annexable")
+	plan = territory.plan_annex(Rect2i(8, 0, 2, 12), 100)
+	_check(plan.cells.size() == 24, "de proche en proche au-delà du bord (%d)" % plan.cells.size())
+	plan = territory.plan_annex(Rect2i(8, 0, 2, 8), 5)
+	_check(plan.cells.size() == 5 and plan.refused == 11 and plan.cells.all(func(c: Vector2i) -> bool: return c.x == 8),
+		"limite : les plus proches de la frontière d'abord")
+	plan = territory.plan_annex(Rect2i(19, 19, 3, 3), 100)
+	_check(plan.cells.is_empty() and plan.refused == 9, "isolée ou inconnue : refusée (%s)" % plan.error)
+	territory.annex(territory.plan_annex(Rect2i(8, 0, 1, 1), 100).cells)
+	_check(territory.is_territory(Vector2i(8, 0)), "tuile annexée")
 
 
 func _test_format() -> void:
@@ -623,8 +696,8 @@ func _test_production() -> void:
 	var cell := Vector2i(3, 3)
 	var rate := prod.tile_rate(farm, cell, 2, 1)
 	_check(is_equal_approx(rate, 2 * farm.base_yield * 0.7), "rendement = travailleurs × base × qualité (%.2f)" % rate)
-	_check(prod.tile_rate(farm, cell, 2, 0) == 0.0 and prod.tile_rate(farm, cell, 2, GameDate.WINTER) == 0.0,
-		"champs : rien au printemps ni en hiver")
+	_check(is_equal_approx(prod.tile_rate(farm, cell, 2, 0), rate) and prod.tile_rate(farm, cell, 2, GameDate.WINTER) == 0.0,
+		"champs : récolte au printemps, rien en hiver")
 	_check(is_equal_approx(prod.tile_rate(farm, Vector2i(3 + 10, 3), 2, 1), rate * Labor.distance_factor(10)),
 		"pénalité de distance")
 	_paint(zones, &"agriculture", Rect2i(2, 2, 2, 1))

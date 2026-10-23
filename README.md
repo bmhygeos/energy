@@ -45,6 +45,8 @@ nécessite un navigateur avec WebGL 2.
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment |
 | Tracer une zone | bouton de zone du menu (Agriculture, Élevage, Coupe du bois) puis glisser sur la carte (rectangle ; les tuiles non valides sont ignorées) ; « Effacer les zones » puis glisser pour les retirer |
 | Main-d'œuvre | `M` ou bouton « Travail » du bandeau : places, affectés, production prévue, priorités |
+| Explorer | « Expédition » du menu, régler explorateurs et jours de vivres, puis cliquer la destination sur la carte |
+| Annexer | « Annexer » du menu puis glisser sur des tuiles explorées au bord du territoire |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
@@ -100,8 +102,9 @@ météo et interface conservés.
 
 ### V4 : production et saisons (première version jouable)
 - **Rendement** d'une tuile = travailleurs × base × qualité × saison × proximité :
-  agriculture 8 nourriture/travailleur/j en été et en automne (rien au printemps
-  ni en hiver), élevage 1,6 toute l'année (×0,8 l'hiver), coupe du bois 3.
+  agriculture 12 nourriture/travailleur/j du printemps à l'automne (rien en
+  hiver), élevage 2,4 toute l'année (×0,8 l'hiver), coupe du
+  bois 4,5.
 - **Fertilité** : un champ cultivé s'use, il se reconstitue au repos.
 - **Forêt** : la coupe vide le bois sur pied (rendement qui baisse avec la
   densité) ; coupée à blanc, la tuile devient plaine et perd sa zone, puis
@@ -114,14 +117,36 @@ météo et interface conservés.
   sur 10 jours. **Croissance** si les besoins sont couverts et qu'il reste des
   logements (maisons : 5 habitants) ; départs si la satisfaction baisse ou sans
   logement ; famine : déclin rapide.
-- **Départ** : grenier et 4 maisons construits, de quoi tenir jusqu'à l'été.
+- **Départ** : grenier et 4 maisons construits, et des réserves de nourriture et de bois.
 - **Mode automatique** : champs et élevage en priorité quand la nourriture ne
   tiendra pas jusqu'aux prochaines récoltes (ou moins de 20 jours) ; coupe du
-  bois quand le bois manque ou ne couvrira pas l'hiver ; zones sans production
-  de saison en priorité basse.
+  bois quand le bois manque ou ne couvrira pas l'hiver (réserves visées
+  plafonnées par la capacité des stocks) ; personne sur les zones sans
+  production de saison ni quand le stock est plein (plein à 95 %, de nouveau à
+  remplir sous 75 %). Dans la répartition, les places ne comptent que jusqu'au
+  nombre d'actifs.
+- **Palier** de la ville dans le bandeau (Hameau → Cité-État : population et
+  80 % de satisfaction).
 - **Puissance de la cité** dans le bandeau : énergie produite (nourriture
   10,5 MJ, bois 150 MJ par unité), moyenne sur 30 jours, totale et par habitant
   (≈ 0,5 kW/hab pour un hameau). Statistiques : population, satisfaction,
   stocks, production, pertes, puissance.
 - Champs qui changent d'aspect avec les saisons (labour, blé vert, blé mûr,
   chaume).
+
+### V5 : exploration
+- **Expédition** (menu, section Territoire) : 1 à 5 habitants actifs quittent
+  le travail avec des vivres pris au grenier (1 par explorateur et par jour),
+  partent du centre du village en ligne droite vers la tuile cliquée (inconnue
+  comprise) et reviennent. Une expédition à la fois au palier 1.
+- **Marche** : 4 tuiles/j en plaine et prairie, 3 en désert et toundra, 2 en
+  forêt et colline, 1,5 sur la glace, 1 en montagne et aux gués ; lacs et mer
+  infranchissables (arrêt devant l'eau).
+- **Vue** : rayon de 3 tuiles ; les tuiles inconnues deviennent explorées.
+- **Demi-tour** à la cible, devant l'eau ou quand il ne reste que les vivres
+  du retour ; les vivres restants reviennent au grenier.
+- **Annexion** (glisser un rectangle) : tuiles explorées reliées au territoire
+  de proche en proche, gratuitement, au plus 8 tuiles de territoire par
+  habitant.
+- Trajet prévu, position et rayon de vue de l'expédition sur la carte ; aperçu
+  de l'annexion ; explorateurs dans le bandeau et le panneau Main-d'œuvre.

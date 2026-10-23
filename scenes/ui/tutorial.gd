@@ -76,7 +76,7 @@ func _make_steps() -> Array[Step]:
 			func() -> bool: return _has(&"woodshed")),
 		Step.new("Tracer des zones", "Le gouverneur ne bâtit pas chaque ferme : il [b]trace des zones[/b] où les habitants iront travailler. Choisissez [b]Agriculture[/b] (plaines et berges), [b]Élevage[/b] (prairies, collines) ou [b]Coupe du bois[/b] (forêts), puis glissez sur la carte.\n\nLes habitants actifs s'y répartissent d'eux-mêmes, d'abord sur les meilleures tuiles proches du village. Le panneau [b]Main-d'œuvre[/b] (M) règle la priorité de chaque activité.",
 			func() -> bool: return not GameState.zones.all_cells().is_empty()),
-		Step.new("Passer l'hiver", "Les champs ne donnent qu'en été et en automne : remplissez le [b]grenier[/b] pour l'hiver et le printemps (survolez les stocks du bandeau). Le bois de chauffage double en hiver.\n\nSi les besoins sont couverts et qu'il reste des logements, la population grandit : construisez des [b]maisons[/b] et des greniers. La disette fait partir les habitants.",
+		Step.new("Passer l'hiver", "Les champs ne donnent rien en hiver : remplissez le [b]grenier[/b] pour l'hiver (survolez les stocks du bandeau). Le bois de chauffage double en hiver.\n\nSi les besoins sont couverts et qu'il reste des logements, la population grandit : construisez des [b]maisons[/b] et des greniers. La disette fait partir les habitants.",
 			func() -> bool: return _stats_opened or GameClock.tick >= GameDate.HOURS_PER_SEASON),
 		Step.new("Suivre la partie", "La fenêtre [b]Statistiques[/b] (G) trace la population, les stocks et la [b]puissance[/b] de la cité (énergie produite, en haut du bandeau). Ouvrez-la.",
 			func() -> bool: return _stats_opened),

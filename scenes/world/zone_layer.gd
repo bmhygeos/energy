@@ -11,8 +11,8 @@ const BORDER_ALPHA := 0.9
 const INSET := 0.82
 const WORKER_COLOR := Color(0.15, 0.12, 0.1, 0.9)
 const WORKER_HEAD := Color(0.95, 0.85, 0.7, 1)
-## Aspect des champs : labour (printemps), blé vert puis mûr (été, automne),
-## chaume (hiver).
+## Aspect des champs : labour puis blé vert (printemps), blé mûr (été,
+## automne), chaume (hiver).
 const PLOUGHED := Color("7a5a3a")
 const GREEN_WHEAT := Color("6fae3a")
 const RIPE_WHEAT := Color("e0be4a")
@@ -56,7 +56,7 @@ static func _field_color(tick: int) -> Color:
 	var t := float(GameDate.day_of_season(tick) - 1) / GameDate.DAYS_PER_SEASON
 	match GameDate.season(tick):
 		0:
-			return PLOUGHED.lerp(GREEN_WHEAT, maxf(0.0, t - 0.5) * 2.0)
+			return PLOUGHED.lerp(GREEN_WHEAT, minf(1.0, t * 3.0))
 		1:
 			return GREEN_WHEAT.lerp(RIPE_WHEAT, t)
 		2:

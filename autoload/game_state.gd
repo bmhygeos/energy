@@ -7,6 +7,7 @@ const PLANET_SIZE := Vector2i(1024, 512)
 var world_map: WorldMap
 ## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
 var territory: Territory
+var exploration: Exploration
 ## Centre du village (abscisse ramenée sur la planète).
 var home: Vector2i
 var buildings: BuildingRegistry
@@ -50,6 +51,7 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 		for x in range(rect.position.x, rect.end.x):
 			cells.append(Vector2i(x, y))
 	territory.annex(cells)
+	exploration = Exploration.new(territory)
 	buildings = BuildingRegistry.new(world_map, territory)
 	zones = ZoneMap.new(world_map, territory, buildings)
 	population = Population.new()
@@ -67,7 +69,7 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	_found_village()
 	_refresh_capacities()
 	_update_auto_priorities(0)
-	labor.step(GameClock.tick, population.active())
+	labor.step(GameClock.tick, workers())
 	EventBus.game_started.emit(seed_value)
 
 
@@ -147,7 +149,7 @@ func set_priority(def: ZoneDef, priority: int) -> void:
 
 
 func _update_labor() -> void:
-	labor.step(GameClock.tick, population.active())
+	labor.step(GameClock.tick, workers())
 	EventBus.labor_changed.emit()
 
 
@@ -190,9 +192,98 @@ func _refresh_capacities() -> void:
 	stockpile.capacity = capacity
 
 
+## Actifs disponibles pour les zones (hors explorateurs partis).
+func workers() -> int:
+	return maxi(0, population.active() - exploration.members_out())
+
+
+## Nourriture puisée chaque jour au grenier : les explorateurs mangent leurs
+## vivres.
+func food_need() -> float:
+	return maxf(0.0, population.food_need() - exploration.members_out() * Exploration.FOOD_PER_MEMBER_PER_DAY)
+
+
+## Lance une expédition de [param members] explorateurs avec [param days]
+## jours de vivres vers [param target] (repère de la vue) ; null (raison
+## notifiée) si c'est impossible.
+func launch_expedition(target: Vector2i, members: int, days: float) -> Exploration.Expedition:
+	var error := expedition_error(members, days)
+	if error.is_empty() and exploration.plan_path(display_cell(home), target).size() < 2:
+		error = "Trajet impossible : de l'eau barre le chemin"
+	if not error.is_empty():
+		EventBus.notified.emit(error)
+		return null
+	var food := members * days * Exploration.FOOD_PER_MEMBER_PER_DAY
+	stockpile.take(Stockpile.Good.FOOD, food)
+	var e := exploration.launch(display_cell(home), target, members, food)
+	EventBus.notified.emit("Expédition partie : %d explorateur%s, %s jours de vivres" % [
+		members, "s" if members > 1 else "", Format.decimal(days)])
+	_update_labor()
+	EventBus.stocks_changed.emit()
+	EventBus.expeditions_changed.emit()
+	return e
+
+
+## Ce qui empêche une expédition de [param members] explorateurs avec
+## [param days] jours de vivres (vide : possible).
+func expedition_error(members: int, days: float) -> String:
+	if not exploration.can_launch():
+		return "Une expédition est déjà en route"
+	if members <= 0 or days <= 0.0:
+		return "Il faut au moins un explorateur et des vivres"
+	if members > mini(Exploration.MAX_MEMBERS, workers()):
+		return "Pas assez d'habitants actifs disponibles"
+	if not stockpile.has(Stockpile.Good.FOOD, members * days * Exploration.FOOD_PER_MEMBER_PER_DAY):
+		return "Pas assez de nourriture au grenier pour les vivres"
+	return ""
+
+
+func _step_expeditions() -> void:
+	if exploration.expeditions.is_empty():
+		return
+	var report := exploration.step_hour()
+	if not report.revealed.is_empty():
+		EventBus.tiles_changed.emit(report.revealed)
+		EventBus.territory_changed.emit()
+	for e in report.turned:
+		EventBus.notified.emit("L'expédition fait demi-tour : %s" % Exploration.REASON_TEXTS[e.reason])
+	for e in report.returned:
+		stockpile.add(Stockpile.Good.FOOD, e.food)
+		EventBus.notified.emit("L'expédition est rentrée : %d tuile%s découverte%s" % [
+			e.revealed, "s" if e.revealed > 1 else "", "s" if e.revealed > 1 else ""])
+	if not report.returned.is_empty():
+		_update_labor()
+	EventBus.expeditions_changed.emit()
+
+
+## Tuiles encore annexables (surface permise par la population).
+func annex_room() -> int:
+	return maxi(0, population.count * Territory.TILES_PER_INHABITANT - territory.count(Territory.State.TERRITORY))
+
+
+## Annexion du rectangle de [param from] à [param to] (repère de la vue),
+## limitée par la surface que permet la population (sans coût).
+func plan_annex(from: Vector2i, to: Vector2i) -> Territory.AnnexPlan:
+	return territory.plan_annex(ZoneMap.rect_between(from, to), annex_room())
+
+
+## Annexe les tuiles de [param plan] ; renvoie leur nombre.
+func apply_annex(plan: Territory.AnnexPlan) -> int:
+	if plan.cells.is_empty():
+		if not plan.error.is_empty():
+			EventBus.notified.emit("Annexion impossible : " + plan.error)
+		return 0
+	var n := plan.cells.size()
+	territory.annex(plan.cells)
+	EventBus.tiles_changed.emit(plan.cells)
+	EventBus.territory_changed.emit()
+	EventBus.notified.emit("%d tuile%s annexée%s" % [n, "s" if n > 1 else "", "s" if n > 1 else ""])
+	return n
+
+
 ## Jours de réserve de nourriture et de bois au rythme actuel.
 func food_days() -> float:
-	return stockpile.days_of(Stockpile.Good.FOOD, population.food_need())
+	return stockpile.days_of(Stockpile.Good.FOOD, food_need())
 
 
 func wood_days() -> float:
@@ -205,7 +296,7 @@ func wood_days() -> float:
 ## au-delà, viser plus ne servirait à rien et priverait l'autre activité.
 func _update_auto_priorities(tick: int) -> void:
 	var season := GameDate.season(tick)
-	var food_goal := population.food_need() * maxf(Labor.FOOD_ALERT_DAYS, lean_days(tick))
+	var food_goal := food_need() * maxf(Labor.FOOD_ALERT_DAYS, lean_days(tick))
 	var wood_goal := population.wood_need(GameDate.season(tick)) * Labor.WOOD_ALERT_DAYS
 	if season == GameDate.WINTER - 1:
 		wood_goal = maxf(wood_goal, population.wood_need(GameDate.WINTER) * GameDate.DAYS_PER_SEASON)
@@ -249,8 +340,9 @@ func _on_tick(tick: int) -> void:
 		_refresh_capacities()
 	for b in completed:
 		EventBus.building_completed.emit(b)
+	_step_expeditions()
 	var before := [labor.employed(), labor.in_transit(), labor.assigned.duplicate()]
-	labor.step(tick, population.active())
+	labor.step(tick, workers())
 	if before != [labor.employed(), labor.in_transit(), labor.assigned]:
 		EventBus.labor_changed.emit()
 	# L'heure écoulée est celle qui précède le tick.
@@ -275,7 +367,7 @@ func _on_tick(tick: int) -> void:
 
 ## Consommation de l'heure : besoins du jour répartis sur 24 h.
 func _consume(tick: int) -> void:
-	var needs := [population.food_need(), population.wood_need(GameDate.season(tick))]
+	var needs := [food_need(), population.wood_need(GameDate.season(tick))]
 	for good in needs.size():
 		var want: float = needs[good] / GameDate.HOURS_PER_DAY
 		_needed_today[good] += want

@@ -42,7 +42,8 @@ func _shown_building() -> Building:
 func _refresh() -> void:
 	var cell := _shown_cell()
 	var map := GameState.world_map
-	if cell.x < 0 or map == null or not map.has_cell(cell):
+	# Les tuiles inconnues (visées par l'outil Expédition) restent secrètes.
+	if cell.x < 0 or map == null or not GameState.territory.is_known(cell):
 		_panel.hide()
 		return
 	_panel.show()

@@ -10,6 +10,15 @@ const STATE_NAMES: PackedStringArray = ["Inconnue", "Explorée", "Territoire"]
 ## Bits d'un octet : état (2 bits) et gisement prospecté.
 const STATE_MASK := 3
 const PROSPECTED_BIT := 4
+## Annexion (gratuite) : surface du territoire permise par habitant.
+const TILES_PER_INHABITANT := 8
+
+
+## Tuiles à annexer d'un rectangle, et pourquoi les autres ne le sont pas.
+class AnnexPlan:
+	var cells: Array[Vector2i] = []
+	var refused := 0
+	var error := ""
 
 var map: WorldMap
 var _blocks: Dictionary[Vector2i, PackedByteArray] = {}
@@ -50,6 +59,48 @@ func annex(cells: Array[Vector2i]) -> void:
 	for cell in cells:
 		if map.has_cell(cell):
 			set_state(cell, State.TERRITORY)
+
+
+## Annexion des tuiles explorées de [param rect] (repère de la vue) reliées
+## au territoire, de proche en proche, dans la limite de [param max_new]
+## tuiles (au plus près du territoire d'abord).
+func plan_annex(rect: Rect2i, max_new: int) -> AnnexPlan:
+	var plan := AnnexPlan.new()
+	var candidates: Dictionary[Vector2i, bool] = {}
+	var unknown := 0
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			var cell := Vector2i(x, y)
+			match state_at(cell):
+				State.EXPLORED:
+					candidates[cell] = true
+				State.UNKNOWN:
+					unknown += 1
+	var queue: Array[Vector2i] = []
+	for cell: Vector2i in candidates:
+		for n in map.neighbors(cell):
+			if is_territory(n):
+				queue.append(cell)
+				break
+	var reached: Dictionary[Vector2i, bool] = {}
+	for cell in queue:
+		reached[cell] = true
+	var i := 0
+	while i < queue.size():
+		for n in map.neighbors(queue[i]):
+			if candidates.has(n) and not reached.has(n):
+				reached[n] = true
+				queue.append(n)
+		i += 1
+	plan.cells = queue.slice(0, maxi(0, max_new))
+	plan.refused = candidates.size() - plan.cells.size() + unknown
+	if queue.size() > plan.cells.size():
+		plan.error = "surface maximale atteinte (%d tuiles par habitant)" % TILES_PER_INHABITANT
+	elif candidates.size() > queue.size():
+		plan.error = "tuiles non reliées au territoire"
+	elif unknown > 0:
+		plan.error = "tuiles inconnues : explorez d'abord"
+	return plan
 
 
 ## Prospection : rend visibles les gisements de [param cells] connues.

@@ -1,5 +1,6 @@
 extends CanvasLayer
-## Menu de construction (à gauche : zones à peindre, bâtiments, démolition),
+## Menu de construction (à gauche : zones à peindre, territoire — expédition
+## et annexion —, bâtiments, démolition),
 ## bandeau d'aide de l'outil actif (en bas) et messages brefs au joueur.
 
 const OK_COLOR := "#7ee787"
@@ -17,6 +18,12 @@ var _build_buttons: Dictionary[BuildingDef, Button] = {}
 var _zone_buttons: Dictionary[ZoneDef, Button] = {}
 var _erase_zone_button: Button
 var _demolish_button: Button
+var _expedition_button: Button
+var _annex_button: Button
+var _members: SpinBox
+var _days: SpinBox
+var _expedition_status: Label
+var _annex_plan: Territory.AnnexPlan
 var _toast_tween: Tween
 
 @onready var _list: VBoxContainer = %List
@@ -39,6 +46,15 @@ func _ready() -> void:
 	EventBus.zone_plan_previewed.connect(func(p: ZoneMap.Plan) -> void:
 		_zone_plan = p
 		_refresh_hint())
+	EventBus.annex_plan_previewed.connect(func(p: Territory.AnnexPlan) -> void:
+		_annex_plan = p
+		_refresh_hint())
+	EventBus.tile_hovered.connect(func(_c: Vector2i) -> void:
+		if _mode == BuildTool.Mode.EXPEDITION:
+			_refresh_hint())
+	EventBus.expedition_target_clicked.connect(_on_expedition_target)
+	EventBus.expeditions_changed.connect(_refresh_expedition_status)
+	EventBus.game_started.connect(func(_s: int) -> void: _refresh_expedition_status())
 	EventBus.notified.connect(_show_toast)
 	_toast.modulate.a = 0.0
 	_on_tool_changed(BuildTool.Mode.SELECT, null)
@@ -57,6 +73,7 @@ func _build_list() -> void:
 	_erase_zone_button.tooltip_text = "Glisser pour effacer les zones d'un rectangle."
 	_erase_zone_button.pressed.connect(func() -> void:
 		_select_tool(_erase_zone_button, BuildTool.Mode.ERASE_ZONE, null))
+	_build_territory()
 	for category in BuildingDef.Category.size():
 		var defs := BuildingDb.DEFS.filter(func(d: BuildingDef) -> bool:
 			return d.category == category and d.player_buildable)
@@ -74,6 +91,78 @@ func _build_list() -> void:
 	_demolish_button.tooltip_text = "Démolit un bâtiment ou annule un chantier."
 	_demolish_button.pressed.connect(func() -> void:
 		_select_tool(_demolish_button, BuildTool.Mode.DEMOLISH, null))
+
+
+## Section « Territoire » : expédition (effectif, jours de vivres, état de
+## l'expédition en cours) et annexion.
+func _build_territory() -> void:
+	_add_header("Territoire")
+	_expedition_button = _tool_button("Expédition")
+	_expedition_button.tooltip_text = "\n".join(PackedStringArray(["Expédition",
+		"Des habitants actifs quittent le travail et partent explorer avec des vivres pris au grenier.",
+		"Ils marchent en ligne droite vers la tuile choisie (lent en forêt, en colline et aux gués ;",
+		"lacs et mer infranchissables), révèlent les tuiles autour d'eux puis reviennent.",
+		"Au plus %d expédition à la fois, %d explorateurs." % [Exploration.MAX_EXPEDITIONS, Exploration.MAX_MEMBERS]]))
+	_expedition_button.pressed.connect(func() -> void:
+		_select_tool(_expedition_button, BuildTool.Mode.EXPEDITION, null))
+	var row := HBoxContainer.new()
+	_members = _spin_box(1, Exploration.MAX_MEMBERS, 3, "Explorateurs")
+	_days = _spin_box(1, 40, 8, "Jours de vivres")
+	for pair in [["Explorateurs", _members], ["Vivres (j)", _days]]:
+		var label := Label.new()
+		label.text = pair[0]
+		label.modulate = Color(1, 1, 1, 0.6)
+		row.add_child(label)
+		row.add_child(pair[1])
+	_list.add_child(row)
+	for spin in [_members, _days]:
+		spin.value_changed.connect(func(_v: float) -> void: _refresh_hint())
+	_expedition_status = Label.new()
+	_expedition_status.modulate = Color(1, 1, 1, 0.75)
+	_expedition_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_expedition_status.custom_minimum_size = Vector2(220, 0)
+	_list.add_child(_expedition_status)
+	_annex_button = _tool_button("Annexer")
+	_annex_button.tooltip_text = "\n".join(PackedStringArray(["Annexer",
+		"Intègre au territoire les tuiles explorées reliées à la frontière (glisser un rectangle).",
+		"Gratuit.",
+		"Surface permise : %d tuiles par habitant." % Territory.TILES_PER_INHABITANT]))
+	_annex_button.pressed.connect(func() -> void:
+		_select_tool(_annex_button, BuildTool.Mode.ANNEX, null))
+	_refresh_expedition_status()
+
+
+func _spin_box(lo: int, hi: int, value: int, tooltip: String) -> SpinBox:
+	var spin := SpinBox.new()
+	spin.min_value = lo
+	spin.max_value = hi
+	spin.value = value
+	spin.tooltip_text = tooltip
+	spin.focus_mode = Control.FOCUS_NONE
+	spin.get_line_edit().focus_mode = Control.FOCUS_CLICK
+	return spin
+
+
+func _expedition_food() -> float:
+	return _members.value * _days.value * Exploration.FOOD_PER_MEMBER_PER_DAY
+
+
+func _on_expedition_target(cell: Vector2i) -> void:
+	if GameState.launch_expedition(cell, int(_members.value), _days.value):
+		EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
+
+
+## État des expéditions en cours, sous les réglages.
+func _refresh_expedition_status() -> void:
+	if _expedition_status == null or GameState.exploration == null:
+		return
+	var lines := PackedStringArray()
+	for e in GameState.exploration.expeditions:
+		var leg := "retour (%s)" % Exploration.REASON_TEXTS[e.reason] if e.returning else "aller"
+		lines.append("En route : %d explorateur%s, %s · vivres %s · %d tuiles découvertes" % [
+			e.members, "s" if e.members > 1 else "", leg, Format.decimal(e.food), e.revealed])
+	_expedition_status.text = "\n".join(lines)
+	_expedition_status.visible = not lines.is_empty()
 
 
 ## Clic sur un bouton d'outil : l'active, ou revient à la sélection si le
@@ -146,6 +235,9 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 		_zone_buttons[d].set_pressed_no_signal(_mode == BuildTool.Mode.ZONE and d == def)
 	_erase_zone_button.set_pressed_no_signal(_mode == BuildTool.Mode.ERASE_ZONE)
 	_demolish_button.set_pressed_no_signal(_mode == BuildTool.Mode.DEMOLISH)
+	_expedition_button.set_pressed_no_signal(_mode == BuildTool.Mode.EXPEDITION)
+	_annex_button.set_pressed_no_signal(_mode == BuildTool.Mode.ANNEX)
+	_annex_plan = null
 	_refresh_hint()
 
 
@@ -184,8 +276,47 @@ func _refresh_hint() -> void:
 				if _zone_plan.refused > 0:
 					text += "%s[color=%s]%d ignorée%s : %s[/color]" % ["  ·  " if n > 0 else "\n", ERROR_COLOR,
 						_zone_plan.refused, "s" if _zone_plan.refused > 1 else "", _zone_plan.error]
+		BuildTool.Mode.EXPEDITION:
+			text = _expedition_hint()
+		BuildTool.Mode.ANNEX:
+			text = _annex_hint()
 	_hint.text = text
 	_hint_panel.visible = not text.is_empty()
+
+
+func _expedition_hint() -> String:
+	var members := int(_members.value)
+	var text := "[b]Expédition[/b] — %d explorateur%s, %s jours de vivres (%s nourriture) · cliquez sur la destination · Échap : annuler" % [
+		members, "s" if members > 1 else "", Format.decimal(_days.value), Format.decimal(_expedition_food())]
+	var error := GameState.expedition_error(members, _days.value)
+	if not error.is_empty():
+		return text + "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
+	if _hovered.x >= 0:
+		var home := GameState.display_cell(GameState.home)
+		var path := GameState.exploration.plan_path(home, _hovered)
+		if path.size() < 2:
+			return text + "\n[color=%s]Trajet impossible : de l'eau barre le chemin[/color]" % ERROR_COLOR
+		var trip := GameState.exploration.round_trip_days(home, _hovered)
+		var note := "aller-retour ≈ %s jours" % Format.decimal(trip)
+		if path[-1] != _hovered:
+			note += " (arrêt devant l'eau)"
+		var color := OK_COLOR if trip <= _days.value else ERROR_COLOR
+		if trip > _days.value:
+			note += " : demi-tour avant la cible, faute de vivres"
+		text += "\n[color=%s]%s[/color]" % [color, note]
+	return text
+
+
+func _annex_hint() -> String:
+	var text := "[b]Annexer[/b] — glisser sur des tuiles explorées au bord du territoire · place : %d tuiles · Échap : annuler" % GameState.annex_room()
+	if _annex_plan:
+		var n := _annex_plan.cells.size()
+		if n > 0:
+			text += "\n[color=%s]%d tuile%s annexée%s[/color]" % [OK_COLOR, n, "s" if n > 1 else "", "s" if n > 1 else ""]
+		if _annex_plan.refused > 0:
+			text += "%s[color=%s]%d ignorée%s : %s[/color]" % ["  ·  " if n > 0 else "\n", ERROR_COLOR,
+				_annex_plan.refused, "s" if _annex_plan.refused > 1 else "", _annex_plan.error]
+	return text
 
 
 func _show_toast(message: String) -> void:

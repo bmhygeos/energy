@@ -33,6 +33,14 @@ signal labor_changed()
 signal stocks_changed()
 ## Bilan du jour : population, satisfaction (Population).
 signal population_changed()
+## Expéditions lancées, en marche ou revenues.
+signal expeditions_changed()
+## Tuiles devenues explorées ou annexées (brume et frontière à redessiner).
+signal territory_changed()
+## Outil Expédition : tuile cible cliquée (repère de la vue).
+signal expedition_target_clicked(cell: Vector2i)
+## Aperçu de l'annexion sous la souris (null : aucun).
+signal annex_plan_previewed(plan: Territory.AnnexPlan)
 ## Message bref pour le joueur (erreur de construction…).
 signal notified(message: String)
 ## Jalon du bac à sable atteint (Milestones.Def).
