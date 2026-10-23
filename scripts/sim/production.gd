@@ -18,7 +18,7 @@ const FOREST_REGROWTH_PER_DAY := 1.5
 const CLEARCUT_REGROW_DAYS := 120
 const REGROWN_WOOD := 60.0
 ## Irrigation : bonus des champs à IRRIGATION_RANGE tuiles ou moins (distance
-## de Tchebychev) d'une rivière ou d'un lac.
+## de Tchebychev) d'une rivière, d'un lac ou d'un puits.
 const IRRIGATION_BONUS := 1.3
 const IRRIGATION_RANGE := 3
 const FRESH_WATER: Array[TerrainDef.Type] = [TerrainDef.Type.RIVER, TerrainDef.Type.LAKE]
@@ -55,8 +55,11 @@ var _clearcuts: Dictionary[Vector2i, int] = {}
 var tools_ok := true
 ## Moulins (à grain) en service.
 var mills := 0
-## Tuiles irrigables déjà calculées (l'eau douce ne bouge pas).
+## Tuiles irrigables par une rivière ou un lac déjà calculées (l'eau douce ne
+## bouge pas).
 var _irrigable: Dictionary[Vector2i, bool] = {}
+## Tuiles (ramenées sur la planète) des puits en service, sources d'irrigation.
+var wells: Array[Vector2i] = []
 
 
 func _init(p_zones: ZoneMap, p_labor: Labor) -> void:
@@ -115,9 +118,13 @@ func irrigation_factor(def: ZoneDef, cell: Vector2i) -> float:
 	return IRRIGATION_BONUS if is_irrigable(cell) else 1.0
 
 
-## Rivière ou lac à IRRIGATION_RANGE tuiles ou moins de [param cell].
+## Rivière, lac ou puits à IRRIGATION_RANGE tuiles ou moins de [param cell].
 func is_irrigable(cell: Vector2i) -> bool:
 	var c := map.wrap_cell(cell)
+	for w in wells:
+		var dx := absi(posmod(w.x - c.x + map.size.x / 2, map.size.x) - map.size.x / 2)
+		if maxi(dx, absi(w.y - c.y)) <= IRRIGATION_RANGE:
+			return true
 	if not _irrigable.has(c):
 		var found := false
 		for dy in range(-IRRIGATION_RANGE, IRRIGATION_RANGE + 1):

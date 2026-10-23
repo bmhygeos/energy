@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"water_pump"
+display_name = "Pompe à eau"
+description = "Un piston entraîné par des engrenages remonte l'eau du puits sans seau."
+tier = 2
+cost = 2000.0
+prerequisites = Array[StringName]([&"gears"])
+effect = "Puits : +50 % d'habitants servis."

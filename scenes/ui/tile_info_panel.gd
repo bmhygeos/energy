@@ -115,6 +115,10 @@ func _building_lines(b: Building) -> PackedStringArray:
 			Format.duration_hours(b.def.build_hours - b.build_progress)])
 	else:
 		lines.append(Building.STATUS_NAMES[b.status])
+	if not b.is_complete() and b.previous_def:
+		lines.append("Amélioration : %s reste en service pendant les travaux" % b.previous_def.display_name)
 	if not b.def.description.is_empty():
 		lines.append(b.def.description)
+	if b.is_complete() and b.def.upgrade:
+		lines.append("Améliorable en %s (palier %s)" % [b.def.upgrade.display_name, CityTier.NAMES[b.def.upgrade.tier - 1]])
 	return lines

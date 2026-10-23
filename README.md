@@ -48,6 +48,7 @@ nécessite un navigateur avec WebGL 2.
 | Explorer | « Expédition » du menu, régler explorateurs et jours de vivres, puis cliquer la destination sur la carte |
 | Annexer | « Annexer » du menu puis glisser sur des tuiles explorées au bord du territoire |
 | Recherche | `R` ou bouton « Recherche » du bandeau, puis « Rechercher » |
+| Améliorer | « Améliorer » du menu puis clic sur une maison ou un grenier |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
@@ -187,11 +188,30 @@ météo et interface conservés.
   | Assolement | Charrue | 3 000 | Fertilité stable, agriculture +15 % |
   | Engrenage | — | 1 500 | Carrières +15 %, puits +15 % |
   | Moulin à vent | Engrenage | 2 500 | Moulin : agriculture +20 %, gâchis ÷2, ≈ 3 kW selon le vent |
+  | Pompe à eau | Engrenage | 2 000 | Puits +50 % d'habitants servis |
 - **Besoin en outils** : bûcherons (après Outils) et laboureurs (après
   Charrue) usent 1 outil tous les 60 jours ; sans outils en stock, scie et
   charrue n'ont plus d'effet et la satisfaction baisse (jusqu'à −15 %).
 - Menu : bâtiments grisés tant que leur recherche manque ; fiche de la tuile :
   bonus des inventions.
+- **Greniers améliorables**, un niveau par palier (outil « Améliorer » du
+  menu, puis clic sur le grenier ; il reste en service pendant les travaux) :
+  | Niveau | Palier | Capacité | Coût de l'amélioration |
+  |---|---|---|---|
+  | Grenier | Hameau | 600 | (construction : 40 bois) |
+  | Grenier en pierre | Village | 1 200 | 20 bois, 30 pierre |
+  | Grand grenier | Bourg | 2 000 | 30 bois, 40 pierre, 10 fer |
+  | Entrepôt | Ville | 3 500 | 20 bois, 60 pierre, 30 fer |
+  | Silo | Cité-État | 6 000 | 80 pierre, 60 fer |
+- **Maisons améliorables** de la même façon (logements gardés pendant les
+  travaux ; la maison en pierre se construit aussi directement) :
+  | Niveau | Palier | Habitants | Coût de l'amélioration |
+  |---|---|---|---|
+  | Maison | Hameau | 5 | (construction : 15 bois) |
+  | Maison en pierre | Village | 10 | 10 bois, 20 pierre |
+  | Maison bourgeoise | Bourg | 16 | 20 bois, 30 pierre, 5 fer |
+  | Immeuble | Ville | 30 | 10 bois, 50 pierre, 20 fer |
+  | Tour d'habitation | Cité-État | 60 | 80 pierre, 50 fer |
 
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon
@@ -200,7 +220,8 @@ météo et interface conservés.
 - **Panneau Recherche** (`R` ou bouton du bandeau) : points par jour,
   recherche en cours, recherches du palier avec coût, avancement et effet.
 - **Irrigation** (hameau, 500 points) : champs à 3 tuiles ou moins d'une
-  rivière ou d'un lac : rendement +30 % (indiqué dans la fiche de la tuile).
+  rivière, d'un lac ou d'un puits (village) : rendement +30 % (indiqué dans la
+  fiche de la tuile).
 
 ### V5 : exploration
 - **Expédition** (menu, section Territoire) : 1 à 5 habitants actifs quittent

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+[ext_resource type="Resource" path="res://data/buildings/apartment.tres" id="2_up"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"town_house"
+display_name = "Maison bourgeoise"
+description = "Maison à étage du bourg, poutres tenues par des ferrures."
+category = 0
+player_buildable = false
+tier = 3
+build_hours = 72
+wood_cost = 20
+stone_cost = 30
+iron_cost = 5
+upgrade = ExtResource("2_up")
+housing = 16
+color = Color(0.76, 0.7, 0.62, 1)
+roof_color = Color(0.55, 0.3, 0.22, 1)
+height = 22.0

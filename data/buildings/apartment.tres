@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+[ext_resource type="Resource" path="res://data/buildings/tower.tres" id="2_up"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"apartment"
+display_name = "Immeuble"
+description = "Immeuble de la ville : plusieurs familles par étage."
+category = 0
+player_buildable = false
+tier = 4
+build_hours = 96
+wood_cost = 10
+stone_cost = 50
+iron_cost = 20
+upgrade = ExtResource("2_up")
+housing = 30
+color = Color(0.74, 0.72, 0.7, 1)
+roof_color = Color(0.4, 0.38, 0.4, 1)
+height = 30.0

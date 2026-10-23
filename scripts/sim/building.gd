@@ -14,6 +14,8 @@ var cells: Array[Vector2i]
 ## Heures de chantier écoulées ; le bâtiment est terminé à def.build_hours.
 var build_progress := 0
 var status: Status = Status.CONSTRUCTION
+## Pendant une amélioration : le niveau précédent, toujours en service.
+var previous_def: BuildingDef
 
 
 func _init(p_id: int, p_def: BuildingDef, p_anchor: Vector2i) -> void:
@@ -25,6 +27,21 @@ func _init(p_id: int, p_def: BuildingDef, p_anchor: Vector2i) -> void:
 
 func is_complete() -> bool:
 	return build_progress >= def.build_hours
+
+
+## Définition en service : la sienne une fois terminé, l'ancienne pendant une
+## amélioration (null pour un chantier neuf).
+func effective_def() -> BuildingDef:
+	return def if is_complete() else previous_def
+
+
+## Lance l'amélioration vers [param next] : chantier sur place, l'ancien
+## niveau reste en service jusqu'à la fin.
+func start_upgrade(next: BuildingDef) -> void:
+	previous_def = def
+	def = next
+	build_progress = 0
+	status = Status.CONSTRUCTION
 
 
 ## Avancement du chantier, 0–1.

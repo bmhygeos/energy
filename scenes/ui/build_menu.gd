@@ -18,6 +18,7 @@ var _build_buttons: Dictionary[BuildingDef, Button] = {}
 var _zone_buttons: Dictionary[ZoneDef, Button] = {}
 var _erase_zone_button: Button
 var _demolish_button: Button
+var _upgrade_button: Button
 var _expedition_button: Button
 var _annex_button: Button
 var _members: SpinBox
@@ -43,7 +44,7 @@ func _ready() -> void:
 		_refresh_hint())
 	EventBus.tile_hovered.connect(func(c: Vector2i) -> void:
 		_hovered = c
-		if _mode == BuildTool.Mode.DEMOLISH:
+		if _mode == BuildTool.Mode.DEMOLISH or _mode == BuildTool.Mode.UPGRADE:
 			_refresh_hint())
 	EventBus.zone_plan_previewed.connect(func(p: ZoneMap.Plan) -> void:
 		_zone_plan = p
@@ -89,6 +90,12 @@ func _build_list() -> void:
 				_select_tool(button, BuildTool.Mode.BUILD, def))
 			_build_buttons[def] = button
 	_list.add_child(HSeparator.new())
+	_upgrade_button = _tool_button("Améliorer")
+	_upgrade_button.tooltip_text = "\n".join(PackedStringArray(["Améliore un bâtiment sur place, un niveau par palier ; il reste en service pendant les travaux.",
+		"Maison → maison en pierre → maison bourgeoise → immeuble → tour d'habitation",
+		"Grenier → grenier en pierre → grand grenier → entrepôt → silo"]))
+	_upgrade_button.pressed.connect(func() -> void:
+		_select_tool(_upgrade_button, BuildTool.Mode.UPGRADE, null))
 	_demolish_button = _tool_button("Démolir (X)")
 	EventBus.tier_changed.connect(_refresh_tier_locks)
 	EventBus.research_changed.connect(_refresh_tier_locks)
@@ -293,6 +300,7 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 		_zone_buttons[d].set_pressed_no_signal(_mode == BuildTool.Mode.ZONE and d == def)
 	_erase_zone_button.set_pressed_no_signal(_mode == BuildTool.Mode.ERASE_ZONE)
 	_demolish_button.set_pressed_no_signal(_mode == BuildTool.Mode.DEMOLISH)
+	_upgrade_button.set_pressed_no_signal(_mode == BuildTool.Mode.UPGRADE)
 	_expedition_button.set_pressed_no_signal(_mode == BuildTool.Mode.EXPEDITION)
 	_annex_button.set_pressed_no_signal(_mode == BuildTool.Mode.ANNEX)
 	_annex_plan = null
@@ -334,6 +342,18 @@ func _refresh_hint() -> void:
 				if _zone_plan.refused > 0:
 					text += "%s[color=%s]%d ignorée%s : %s[/color]" % ["  ·  " if n > 0 else "\n", ERROR_COLOR,
 						_zone_plan.refused, "s" if _zone_plan.refused > 1 else "", _zone_plan.error]
+		BuildTool.Mode.UPGRADE:
+			text = "[b]Amélioration[/b] — cliquez sur un bâtiment · Échap : annuler"
+			var b := GameState.buildings.building_at(_hovered) if _hovered.x >= 0 else null
+			if b:
+				var error := GameState.upgrade_error(b)
+				if error.is_empty():
+					var next := b.def.upgrade
+					text += "\n[color=%s]%s → %s : %s · chantier %s[/color]%s" % [OK_COLOR, b.def.display_name, next.display_name,
+						next.describe_cost(GameState.costs_of(next)), Format.duration_hours(next.build_hours),
+						"  ·  " + ", ".join(next.describe_effects()) if not next.describe_effects().is_empty() else ""]
+				else:
+					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
 		BuildTool.Mode.EXPEDITION:
 			text = _expedition_hint()
 		BuildTool.Mode.ANNEX:

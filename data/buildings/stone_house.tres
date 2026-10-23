@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="BuildingDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+[ext_resource type="Resource" path="res://data/buildings/town_house.tres" id="2_up"]
 
 [resource]
 script = ExtResource("1_def")
@@ -12,6 +13,7 @@ tier = 2
 build_hours = 48
 wood_cost = 10
 stone_cost = 20
+upgrade = ExtResource("2_up")
 housing = 10
 color = Color(0.72, 0.7, 0.66, 1)
 roof_color = Color(0.5, 0.28, 0.2, 1)

@@ -13,6 +13,8 @@ const TOOL_LIFE_DAYS := 60.0
 ## Outils : maisons moins chères en bois ; engrenage : puits plus efficaces.
 const TOOLS_HOUSE_WOOD := 0.75
 const GEARS_WATER_BONUS := 1.15
+## Pompe à eau : puits plus efficaces.
+const PUMP_WATER_BONUS := 1.5
 
 var world_map: WorldMap
 ## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
@@ -219,6 +221,47 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 	return b
 
 
+## Ce qui empêche d'améliorer [param b] (vide : possible).
+func upgrade_error(b: Building) -> String:
+	if b == null:
+		return "Aucun bâtiment ici"
+	var next := b.def.upgrade
+	if next == null:
+		return "%s : pas d'amélioration" % b.def.display_name
+	if not b.is_complete():
+		return "Chantier en cours"
+	if next.tier > tier.level:
+		return "%s : au palier %s" % [next.display_name, CityTier.NAMES[next.tier - 1]]
+	if next.research and not research.is_done(next.research):
+		return "Recherche requise : %s" % ResearchDb.get_def(next.research).display_name
+	var costs := costs_of(next)
+	for good in costs.size():
+		if not stockpile.has(good, costs[good]):
+			return "%s insuffisant%s (%d requis)" % [Stockpile.GOOD_NAMES[good],
+				"e" if good == Stockpile.Good.STONE else "", roundi(costs[good])]
+	return ""
+
+
+## Améliore le bâtiment présent en [param cell] (chantier sur place) ; false
+## (raison notifiée) si c'est impossible.
+func upgrade(cell: Vector2i) -> bool:
+	var b := buildings.building_at(cell)
+	var error := upgrade_error(b)
+	if not error.is_empty():
+		EventBus.notified.emit(error)
+		return false
+	var next := b.def.upgrade
+	var costs := costs_of(next)
+	for good in costs.size():
+		stockpile.take(good, costs[good])
+	EventBus.building_removed.emit(b)
+	b.start_upgrade(next)
+	EventBus.building_placed.emit(b)
+	EventBus.stocks_changed.emit()
+	EventBus.notified.emit("Amélioration lancée : %s" % next.display_name)
+	return true
+
+
 ## Démolit le bâtiment présent en [param cell] ; false s'il n'y en a pas.
 func demolish(cell: Vector2i) -> bool:
 	var b := buildings.building_at(cell)
@@ -237,20 +280,31 @@ func _refresh_capacities() -> void:
 	var horse_capacity := 0
 	var capacity := Stockpile.BASE_CAPACITY.duplicate()
 	for b in buildings.all():
-		if b.is_complete():
-			housing += b.def.housing
-			water_supply += b.def.water_supply
-			horse_capacity += b.def.horse_capacity
-			capacity[Stockpile.Good.FOOD] += b.def.food_capacity
-			capacity[Stockpile.Good.WOOD] += b.def.wood_capacity
+		# Pendant une amélioration, l'ancien niveau reste en service.
+		var d := b.effective_def()
+		if d:
+			housing += d.housing
+			water_supply += d.water_supply
+			horse_capacity += d.horse_capacity
+			capacity[Stockpile.Good.FOOD] += d.food_capacity
+			capacity[Stockpile.Good.WOOD] += d.wood_capacity
 	stockpile.capacity = capacity
 	draft.capacity = horse_capacity
+	var water_factor := 1.0
 	if research.is_done(&"gears"):
-		water_supply = roundi(water_supply * GEARS_WATER_BONUS)
+		water_factor *= GEARS_WATER_BONUS
+	if research.is_done(&"water_pump"):
+		water_factor *= PUMP_WATER_BONUS
+	water_supply = roundi(water_supply * water_factor)
 	var mills := 0
+	var wells: Array[Vector2i] = []
 	for b in buildings.all():
 		if b.is_complete() and b.def.grinds_grain:
 			mills += 1
+		if b.is_complete() and b.def.water_supply > 0:
+			for c in b.cells:
+				wells.append(world_map.wrap_cell(c))
+	production.wells = wells
 	production.mills = mills
 	stockpile.spoilage_factor = 0.5 if mills > 0 else 1.0
 	draft.collar = research.is_done(&"harness_collar")

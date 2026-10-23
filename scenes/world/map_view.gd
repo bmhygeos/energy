@@ -127,6 +127,9 @@ func _click(cell: Vector2i) -> void:
 			var b := GameState.buildings.building_at(cell)
 			if b and GameState.demolish(cell):
 				EventBus.notified.emit("%s démoli" % b.def.display_name)
+		BuildTool.Mode.UPGRADE:
+			if cell.x >= 0:
+				GameState.upgrade(cell)
 		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.ANNEX:
 			if cell.x >= 0:
 				_drag_start = cell

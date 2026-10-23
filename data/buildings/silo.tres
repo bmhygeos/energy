@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"silo"
+display_name = "Silo"
+description = "Silos en béton et en acier de la cité-État."
+category = 1
+player_buildable = false
+tier = 5
+size = Vector2i(2, 1)
+build_hours = 120
+wood_cost = 0
+stone_cost = 80
+iron_cost = 60
+food_capacity = 6000.0
+color = Color(0.78, 0.78, 0.76, 1)
+roof_color = Color(0.55, 0.57, 0.6, 1)
+height = 34.0

@@ -1,15 +1,17 @@
 [gd_resource type="Resource" script_class="BuildingDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+[ext_resource type="Resource" path="res://data/buildings/stone_house.tres" id="2_up"]
 
 [resource]
 script = ExtResource("1_def")
 id = &"house"
 display_name = "Maison"
-description = "Maison simple en bois : la population ne grandit que s'il reste des logements."
+description = "Maison simple en bois : la population ne grandit que s'il reste des logements ; s'améliore à chaque palier."
 category = 0
 build_hours = 24
 wood_cost = 15
+upgrade = ExtResource("2_up")
 housing = 5
 color = Color(0.82, 0.74, 0.6, 1)
 roof_color = Color(0.6, 0.32, 0.22, 1)

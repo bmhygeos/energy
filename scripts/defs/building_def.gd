@@ -24,9 +24,13 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export_group("Chantier")
 ## Durée du chantier, en heures de jeu (ticks).
 @export var build_hours := 24
-## Bois et pierre pris sur les stocks au lancement du chantier.
+## Bois, pierre et fer pris sur les stocks au lancement du chantier (pour une
+## amélioration : son coût).
 @export var wood_cost := 0
 @export var stone_cost := 0
+@export var iron_cost := 0
+## Niveau suivant, construit sur place (grenier → grenier en pierre…).
+@export var upgrade: BuildingDef
 
 @export_group("Effets")
 ## Habitants logés (maisons).
@@ -84,6 +88,7 @@ func costs() -> PackedFloat32Array:
 	var values := Stockpile.zeros()
 	values[Stockpile.Good.WOOD] = wood_cost
 	values[Stockpile.Good.STONE] = stone_cost
+	values[Stockpile.Good.IRON] = iron_cost
 	return values
 
 
@@ -115,7 +120,7 @@ func describe_effects() -> PackedStringArray:
 	if horse_capacity > 0:
 		lines.append("Loge %d chevaux" % horse_capacity)
 	if water_supply > 0:
-		lines.append("Eau pour %d habitants" % water_supply)
+		lines.append("Eau pour %d habitants ; irrigue les champs voisins (recherche Irrigation)" % water_supply)
 	if research_coverage > 0:
 		lines.append("Recherche ×%s pour %d habitants" % [Format.decimal(research_multiplier), research_coverage])
 	return lines

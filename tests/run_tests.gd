@@ -32,6 +32,7 @@ func _init() -> void:
 	_test_village()
 	_test_draft_animals()
 	_test_inventions()
+	_test_granary_upgrades()
 	_test_production()
 	_test_forest_cycle()
 	_test_irrigation()
@@ -778,7 +779,9 @@ func _test_draft_animals() -> void:
 func _test_inventions() -> void:
 	# Arbre du village.
 	var tier2 := ResearchDb.DEFS.filter(func(d: ResearchDef) -> bool: return d.tier == 2)
-	_check(tier2.size() == 7, "7 inventions au village (%d)" % tier2.size())
+	_check(tier2.size() == 8, "8 inventions au village (%d)" % tier2.size())
+	var pump_pre: Array[StringName] = [&"gears"]
+	_check(ResearchDb.get_def(&"water_pump").prerequisites == pump_pre, "pompe à eau après l'engrenage")
 	var plough_pre: Array[StringName] = [&"harness_collar", &"tools"]
 	var rotation_pre: Array[StringName] = [&"plough"]
 	var windmill_pre: Array[StringName] = [&"gears"]
@@ -843,6 +846,48 @@ func _test_inventions() -> void:
 		"le charbon attend le bourg")
 	map.set_deposit_amount(ore, 0.0)
 	_check(map.get_deposit(ore) == WorldMap.Deposit.NONE, "gisement épuisé")
+
+
+func _test_granary_upgrades() -> void:
+	# Un niveau de grenier par palier, capacité croissante.
+	var def := BuildingDb.get_def(&"granary")
+	var tiers: Array[int] = []
+	var last := 0.0
+	var growing := true
+	while def:
+		tiers.append(def.tier)
+		growing = growing and def.food_capacity > last
+		last = def.food_capacity
+		def = def.upgrade
+	var expected: Array[int] = [1, 2, 3, 4, 5]
+	_check(tiers == expected and growing, "grenier : un niveau par palier, plus grand à chaque fois %s" % [tiers])
+	# Maisons : un niveau par palier, plus de logements à chaque fois.
+	var house := BuildingDb.get_def(&"house")
+	var house_tiers: Array[int] = []
+	var housing := 0
+	var more := true
+	while house:
+		house_tiers.append(house.tier)
+		more = more and house.housing > housing and house.size == Vector2i.ONE
+		housing = house.housing
+		house = house.upgrade
+	_check(house_tiers == expected and more, "maison : un niveau par palier, plus de logements %s" % [house_tiers])
+	_check(BuildingDb.get_def(&"stone_house").player_buildable and not BuildingDb.get_def(&"town_house").player_buildable,
+		"maison en pierre : construite ou améliorée ; au-delà, par amélioration")
+	_check(not BuildingDb.get_def(&"stone_granary").player_buildable and BuildingDb.get_def(&"large_granary").iron_cost > 0,
+		"niveaux supérieurs : par amélioration seulement, en fer au bourg")
+	# Amélioration sur place : l'ancien niveau reste en service pendant les travaux.
+	var granary := BuildingDb.get_def(&"granary")
+	var b := Building.new(1, granary, Vector2i(5, 5))
+	b.build_progress = granary.build_hours
+	var cells := b.cells.duplicate()
+	b.start_upgrade(granary.upgrade)
+	_check(b.def.id == &"stone_granary" and not b.is_complete() and b.effective_def() == granary and b.cells == cells,
+		"chantier d'amélioration : grenier encore en service, même emprise")
+	b.build_progress = b.def.build_hours
+	_check(b.effective_def().food_capacity == 1200.0, "grenier en pierre terminé : 1 200")
+	var fresh := Building.new(2, granary, Vector2i(9, 9))
+	_check(fresh.effective_def() == null, "chantier neuf : rien en service")
 
 
 func _test_city_tier() -> void:
@@ -932,6 +977,9 @@ func _test_irrigation() -> void:
 	_check(is_equal_approx(prod.tile_rate(farm, near, 2, 1), before * Production.IRRIGATION_BONUS), "champ à 3 tuiles d'une rivière : +30 %")
 	_check(prod.irrigation_factor(farm, far) == 1.0, "champ loin de l'eau : pas de bonus")
 	_check(prod.irrigation_factor(pasture, near) == 1.0, "élevage : pas concerné")
+	prod.wells = [Vector2i(22, 4)] as Array[Vector2i]
+	_check(prod.irrigation_factor(farm, far) == Production.IRRIGATION_BONUS, "puits à 2 tuiles : champ irrigué")
+	_check(prod.irrigation_factor(farm, Vector2i(30, 3)) == 1.0, "puits à 8 tuiles : non")
 
 
 func _test_forest_cycle() -> void:

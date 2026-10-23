@@ -201,9 +201,9 @@ l'arbre :
 ### Palier 1 : irrigation
 Seule recherche du hameau, sans bâtiment de recherche : **irrigation** (500
 points, environ 25 jours pour 20 habitants). Les champs à 3 tuiles ou moins
-d'une rivière ou d'un lac rendent 30 % de plus ; la mer ne compte pas (eau
-salée). Un hameau côtier sans eau douce devra explorer et annexer vers une
-rivière ou un lac pour en profiter.
+d'une rivière, d'un lac ou d'un puits rendent 30 % de plus ; la mer ne
+compte pas (eau salée). Un hameau sans eau douce en profite dès ses premiers
+puits, au village (ou en annexant vers une rivière ou un lac).
 
 ### Palier 2 : pierre, eau et pêche (réalisé en V6, partie 1)
 - **Pierre** : matériau de construction (maisons en pierre, puits, atelier),
@@ -225,6 +225,17 @@ rivière ou un lac pour en profiter.
   outils, scie et charrue sans effet et satisfaction réduite (−15 % au plus).
 - Coûts des inventions : 1 500 à 3 000 points (une dizaine de jours chacune
   pour un village de 100 habitants avec un atelier).
+
+### Maisons et greniers améliorables (un niveau par palier)
+Les maisons s'améliorent sur place, logements gardés pendant les travaux :
+maison (5 habitants, hameau) → maison en pierre (10, village) → maison
+bourgeoise (16, bourg) → immeuble (30, ville) → tour d'habitation (60,
+cité-État).
+
+Le grenier s'améliore sur place à chaque palier, sans cesser de servir pendant
+les travaux : grenier (600, hameau) → grenier en pierre (1 200, village) →
+grand grenier (2 000, bourg) → entrepôt (3 500, ville) → silo (6 000,
+cité-État). Les niveaux supérieurs coûtent de la pierre puis du fer.
 
 ### Palier 2 : hippotraction et inventions
 **Hippotraction** (réalisée en V6, partie 2) : l'**écurie** (bois, pierre)
@@ -254,6 +265,7 @@ invention débloquée améliore durablement la production :
 | Charrue | Collier d'attelage, outils | Outil forgé (soc en fer) : agriculture +30 % sur les tuiles desservies par un attelage, +10 % ailleurs (araire tirée à la main) |
 | Engrenage | — | Transmission mécanique : treuils à la carrière et au puits (pierre et eau +15 %) ; prérequis des moulins |
 | Moulin à vent | Pierre, engrenage | Bâtiment : moud le grain, avec agriculture +20 % et nourriture qui se gâte moitié moins vite ; sa puissance mécanique compte dans le compteur |
+| Pompe à eau | Engrenage | Puits : +50 % d'habitants servis |
 | Assolement | Charrue | Rotation des cultures : la fertilité ne baisse plus sur les champs cultivés, agriculture +15 % |
 | Métallurgie du fer | — | Forge : transforme le fer (mine de fer, disponible dès le palier) en **outils** ; prépare les rails du palier 3 |
 | Outils | Métallurgie du fer | La forge fabrique la **scie** : coupe du bois +40 %, maisons −25 % de bois ; prérequis de la charrue |
