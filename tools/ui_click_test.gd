@@ -25,14 +25,15 @@ func _initialize() -> void:
 
 	await _press_tool("Grenier")
 	_check(_map_view._mode == 1, "outil Construire actif")
+	var start_count: int = _gs.buildings.count()
 	var spot := await _find_spot(BuildingDb.get_def(&"granary"))
 	await _click(spot)
-	_check(_gs.buildings.count() == 1, "grenier construit au clic")
+	_check(_gs.buildings.count() == start_count + 1, "grenier construit au clic")
 
 	await _press_tool("Démolir")
 	_check(_map_view._mode == 2, "outil Démolir actif")
 	await _click(spot)
-	_check(_gs.buildings.count() == 0, "grenier démoli au clic")
+	_check(_gs.buildings.count() == start_count, "grenier démoli au clic")
 
 	await _press_tool("Élevage")
 	_check(_map_view._mode == 3, "outil Zone actif")

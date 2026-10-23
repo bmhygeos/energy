@@ -11,8 +11,17 @@ extends RefCounted
 ## Priorité « automatique » (réglage par défaut).
 const AUTO := -1
 const MAX_PRIORITY := 5
-## Priorité appliquée en mode automatique ; elle suivra les stocks (V4).
+## Priorité automatique par défaut (update_auto la fait suivre les stocks).
 const AUTO_PRIORITY := 3
+## Mode automatique : quand la nourriture manque (moins de FOOD_ALERT_DAYS
+## jours, ou pas de quoi tenir jusqu'aux prochaines récoltes), les zones
+## nourricières passent en priorité haute ; quand le bois manque (moins de
+## WOOD_ALERT_DAYS jours, ou pas de quoi passer l'hiver), la coupe du bois
+## aussi ; une zone qui ne produit rien cette saison ou dont le stock est
+## plein ne reçoit personne.
+const FOOD_ALERT_DAYS := 20.0
+const WOOD_ALERT_DAYS := 15.0
+const HIGH_PRIORITY := 5
 ## Délai pour changer de zone (heures).
 const REASSIGN_HOURS := 24
 ## Pénalité de trajet : −3 % par tuile au-delà de 6 tuiles du village.
@@ -25,6 +34,8 @@ var map: WorldMap
 var center: Vector2i
 ## Priorité par type de zone (0–5 ou AUTO).
 var priorities: Dictionary[ZoneDef, int] = {}
+## Priorité appliquée en mode automatique, par type de zone.
+var auto_priorities: Dictionary[ZoneDef, int] = {}
 ## Travailleurs affectés par type de zone.
 var assigned: Dictionary[ZoneDef, int] = {}
 ## Travailleurs par tuile zonée (tuile ramenée sur la planète).
@@ -40,13 +51,33 @@ func _init(p_zones: ZoneMap, p_center: Vector2i) -> void:
 	center = p_center
 	for def in ZoneDb.DEFS:
 		priorities[def] = AUTO
+		auto_priorities[def] = AUTO_PRIORITY
 		assigned[def] = 0
 
 
 ## Priorité appliquée pour [param def] (AUTO résolu).
 func effective_priority(def: ZoneDef) -> int:
 	var p := priorities[def]
-	return AUTO_PRIORITY if p == AUTO else p
+	return auto_priorities[def] if p == AUTO else p
+
+
+## Priorités automatiques selon les stocks pendant la saison [param season] :
+## [param food_short] / [param wood_short] si la nourriture / le bois manque,
+## [param food_full] / [param wood_full] si son stock est plein. La marchandise
+## qui manque passe en priorité haute ; une zone dont le stock est plein ou qui
+## ne produit rien cette saison ne reçoit personne, pour ne pas perdre de bras.
+func update_auto(food_short: bool, wood_short: bool, season: int,
+		food_full := false, wood_full := false) -> void:
+	var short := [food_short, wood_short]
+	var full := [food_full, wood_full]
+	for def in ZoneDb.DEFS:
+		var good := def.output
+		var p := AUTO_PRIORITY
+		if short[good]:
+			p = HIGH_PRIORITY
+		if def.season_factors[season] <= 0.0 or full[good] and not short[good]:
+			p = 0
+		auto_priorities[def] = p
 
 
 func employed() -> int:
@@ -67,7 +98,8 @@ func unemployed() -> int:
 
 ## Effectifs visés par type de zone pour [param active] travailleurs, au
 ## prorata priorité × places, plafonnés par les places (plus grands restes
-## pour les arrondis).
+## pour les arrondis). Les places ne comptent que jusqu'au nombre d'actifs :
+## une immense forêt ne doit pas attirer tous les bras aux dépens des champs.
 func targets(active: int) -> Dictionary[ZoneDef, int]:
 	var result: Dictionary[ZoneDef, int] = {}
 	var open: Array[ZoneDef] = []
@@ -79,11 +111,11 @@ func targets(active: int) -> Dictionary[ZoneDef, int]:
 	while remaining > 0 and not open.is_empty():
 		var total := 0.0
 		for def in open:
-			total += effective_priority(def) * zones.places(def)
+			total += _weight(def, active)
 		var shares: Dictionary[ZoneDef, float] = {}
 		var given := 0
 		for def in open:
-			var share := remaining * effective_priority(def) * zones.places(def) / total
+			var share := remaining * _weight(def, active) / total
 			var n := mini(floori(share), zones.places(def) - result[def])
 			result[def] += n
 			given += n
@@ -102,11 +134,16 @@ func targets(active: int) -> Dictionary[ZoneDef, int]:
 		if given == 0:
 			# Restes nuls partout : un travailleur à la zone la plus prioritaire.
 			open.sort_custom(func(a: ZoneDef, b: ZoneDef) -> bool:
-				return effective_priority(a) * zones.places(a) > effective_priority(b) * zones.places(b))
+				return _weight(a, active) > _weight(b, active))
 			result[open[0]] += 1
 			remaining -= 1
 			open = open.filter(func(def: ZoneDef) -> bool: return result[def] < zones.places(def))
 	return result
+
+
+## Poids de [param def] dans la répartition de [param active] actifs.
+func _weight(def: ZoneDef, active: int) -> float:
+	return effective_priority(def) * mini(zones.places(def), active)
 
 
 ## Met à jour l'affectation à l'heure [param tick] pour [param active]

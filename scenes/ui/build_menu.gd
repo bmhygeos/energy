@@ -64,7 +64,7 @@ func _build_list() -> void:
 			continue
 		_add_header(BuildingDef.CATEGORY_NAMES[category])
 		for def: BuildingDef in defs:
-			var button := _tool_button(def.display_name)
+			var button := _tool_button("%s   %d bois" % [def.display_name, def.wood_cost])
 			button.tooltip_text = _tooltip(def)
 			button.pressed.connect(func() -> void:
 				_select_tool(button, BuildTool.Mode.BUILD, def))
@@ -120,7 +120,12 @@ func _tool_button(text: String) -> Button:
 func _tooltip(def: BuildingDef) -> String:
 	var lines := PackedStringArray([def.display_name, def.description, ""])
 	lines.append("Taille : %d×%d" % [def.size.x, def.size.y])
+	lines.append("Coût : %d bois" % def.wood_cost)
 	lines.append("Chantier : %s" % Format.duration_hours(def.build_hours))
+	var effects := def.describe_effects()
+	if not effects.is_empty():
+		lines.append("")
+		lines.append_array(effects)
 	var constraints := def.describe_constraints()
 	if not constraints.is_empty():
 		lines.append("")
@@ -148,7 +153,8 @@ func _refresh_hint() -> void:
 	var text := ""
 	match _mode:
 		BuildTool.Mode.BUILD:
-			text = "[b]%s[/b] — chantier %s" % [_def.display_name, Format.duration_hours(_def.build_hours)]
+			text = "[b]%s[/b] — %d bois · chantier %s" % [_def.display_name, _def.wood_cost,
+				Format.duration_hours(_def.build_hours)]
 			if _placement == null:
 				text += "\nPlacez le bâtiment sur la carte · Échap : annuler"
 			elif _placement.is_valid():

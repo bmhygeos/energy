@@ -13,12 +13,23 @@ var buildings: BuildingRegistry
 ## Zones peintes (agriculture, élevage, coupe du bois).
 var zones: ZoneMap
 var population: Population
+## Palier de la ville (Hameau → Cité-État).
+var tier: CityTier
 ## Répartition des actifs entre les zones.
 var labor: Labor
+## Stocks (nourriture, bois), production des zones, compteur de puissance.
+var stockpile: Stockpile
+var production: Production
+var power: PowerMeter
 var weather: Weather
 ## Historique journalier (graphiques) et jalons du bac à sable.
 var stats: Statistics
 var milestones: Milestones
+## Logements des maisons terminées.
+var housing := 0
+## Besoins et consommation du jour en cours, par marchandise.
+var _needed_today := PackedFloat32Array([0.0, 0.0])
+var _consumed_today := PackedFloat32Array([0.0, 0.0])
 
 
 func _ready() -> void:
@@ -42,13 +53,48 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	buildings = BuildingRegistry.new(world_map, territory)
 	zones = ZoneMap.new(world_map, territory, buildings)
 	population = Population.new()
+	tier = CityTier.new()
 	labor = Labor.new(zones, home)
+	stockpile = Stockpile.new()
+	production = Production.new(zones, labor)
+	power = PowerMeter.new()
 	weather = Weather.new(seed_value)
 	stats = Statistics.new()
 	milestones = Milestones.new()
+	_needed_today = PackedFloat32Array([0.0, 0.0])
+	_consumed_today = PackedFloat32Array([0.0, 0.0])
 	GameClock.reset()
+	_found_village()
+	_refresh_capacities()
+	_update_auto_priorities(0)
 	labor.step(GameClock.tick, population.active())
 	EventBus.game_started.emit(seed_value)
+
+
+## Bâtiments de départ, déjà construits au plus près du centre du village :
+## un grenier et assez de maisons pour les habitants (repère de la vue,
+## comme les bâtiments posés par le joueur).
+func _found_village() -> void:
+	var center := display_cell(home)
+	var defs: Array[BuildingDef] = [BuildingDb.get_def(&"granary")]
+	for k in ceili(float(Population.START) / BuildingDb.get_def(&"house").housing):
+		defs.append(BuildingDb.get_def(&"house"))
+	var rect := StartSite.territory_rect(center)
+	var spots: Array[Vector2i] = []
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			spots.append(Vector2i(x, y))
+	spots.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.distance_squared_to(center) < b.distance_squared_to(center))
+	for def in defs:
+		for spot in spots:
+			var placement := buildings.check_placement(def, spot)
+			# Sans défricher : la forêt du départ reste à couper.
+			if placement.is_valid() and placement.cleared.is_empty():
+				var b := buildings.place(placement)
+				b.build_progress = def.build_hours
+				b.status = Building.Status.RUNNING
+				break
 
 
 ## Tuile [param cell] dans le repère de la vue : abscisse dépliée autour du
@@ -63,10 +109,12 @@ static func random_seed() -> int:
 	return randi_range(100_000, 999_999)
 
 
-## Placement de [param def] en [param anchor] : règles du registre, et pas
-## sur une zone (à effacer d'abord).
+## Placement de [param def] en [param anchor] : règles du registre, pas sur
+## une zone (à effacer d'abord) et assez de bois en stock.
 func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Placement:
 	var placement := buildings.check_placement(def, anchor)
+	if placement.is_valid() and not stockpile.has(Stockpile.Good.WOOD, def.wood_cost):
+		placement.error = "Bois insuffisant (%d requis)" % def.wood_cost
 	if placement.is_valid():
 		for cell in placement.cells:
 			var zone := zones.zone_at(cell)
@@ -110,10 +158,12 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 	if not placement.is_valid():
 		EventBus.notified.emit(placement.error)
 		return null
+	stockpile.take(Stockpile.Good.WOOD, def.wood_cost)
 	var b := buildings.place(placement)
 	if not placement.cleared.is_empty():
 		EventBus.tiles_changed.emit(placement.cleared)
 	EventBus.building_placed.emit(b)
+	EventBus.stocks_changed.emit()
 	return b
 
 
@@ -123,27 +173,156 @@ func demolish(cell: Vector2i) -> bool:
 	if b == null:
 		return false
 	buildings.remove(b)
+	_refresh_capacities()
 	EventBus.building_removed.emit(b)
 	return true
 
 
+## Logements et capacités de stockage des bâtiments terminés.
+func _refresh_capacities() -> void:
+	housing = 0
+	var capacity := Stockpile.BASE_CAPACITY.duplicate()
+	for b in buildings.all():
+		if b.is_complete():
+			housing += b.def.housing
+			capacity[Stockpile.Good.FOOD] += b.def.food_capacity
+			capacity[Stockpile.Good.WOOD] += b.def.wood_capacity
+	stockpile.capacity = capacity
+
+
+## Jours de réserve de nourriture et de bois au rythme actuel.
+func food_days() -> float:
+	return stockpile.days_of(Stockpile.Good.FOOD, population.food_need())
+
+
+func wood_days() -> float:
+	return stockpile.days_of(Stockpile.Good.WOOD, population.wood_need(GameDate.season(GameClock.tick)))
+
+
+## Priorités automatiques d'après les stocks. La nourriture doit tenir
+## jusqu'aux prochaines récoltes ; en automne, le bois doit couvrir l'hiver
+## entier. Ces réserves visées sont plafonnées par la capacité des stocks :
+## au-delà, viser plus ne servirait à rien et priverait l'autre activité.
+func _update_auto_priorities(tick: int) -> void:
+	var season := GameDate.season(tick)
+	var food_goal := population.food_need() * maxf(Labor.FOOD_ALERT_DAYS, lean_days(tick))
+	var wood_goal := population.wood_need(GameDate.season(tick)) * Labor.WOOD_ALERT_DAYS
+	if season == GameDate.WINTER - 1:
+		wood_goal = maxf(wood_goal, population.wood_need(GameDate.WINTER) * GameDate.DAYS_PER_SEASON)
+	var food_short := stockpile.amount[Stockpile.Good.FOOD] < _reachable(Stockpile.Good.FOOD, food_goal)
+	var wood_short := stockpile.amount[Stockpile.Good.WOOD] < _reachable(Stockpile.Good.WOOD, wood_goal)
+	stockpile.update_full()
+	labor.update_auto(food_short, wood_short, season,
+		stockpile.full[Stockpile.Good.FOOD], stockpile.full[Stockpile.Good.WOOD])
+
+
+## Réserve [param goal] de [param good], ramenée à ce que le stock peut contenir.
+func _reachable(good: Stockpile.Good, goal: float) -> float:
+	return minf(goal, stockpile.capacity[good] * Stockpile.REFILL_RATIO)
+
+
+## Pendant une saison de récolte, jours de la fin des récoltes au retour des
+## récoltes (morte-saison) ; hors récolte, jours restant jusqu'aux récoltes.
+func lean_days(tick: int) -> float:
+	var farm := ZoneDb.get_def(&"agriculture")
+	var season := GameDate.season(tick)
+	var lean := 0
+	if farm.season_factors[season] <= 0.0:
+		lean = GameDate.DAYS_PER_SEASON - GameDate.day_of_season(tick) + 1
+		for k in range(1, GameDate.SEASONS_PER_YEAR):
+			if farm.season_factors[(season + k) % GameDate.SEASONS_PER_YEAR] > 0.0:
+				break
+			lean += GameDate.DAYS_PER_SEASON
+		return lean
+	for k in GameDate.SEASONS_PER_YEAR:
+		var s := (season + 1 + k) % GameDate.SEASONS_PER_YEAR
+		if farm.season_factors[s] > 0.0 and lean > 0:
+			break
+		if farm.season_factors[s] <= 0.0:
+			lean += GameDate.DAYS_PER_SEASON
+	return lean
+
+
 func _on_tick(tick: int) -> void:
-	for b in buildings.advance():
+	var completed := buildings.advance()
+	if not completed.is_empty():
+		_refresh_capacities()
+	for b in completed:
 		EventBus.building_completed.emit(b)
 	var before := [labor.employed(), labor.in_transit(), labor.assigned.duplicate()]
 	labor.step(tick, population.active())
 	if before != [labor.employed(), labor.in_transit(), labor.assigned]:
 		EventBus.labor_changed.emit()
+	# L'heure écoulée est celle qui précède le tick.
+	var report := production.step_hour(tick - 1, stockpile)
+	if not report.cleared.is_empty():
+		var shown: Array[Vector2i] = []
+		for cell in report.cleared:
+			shown.append(display_cell(cell))
+		EventBus.tiles_changed.emit(shown)
+		EventBus.zones_changed.emit(shown)
+		_update_labor()
+	_consume(tick - 1)
+	EventBus.stocks_changed.emit()
 	stats.add(&"population", population.count)
 	stats.add(&"active", population.active())
 	stats.add(&"employed", labor.employed())
 	stats.add(&"unemployed", labor.unemployed())
+	stats.add(&"food_stock", stockpile.amount[Stockpile.Good.FOOD])
+	stats.add(&"wood_stock", stockpile.amount[Stockpile.Good.WOOD])
 	stats.end_hour()
 
 
+## Consommation de l'heure : besoins du jour répartis sur 24 h.
+func _consume(tick: int) -> void:
+	var needs := [population.food_need(), population.wood_need(GameDate.season(tick))]
+	for good in needs.size():
+		var want: float = needs[good] / GameDate.HOURS_PER_DAY
+		_needed_today[good] += want
+		_consumed_today[good] += stockpile.take(good, want)
+
+
 func _on_day(day: int) -> void:
+	var day_tick := GameClock.tick - 1
+	stockpile.end_day()
+	for cell in production.end_day(day_tick):
+		EventBus.tiles_changed.emit([display_cell(cell)] as Array[Vector2i])
+	var coverage := PackedFloat32Array()
+	for good in _needed_today.size():
+		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)
+	var before := population.count
+	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing)
+	_announce_population(before, change, coverage)
+	if tier.update(population.count, population.satisfaction):
+		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
+	power.push_day(production.produced_today)
+	stats.add(&"food_produced", production.produced_today[Stockpile.Good.FOOD])
+	stats.add(&"wood_produced", production.produced_today[Stockpile.Good.WOOD])
+	stats.add(&"food_lost", stockpile.lost_today[Stockpile.Good.FOOD])
+	stats.add(&"wood_lost", stockpile.lost_today[Stockpile.Good.WOOD])
+	stats.add(&"satisfaction", population.satisfaction * 100.0)
+	stats.add(&"power", power.average())
+	stats.add(&"power_per_capita", power.per_capita(population.count))
 	stats.end_day()
+	production.reset_day()
+	stockpile.reset_day()
+	_needed_today = PackedFloat32Array([0.0, 0.0])
+	_consumed_today = PackedFloat32Array([0.0, 0.0])
+	_update_auto_priorities(GameClock.tick)
+	_update_labor()
+	EventBus.population_changed.emit()
 	_check_milestones(day - 1)
+
+
+func _announce_population(before: int, change: int, coverage: PackedFloat32Array) -> void:
+	if coverage[Stockpile.Good.FOOD] < 1.0:
+		EventBus.notified.emit("Disette : %d %% de la nourriture nécessaire" % roundi(coverage[Stockpile.Good.FOOD] * 100.0))
+	elif coverage[Stockpile.Good.WOOD] < 1.0:
+		EventBus.notified.emit("Manque de bois : %d %% du chauffage" % roundi(coverage[Stockpile.Good.WOOD] * 100.0))
+	if population.count == 0 and before > 0:
+		EventBus.notified.emit("Le hameau est déserté")
+	elif change > 0 and population.count >= housing:
+		EventBus.notified.emit("Population %d : plus de logement libre, construisez des maisons" % population.count)
 
 
 func _check_milestones(day: int) -> void:

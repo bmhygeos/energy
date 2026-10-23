@@ -13,8 +13,8 @@ enum Deposit { NONE, COAL, IRON, OIL, COPPER, URANIUM, LITHIUM }
 
 const DEPOSIT_NAMES: PackedStringArray = ["Aucun", "Charbon", "Fer", "Pétrole", "Cuivre", "Uranium", "Lithium"]
 const CHUNK_SIZE := 32
-## Bois sur pied d'une forêt de densité maximale (tonnes).
-const WOOD_PER_FOREST := 120.0
+## Bois sur pied d'une forêt de densité maximale (unités de 10 kg).
+const WOOD_PER_FOREST := 400.0
 const NEIGHBORS_4: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
 ]
@@ -40,7 +40,7 @@ class Chunk:
 	## Fertilité (agriculture) et pâturage (élevage) 0–1.
 	var fertility := PackedFloat32Array()
 	var pasture := PackedFloat32Array()
-	## Bois sur pied (tonnes) ; la forêt disparaît à 0.
+	## Bois sur pied (unités de 10 kg) ; la forêt disparaît à 0.
 	var wood := PackedFloat32Array()
 	## 1 si la tuile (terrestre) touche de l'eau (rivière, lac, mer) / la mer.
 	var water_access := PackedByteArray()
@@ -161,6 +161,10 @@ func get_sun(cell: Vector2i) -> float:
 
 func get_fertility(cell: Vector2i) -> float:
 	return _chunk(cell).fertility[_local(cell)]
+
+
+func set_fertility(cell: Vector2i, value: float) -> void:
+	_chunk(cell).fertility[_local(cell)] = clampf(value, 0.0, 1.0)
 
 
 func get_pasture(cell: Vector2i) -> float:

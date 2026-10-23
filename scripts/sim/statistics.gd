@@ -4,11 +4,18 @@ extends RefCounted
 ## s'accumulent pendant la journée (add), une valeur par série à sa clôture
 ## (end_day). Pure donnée.
 
-## Séries journalières (une valeur par jour clos) : population et emploi en
-## moyenne sur la journée. Stocks et puissance viendront avec la production.
-const SERIES: Array[StringName] = [&"population", &"active", &"employed", &"unemployed"]
+## Séries journalières (une valeur par jour clos) : population, emploi et
+## stocks en moyenne sur la journée ; production, pertes, satisfaction (%) et
+## puissance (W, moyenne glissante) du jour.
+const SERIES: Array[StringName] = [
+	&"population", &"active", &"employed", &"unemployed", &"food_stock", &"wood_stock",
+	&"food_produced", &"wood_produced", &"food_lost", &"wood_lost", &"satisfaction",
+	&"power", &"power_per_capita",
+]
 ## Séries dont la valeur du jour est la moyenne horaire (sinon : la somme).
-const AVERAGED: Array[StringName] = [&"population", &"active", &"employed", &"unemployed"]
+const AVERAGED: Array[StringName] = [
+	&"population", &"active", &"employed", &"unemployed", &"food_stock", &"wood_stock",
+]
 
 ## Nombre de jours clos.
 var days := 0

@@ -1,11 +1,12 @@
 extends CanvasLayer
 ## Fenêtre des statistiques (G) : graphiques journaliers par onglet
-## (population ; stocks et puissance viendront avec la production) et jalons
-## du bac à sable.
+## (population, stocks et production, puissance) et jalons du bac à sable.
 
 const RANGES: PackedInt32Array = [30, 120, 0]
 const RANGE_NAMES: PackedStringArray = ["30 jours", "1 an", "Tout"]
 const REACHED_COLOR := Color("4caf50")
+const FOOD_COLOR := Color("e3b448")
+const WOOD_COLOR := Color("a0703c")
 const PENDING_COLOR := Color("8b8f99")
 
 var _range := 1
@@ -112,7 +113,17 @@ func _build() -> void:
 	_add_tab("Population", [
 		_chart(&"population", "Habitants et actifs", "habitants"),
 		_chart(&"labor", "Emploi (moyenne du jour)", "travailleurs"),
+		_chart(&"satisfaction", "Satisfaction", "%"),
 	])
+	_add_tab("Stocks et production", [
+		_chart(&"stocks", "Stocks (moyenne du jour)", "unités"),
+		_chart(&"produced", "Production et pertes du jour", "unités"),
+	])
+	_add_tab("Puissance", [
+		_chart(&"power", "Puissance de la cité (moyenne sur %d j)" % PowerMeter.WINDOW_DAYS, "kW"),
+		_chart(&"power_per_capita", "Puissance par habitant", "W"),
+	])
+	_charts[&"satisfaction"].fixed_max = 100.0
 	var scroll := ScrollContainer.new()
 	scroll.name = "Jalons"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -156,6 +167,21 @@ func _refresh() -> void:
 		Chart.Series.new("Au travail", stats.values(&"employed"), Color("4caf50")),
 		Chart.Series.new("Chômeurs", stats.values(&"unemployed"), Color("e5484d")),
 	], first)
+	_show(&"satisfaction", [Chart.Series.new("Satisfaction", stats.values(&"satisfaction"), Color("f2d14b"))], first)
+	_show(&"stocks", [
+		Chart.Series.new("Nourriture", stats.values(&"food_stock"), FOOD_COLOR),
+		Chart.Series.new("Bois", stats.values(&"wood_stock"), WOOD_COLOR),
+	], first)
+	_show(&"produced", [
+		Chart.Series.new("Nourriture produite", stats.values(&"food_produced"), FOOD_COLOR),
+		Chart.Series.new("Bois produit", stats.values(&"wood_produced"), WOOD_COLOR),
+		Chart.Series.new("Nourriture perdue", stats.values(&"food_lost"), Color("e5484d")),
+	], first)
+	var kw := PackedFloat32Array()
+	for w in stats.values(&"power"):
+		kw.append(w / 1000.0)
+	_show(&"power", [Chart.Series.new("Puissance", kw, Color("f0a020"))], first)
+	_show(&"power_per_capita", [Chart.Series.new("Par habitant", stats.values(&"power_per_capita"), Color("b37feb"))], first)
 	_refresh_milestones()
 
 

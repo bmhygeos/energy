@@ -4,9 +4,9 @@ extends Resource
 ## contraintes de placement et apparence provisoire. Équilibrage dans
 ## data/buildings/*.tres.
 
-enum Category { STORAGE, OTHER }
+enum Category { HOUSING, STORAGE, OTHER }
 
-const CATEGORY_NAMES: PackedStringArray = ["Stockage", "Divers"]
+const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 
 @export var id: StringName
 @export var display_name := ""
@@ -20,6 +20,15 @@ const CATEGORY_NAMES: PackedStringArray = ["Stockage", "Divers"]
 @export_group("Chantier")
 ## Durée du chantier, en heures de jeu (ticks).
 @export var build_hours := 24
+## Bois pris sur les stocks au lancement du chantier.
+@export var wood_cost := 0
+
+@export_group("Effets")
+## Habitants logés (maisons).
+@export var housing := 0
+## Capacité de stockage ajoutée (grenier, réserve de bois).
+@export var food_capacity := 0.0
+@export var wood_capacity := 0.0
 
 @export_group("Placement")
 ## Terrains autorisés pour chaque tuile de l'emprise (vide : tout terrain
@@ -49,6 +58,18 @@ func footprint(anchor: Vector2i) -> Array[Vector2i]:
 		for x in size.x:
 			cells.append(origin + Vector2i(x, y))
 	return cells
+
+
+## Effets lisibles, un par ligne (vide : aucun).
+func describe_effects() -> PackedStringArray:
+	var lines := PackedStringArray()
+	if housing > 0:
+		lines.append("Loge %d habitants" % housing)
+	if food_capacity > 0.0:
+		lines.append("Stocke %d de nourriture" % roundi(food_capacity))
+	if wood_capacity > 0.0:
+		lines.append("Stocke %d de bois" % roundi(wood_capacity))
+	return lines
 
 
 ## Contraintes de placement lisibles, une par ligne (vide : aucune).

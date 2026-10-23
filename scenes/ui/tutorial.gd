@@ -72,13 +72,15 @@ func _make_steps() -> Array[Step]:
 		Step.new("Bienvenue", "Vous êtes le gouverneur d'une future cité-État. Tout commence par un hameau : bientôt, vous tracerez des zones où les habitants travailleront, puis vous explorerez le monde.\n\n[b]Caméra[/b] : ZQSD ou flèches, glisser avec le clic droit, molette pour zoomer.\n[b]Temps[/b] : Espace pour la pause, 1 / 2 / 3 pour les vitesses."),
 		Step.new("Lire la carte", "Votre territoire est encadré en jaune ; le reste de la planète est encore inconnu. Un clic sur une tuile affiche son terrain à droite. Les [b]calques[/b] (O ou boutons en bas à droite) montrent le relief, la fertilité, le pâturage et l'eau. Affichez-en un.",
 			func() -> bool: return _overlay_used),
-		Step.new("Construire", "Dans le menu [b]Construction[/b] à gauche, choisissez le [b]Grenier[/b] et placez-le sur votre territoire.\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
-			func() -> bool: return _has(&"granary")),
+		Step.new("Construire", "Le hameau a un grenier et des maisons. L'hiver venu, il faudra deux fois plus de bois : dans le menu [b]Construction[/b], placez une [b]Réserve de bois[/b] (20 bois).\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
+			func() -> bool: return _has(&"woodshed")),
 		Step.new("Tracer des zones", "Le gouverneur ne bâtit pas chaque ferme : il [b]trace des zones[/b] où les habitants iront travailler. Choisissez [b]Agriculture[/b] (plaines et berges), [b]Élevage[/b] (prairies, collines) ou [b]Coupe du bois[/b] (forêts), puis glissez sur la carte.\n\nLes habitants actifs s'y répartissent d'eux-mêmes, d'abord sur les meilleures tuiles proches du village. Le panneau [b]Main-d'œuvre[/b] (M) règle la priorité de chaque activité.",
 			func() -> bool: return not GameState.zones.all_cells().is_empty()),
-		Step.new("Suivre la partie", "La fenêtre [b]Statistiques[/b] (G) tracera l'historique de la cité et listera les jalons. Ouvrez-la.",
+		Step.new("Passer l'hiver", "Les champs ne donnent qu'en été et en automne : remplissez le [b]grenier[/b] pour l'hiver et le printemps (survolez les stocks du bandeau). Le bois de chauffage double en hiver.\n\nSi les besoins sont couverts et qu'il reste des logements, la population grandit : construisez des [b]maisons[/b] et des greniers. La disette fait partir les habitants.",
+			func() -> bool: return _stats_opened or GameClock.tick >= GameDate.HOURS_PER_SEASON),
+		Step.new("Suivre la partie", "La fenêtre [b]Statistiques[/b] (G) trace la population, les stocks et la [b]puissance[/b] de la cité (énergie produite, en haut du bandeau). Ouvrez-la.",
 			func() -> bool: return _stats_opened),
-		Step.new("À suivre", "Récoltes, stocks, saisons, croissance et exploration arrivent dans les prochaines versions. H rouvre ce tutoriel."),
+		Step.new("À vous de jouer", "Passez vos premiers hivers ! L'exploration et les paliers suivants arrivent dans les prochaines versions. H rouvre ce tutoriel."),
 	]
 
 

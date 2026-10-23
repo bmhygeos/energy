@@ -35,19 +35,47 @@ layout_mode = 2
 mouse_filter = 1
 text = "Ensoleillé"
 
-[node name="PopulationLabel" type="Label" parent="TopBar/Margin/Row"]
+[node name="TierLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(230, 0)
+custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
 mouse_filter = 1
-text = "Habitants 20 · chômeurs 0"
+text = "Hameau"
+
+[node name="PopulationLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "Habitants 20 / 20"
+
+[node name="FoodLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "Nourriture 0"
+
+[node name="WoodLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "Bois 0"
+
+[node name="PowerLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "0 W"
 
 [node name="LaborButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Répartition des travailleurs entre les zones (M)"
 focus_mode = 0
-text = "Main-d'œuvre (M)"
+text = "Travail (M)"
 
 [node name="StatsButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true

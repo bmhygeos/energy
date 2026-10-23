@@ -24,12 +24,18 @@ const OVERLAY_TIPS: PackedStringArray = [
 	"Ensoleillement : plus fort près de l'équateur et dans les déserts",
 ]
 
+const WARNING_COLOR := Color("ff7a6e")
+
 var _overlay_mode := OverlayLayer.Mode.NONE
 var _overlay_buttons: Array[Button] = []
 
 @onready var _date_label: Label = %DateLabel
 @onready var _weather_label: Label = %WeatherLabel
+@onready var _tier_label: Label = %TierLabel
 @onready var _population_label: Label = %PopulationLabel
+@onready var _food_label: Label = %FoodLabel
+@onready var _wood_label: Label = %WoodLabel
+@onready var _power_label: Label = %PowerLabel
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
 @onready var _legend_gradient: TextureRect = %LegendGradient
@@ -52,6 +58,8 @@ func _ready() -> void:
 	%StatsButton.pressed.connect(func() -> void: get_node("../StatsWindow").toggle())
 	%LaborButton.pressed.connect(func() -> void: get_node("../LaborPanel").toggle())
 	EventBus.labor_changed.connect(_refresh_population)
+	EventBus.population_changed.connect(_refresh_population)
+	EventBus.stocks_changed.connect(_refresh_stocks)
 	_on_tick(GameClock.tick)
 	_on_speed_changed(GameClock.speed)
 	_on_game_started(Rng.seed_value)
@@ -100,19 +108,75 @@ func _on_tick(tick: int) -> void:
 		roundi(weather.cloud_at(tick) * 100.0), roundi(Weather.daylight_at(tick) * 100.0)]
 
 
-## Habitants et chômeurs ; actifs et besoins au survol.
+## Habitants / logements (rouge s'il y a des chômeurs) ; détail au survol.
 func _refresh_population() -> void:
 	var population := GameState.population
 	var labor := GameState.labor
 	if population == null:
 		return
 	var unemployed := labor.unemployed()
-	_population_label.text = "Habitants %d  ·  chômeurs %d" % [population.count, unemployed]
-	_population_label.add_theme_color_override("font_color", Color("ff7a6e") if unemployed > 0 else Color.WHITE)
-	var season := GameDate.season(GameClock.tick)
-	_population_label.tooltip_text = "Actifs : %d (%d %% des habitants)\nAu travail : %d  ·  en route : %d\nBesoins par jour : nourriture %s, bois %s" % [
-		population.active(), roundi(Population.ACTIVE_SHARE * 100.0), labor.employed(), labor.in_transit(),
-		Format.decimal(population.food_need()), Format.decimal(population.wood_need(season))]
+	_population_label.text = "Habitants %d / %d" % [population.count, GameState.housing]
+	_population_label.add_theme_color_override("font_color", WARNING_COLOR if unemployed > 0 else Color.WHITE)
+	_population_label.tooltip_text = "Habitants / logements\nActifs : %d (%d %%)  ·  au travail : %d  ·  en route : %d  ·  chômeurs : %d\nSatisfaction : %d %% (besoins couverts hier : nourriture %d %%, bois %d %%)" % [
+		population.active(), roundi(Population.ACTIVE_SHARE * 100.0), labor.employed(), labor.in_transit(), unemployed,
+		roundi(population.satisfaction * 100.0), roundi(population.food_coverage * 100.0), roundi(population.wood_coverage * 100.0)]
+	_refresh_tier()
+	_refresh_power()
+
+
+## Palier de la ville ; au survol, ce qu'il faut pour le suivant.
+func _refresh_tier() -> void:
+	var tier := GameState.tier
+	var population := GameState.population
+	_tier_label.text = tier.name()
+	if tier.is_max():
+		_tier_label.tooltip_text = "Palier de la ville : %s, le dernier" % tier.name()
+		return
+	_tier_label.tooltip_text = "Palier de la ville : %s\nPalier suivant : %s\n  Habitants : %d / %d\n  Satisfaction : %d %% / %d %%" % [
+		tier.name(), CityTier.NAMES[tier.level], population.count, tier.next_population(),
+		roundi(population.satisfaction * 100.0), roundi(CityTier.SATISFACTION_REQUIRED * 100.0)]
+
+
+## Stocks en unités et en jours de réserve ; rouge sous les seuils d'alerte.
+func _refresh_stocks() -> void:
+	var stock := GameState.stockpile
+	if stock == null:
+		return
+	var tick := GameClock.tick
+	var labels := [_food_label, _wood_label]
+	var days := [GameState.food_days(), GameState.wood_days()]
+	var alerts := [Labor.FOOD_ALERT_DAYS, Labor.WOOD_ALERT_DAYS]
+	var needs := [GameState.population.food_need(), GameState.population.wood_need(GameDate.season(tick))]
+	for good in labels.size():
+		var label: Label = labels[good]
+		var d: float = days[good]
+		label.text = "%s %d (%s j)" % [Stockpile.GOOD_NAMES[good], roundi(stock.amount[good]),
+			"∞" if is_inf(d) else str(floori(d))]
+		label.add_theme_color_override("font_color", WARNING_COLOR if d < alerts[good] else Color.WHITE)
+		var expected := 0.0
+		for def in ZoneDb.DEFS:
+			if def.output == good:
+				expected += GameState.production.expected_per_day(def, GameDate.season(tick))
+		label.tooltip_text = "%s : %d / %d (capacité)\nConsommation : %s /j  ·  production prévue : %s /j\nPertes d'hier (gâchis, stock plein) : %s" % [
+			Stockpile.GOOD_NAMES[good], roundi(stock.amount[good]), roundi(stock.capacity[good]),
+			Format.decimal(needs[good]), Format.decimal(expected), Format.decimal(GameState.stats.last(
+				[&"food_lost", &"wood_lost"][good]))]
+
+
+## Puissance de la cité (moyenne glissante) et par habitant ; parts au survol.
+func _refresh_power() -> void:
+	var power := GameState.power
+	if power == null:
+		return
+	_power_label.text = "%s · %s/hab" % [PowerMeter.format(power.average()),
+		PowerMeter.format(power.per_capita(GameState.population.count))]
+	var lines := PackedStringArray(["Puissance de la cité : énergie produite, moyenne sur %d jours" % PowerMeter.WINDOW_DAYS])
+	for good in Stockpile.GOOD_NAMES.size():
+		var w := power.average(good)
+		lines.append("%s : %s (%d %%)" % [Stockpile.GOOD_NAMES[good], PowerMeter.format(w),
+			roundi(100.0 * w / power.average()) if power.average() > 0.0 else 0])
+	lines.append("Repère : 1 nourriture/j ≈ 120 W, 0,2 bois/j ≈ 350 W")
+	_power_label.tooltip_text = "\n".join(lines)
 
 
 func _on_speed_changed(speed: int) -> void:
@@ -132,6 +196,7 @@ static func _date_tooltip(tick: int) -> String:
 func _on_game_started(seed_value: int) -> void:
 	_seed_edit.text = str(seed_value)
 	_refresh_population()
+	_refresh_stocks()
 
 
 func _on_overlay_changed(mode: int) -> void:

@@ -23,6 +23,7 @@ func _ready() -> void:
 	for sig: Signal in [EventBus.tiles_changed, EventBus.zones_changed]:
 		sig.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
 	EventBus.labor_changed.connect(_refresh)
+	EventBus.day_changed.connect(func(_d: int) -> void: _refresh())
 	EventBus.tick_advanced.connect(func(_t: int) -> void:
 		if _panel.visible and _shown_building():
 			_refresh())
@@ -52,9 +53,17 @@ func _refresh() -> void:
 	var lines := PackedStringArray()
 	var zone := GameState.zones.zone_at(cell)
 	if zone:
-		lines.append("Zone : %s, %d / %d travailleur%s" % [zone.display_name,
-			GameState.labor.workers_at.get(map.wrap_cell(cell), 0), zone.workers_per_tile,
+		var workers: int = GameState.labor.workers_at.get(map.wrap_cell(cell), 0)
+		var season := GameDate.season(GameClock.tick)
+		lines.append("Zone : %s, %d / %d travailleur%s" % [zone.display_name, workers, zone.workers_per_tile,
 			"s" if zone.workers_per_tile > 1 else ""])
+		lines.append("Production : %s %s /j (%s par travailleur)" % [
+			Format.decimal(GameState.production.tile_rate(zone, cell, workers, season)),
+			Stockpile.GOOD_NAMES[zone.output].to_lower(),
+			Format.decimal(GameState.production.tile_rate(zone, cell, 1, season))])
+	var regrowth := GameState.production.regrowth_days_left(cell)
+	if regrowth >= 0:
+		lines.append("Coupe à blanc : redevient forêt dans %d j (sans zone ni bâtiment)" % regrowth)
 	lines.append_array([
 		Format.coordinates(map.latitude(cell.y), map.longitude(cell.x)),
 		"Altitude : %d m" % roundi((map.get_elevation(cell) - map.generator.sea_level) * 8000.0),
@@ -71,7 +80,8 @@ func _refresh() -> void:
 		lines.append("Accès à l'eau : " + water)
 		lines.append("Constructible : " + ("oui" if def.buildable and territory.is_territory(cell) else "non"))
 	if map.get_terrain(cell) == TerrainDef.Type.FOREST:
-		lines.append("Bois sur pied : %s t" % Format.thousands(roundi(map.get_wood(cell))))
+		lines.append("Bois sur pied : %s (densité %d %%)" % [Format.thousands(roundi(map.get_wood(cell))),
+			roundi(map.get_wood(cell) / WorldMap.WOOD_PER_FOREST * 100.0)])
 	lines.append("Vent : %d %%  ·  soleil : %d %%" % [roundi(map.get_wind(cell) * 100.0), roundi(map.get_sun(cell) * 100.0)])
 	if territory.is_prospected(cell):
 		var kind := territory.known_deposit(cell)

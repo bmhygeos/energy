@@ -29,6 +29,10 @@ signal zones_changed(cells: Array[Vector2i])
 signal zone_plan_previewed(plan: ZoneMap.Plan)
 ## Affectation des travailleurs modifiée (Labor).
 signal labor_changed()
+## Stocks modifiés (production, consommation, construction).
+signal stocks_changed()
+## Bilan du jour : population, satisfaction (Population).
+signal population_changed()
 ## Message bref pour le joueur (erreur de construction…).
 signal notified(message: String)
 ## Jalon du bac à sable atteint (Milestones.Def).

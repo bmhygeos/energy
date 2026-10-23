@@ -44,7 +44,7 @@ nécessite un navigateur avec WebGL 2.
 | Construire | bouton du menu « Construction » puis clic sur la carte (le fantôme est vert si le placement est valide, sinon le motif s'affiche en bas) ; Échap ou re-clic sur le bouton pour quitter |
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment |
 | Tracer une zone | bouton de zone du menu (Agriculture, Élevage, Coupe du bois) puis glisser sur la carte (rectangle ; les tuiles non valides sont ignorées) ; « Effacer les zones » puis glisser pour les retirer |
-| Main-d'œuvre | `M` ou bouton « Main-d'œuvre » du bandeau : places, affectés, priorités |
+| Main-d'œuvre | `M` ou bouton « Travail » du bandeau : places, affectés, production prévue, priorités |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
@@ -97,4 +97,31 @@ météo et interface conservés.
   qualité (fertilité, pâturage ou densité de forêt) × proximité (−3 % par tuile
   au-delà de 6 du village). Silhouettes sur les tuiles occupées.
 - **Panneau Main-d'œuvre** (M) et onglet **Population** des statistiques.
-- Pas encore de production : rendements, saisons, stocks et croissance en V4.
+
+### V4 : production et saisons (première version jouable)
+- **Rendement** d'une tuile = travailleurs × base × qualité × saison × proximité :
+  agriculture 8 nourriture/travailleur/j en été et en automne (rien au printemps
+  ni en hiver), élevage 1,6 toute l'année (×0,8 l'hiver), coupe du bois 3.
+- **Fertilité** : un champ cultivé s'use, il se reconstitue au repos.
+- **Forêt** : la coupe vide le bois sur pied (rendement qui baisse avec la
+  densité) ; coupée à blanc, la tuile devient plaine et perd sa zone, puis
+  redevient forêt après 120 jours sans zone ni bâtiment ; une forêt entamée se
+  densifie au repos.
+- **Stocks** (nourriture, bois) : capacité du village + greniers (600) et
+  réserves de bois (300) ; surplus perdu ; la nourriture se gâte (1 %/j de
+  l'excédent au-delà de la moitié du grenier). Les bâtiments coûtent du bois.
+- **Consommation** heure par heure ; **satisfaction** = couverture des besoins
+  sur 10 jours. **Croissance** si les besoins sont couverts et qu'il reste des
+  logements (maisons : 5 habitants) ; départs si la satisfaction baisse ou sans
+  logement ; famine : déclin rapide.
+- **Départ** : grenier et 4 maisons construits, de quoi tenir jusqu'à l'été.
+- **Mode automatique** : champs et élevage en priorité quand la nourriture ne
+  tiendra pas jusqu'aux prochaines récoltes (ou moins de 20 jours) ; coupe du
+  bois quand le bois manque ou ne couvrira pas l'hiver ; zones sans production
+  de saison en priorité basse.
+- **Puissance de la cité** dans le bandeau : énergie produite (nourriture
+  10,5 MJ, bois 150 MJ par unité), moyenne sur 30 jours, totale et par habitant
+  (≈ 0,5 kW/hab pour un hameau). Statistiques : population, satisfaction,
+  stocks, production, pertes, puissance.
+- Champs qui changent d'aspect avec les saisons (labour, blé vert, blé mûr,
+  chaume).

@@ -23,6 +23,13 @@ func _init() -> void:
 	_test_population()
 	_test_labor_targets()
 	_test_labor_step()
+	_test_stockpile()
+	_test_population_growth()
+	_test_city_tier()
+	_test_production()
+	_test_forest_cycle()
+	_test_auto_priorities()
+	_test_power_meter()
 	_test_weather()
 	_test_statistics()
 	_test_milestones()
@@ -543,6 +550,170 @@ func _test_labor_step() -> void:
 		"distance au village, longitude bouclée")
 	_check(Labor.distance_factor(6) == 1.0 and is_equal_approx(Labor.distance_factor(10), 0.88),
 		"−3 %% par tuile au-delà de 6")
+
+
+func _test_stockpile() -> void:
+	var stock := Stockpile.new()
+	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
+	stock.amount = PackedFloat32Array([0.0, 0.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0])
+	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
+		"au-delà de la capacité : perdu")
+	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
+	stock.add(Stockpile.Good.FOOD, 100.0)
+	_check(is_equal_approx(stock.days_of(Stockpile.Good.FOOD, 20.0), 5.0), "jours de réserve")
+	stock.end_day()
+	_check(is_equal_approx(stock.amount[0], 99.5), "gâchis : 1 %% de l'excédent au-delà de la moitié (%.2f)" % stock.amount[0])
+	stock.take(Stockpile.Good.FOOD, 60.0)
+	stock.end_day()
+	_check(is_equal_approx(stock.amount[0], 39.5), "pas de gâchis sous la moitié")
+	stock.amount[0] = 96.0
+	stock.update_full()
+	_check(stock.full[0], "plein à 95 %")
+	stock.amount[0] = 80.0
+	stock.update_full()
+	_check(stock.full[0], "reste plein jusqu'à 75 % (hystérésis)")
+	stock.amount[0] = 70.0
+	stock.update_full()
+	_check(not stock.full[0], "sous 75 % : de nouveau à remplir")
+
+
+func _test_city_tier() -> void:
+	var tier := CityTier.new()
+	_check(tier.level == 1 and tier.name() == "Hameau" and tier.next_population() == 100, "départ : hameau, village à 100")
+	_check(not tier.update(99, 1.0), "99 habitants : toujours hameau")
+	_check(not tier.update(120, 0.5), "satisfaction trop basse : pas de palier")
+	_check(tier.update(120, 0.9) and tier.name() == "Village", "100 habitants satisfaits : village")
+	tier.update(10, 0.0)
+	_check(tier.level == 2, "le palier ne redescend pas")
+	tier.update(9999, 1.0)
+	_check(tier.is_max() and tier.name() == "Cité-État" and tier.next_population() == -1, "dernier palier : cité-État")
+
+
+func _test_population_growth() -> void:
+	var pop := Population.new()
+	var grown := 0
+	for day in 60:
+		grown += pop.end_day(1.0, 1.0, 100)
+	_check(grown > 3 and pop.count == 20 + grown and pop.satisfaction == 1.0,
+		"besoins couverts : croissance (+%d en 60 j)" % grown)
+	pop.count = 20
+	for day in 30:
+		pop.end_day(1.0, 1.0, 20)
+	_check(pop.count == 20, "pas de croissance sans logement libre")
+	pop.end_day(1.0, 1.0, 10)
+	_check(pop.count < 20, "sans logement : départs (%d)" % pop.count)
+	pop = Population.new()
+	pop.count = 100
+	for day in 5:
+		pop.end_day(0.0, 1.0, 200)
+	_check(pop.count < 80 and pop.satisfaction < 0.5, "famine : déclin rapide (%d, satisfaction %d %%)" % [
+		pop.count, roundi(pop.satisfaction * 100)])
+	pop = Population.new()
+	pop.end_day(1.0, 0.0, 100)
+	_check(is_equal_approx(pop.satisfaction, Population.FOOD_WEIGHT), "satisfaction : nourriture pondérée")
+
+
+func _test_production() -> void:
+	var setup := _labor_setup()
+	var zones: ZoneMap = setup[0]
+	var labor: Labor = setup[1]
+	var prod := Production.new(zones, labor)
+	var farm := ZoneDb.get_def(&"agriculture")
+	var cell := Vector2i(3, 3)
+	var rate := prod.tile_rate(farm, cell, 2, 1)
+	_check(is_equal_approx(rate, 2 * farm.base_yield * 0.7), "rendement = travailleurs × base × qualité (%.2f)" % rate)
+	_check(prod.tile_rate(farm, cell, 2, 0) == 0.0 and prod.tile_rate(farm, cell, 2, GameDate.WINTER) == 0.0,
+		"champs : rien au printemps ni en hiver")
+	_check(is_equal_approx(prod.tile_rate(farm, Vector2i(3 + 10, 3), 2, 1), rate * Labor.distance_factor(10)),
+		"pénalité de distance")
+	_paint(zones, &"agriculture", Rect2i(2, 2, 2, 1))
+	_paint(zones, &"pasture", Rect2i(2, 4, 2, 1))
+	labor.step(0, 6)
+	var stock := Stockpile.new()
+	stock.amount = PackedFloat32Array([0.0, 0.0])
+	var summer := GameDate.HOURS_PER_SEASON
+	for h in 24:
+		prod.step_hour(summer + h, stock)
+	var expected := prod.expected_per_day(farm, 1) + prod.expected_per_day(ZoneDb.get_def(&"pasture"), 1)
+	_check(is_equal_approx(stock.amount[0], expected) and is_equal_approx(prod.produced_today[0], expected),
+		"une journée d'été : production prévue au grenier (%.1f)" % stock.amount[0])
+	var before := zones.map.get_fertility(Vector2i(2, 2))
+	prod.end_day(summer)
+	_check(zones.map.get_fertility(Vector2i(2, 2)) < before, "un champ cultivé perd en fertilité")
+	labor.priorities[farm] = 0
+	labor.step(1000, 6)
+	for d in 10:
+		prod.end_day(summer)
+	_check(is_equal_approx(zones.map.get_fertility(Vector2i(2, 2)), before), "au repos, la fertilité revient")
+
+
+func _test_forest_cycle() -> void:
+	var setup := _labor_setup()
+	var zones: ZoneMap = setup[0]
+	var labor: Labor = setup[1]
+	var map := zones.map
+	var prod := Production.new(zones, labor)
+	var cell := Vector2i(4, 4)
+	map.set_terrain(cell, TerrainDef.Type.FOREST)
+	map.set_wood(cell, 10.0)
+	_paint(zones, &"forestry", Rect2i(cell, Vector2i.ONE))
+	labor.step(0, 1)
+	var stock := Stockpile.new()
+	var wood_before := stock.amount[1]
+	var cleared: Array[Vector2i] = []
+	for h in 24 * 30:
+		cleared.append_array(prod.step_hour(h, stock).cleared)
+		if not cleared.is_empty():
+			break
+	_check(cleared == [cell] and map.get_terrain(cell) == TerrainDef.Type.PLAIN and zones.zone_at(cell) == null,
+		"coupe à blanc : plaine, zone retirée")
+	_check(absf(stock.amount[1] - wood_before - 10.0) < 0.01, "tout le bois de la tuile récolté (%.3f)" % (stock.amount[1] - wood_before))
+	labor.step(24 * 30, 1)
+	var regrown: Array[Vector2i] = []
+	for d in Production.CLEARCUT_REGROW_DAYS:
+		regrown.append_array(prod.end_day(0))
+	_check(regrown == [cell] and map.get_terrain(cell) == TerrainDef.Type.FOREST and map.get_wood(cell) > 0.0,
+		"repousse après %d jours sans zone" % Production.CLEARCUT_REGROW_DAYS)
+	var wood := map.get_wood(cell)
+	prod.end_day(0)
+	_check(map.get_wood(cell) > wood, "une jeune forêt se densifie")
+
+
+func _test_auto_priorities() -> void:
+	var labor: Labor = _labor_setup()[1]
+	var farm := ZoneDb.get_def(&"agriculture")
+	var pasture := ZoneDb.get_def(&"pasture")
+	var forestry := ZoneDb.get_def(&"forestry")
+	labor.update_auto(false, false, 1)
+	_check(labor.effective_priority(farm) == Labor.AUTO_PRIORITY, "stocks suffisants : priorité normale")
+	labor.update_auto(true, false, 1)
+	_check(labor.effective_priority(farm) == Labor.HIGH_PRIORITY and labor.effective_priority(pasture) == Labor.HIGH_PRIORITY
+		and labor.effective_priority(forestry) == Labor.AUTO_PRIORITY, "nourriture qui manque : champs et élevage d'abord")
+	labor.update_auto(true, true, GameDate.WINTER)
+	_check(labor.effective_priority(farm) == 0 and labor.effective_priority(forestry) == Labor.HIGH_PRIORITY,
+		"hiver : personne aux champs, bois en priorité")
+	labor.update_auto(false, false, 1, true, false)
+	_check(labor.effective_priority(farm) == 0 and labor.effective_priority(pasture) == 0
+		and labor.effective_priority(forestry) == Labor.AUTO_PRIORITY, "grenier plein : personne aux zones nourricières")
+	labor.update_auto(true, false, 1, true, false)
+	_check(labor.effective_priority(farm) == Labor.HIGH_PRIORITY, "stock plein mais qui manque : priorité haute gardée")
+	labor.priorities[farm] = 4
+	_check(labor.effective_priority(farm) == 4, "priorité manuelle conservée")
+
+
+func _test_power_meter() -> void:
+	var meter := PowerMeter.new()
+	_check(meter.average() == 0.0, "aucun jour : 0 W")
+	meter.push_day(PackedFloat32Array([1.0, 0.2]))
+	_check(absf(meter.average(Stockpile.Good.FOOD) - 121.5) < 0.1 and absf(meter.average(Stockpile.Good.WOOD) - 347.2) < 0.1,
+		"1 nourriture/j ≈ 120 W, 0,2 bois/j ≈ 350 W")
+	for d in PowerMeter.WINDOW_DAYS:
+		meter.push_day(PackedFloat32Array([0.0, 0.0]))
+	_check(meter.average() == 0.0, "moyenne glissante sur %d jours" % PowerMeter.WINDOW_DAYS)
+	meter.push_day(PackedFloat32Array([20.0, 4.0]))
+	_check(is_equal_approx(meter.per_capita(20), meter.average() / 20.0), "par habitant")
+	_check(PowerMeter.format(850.0) == "850 W" and PowerMeter.format(12_340.0) == "12,3 kW", "format")
 
 
 func _test_statistics() -> void:

@@ -20,6 +20,13 @@ enum Quality { FERTILITY, PASTURE, WOOD }
 @export var workers_per_tile := 1
 ## Ce qui fait une bonne tuile pour cette zone.
 @export var quality: Quality = Quality.FERTILITY
+@export_group("Production")
+## Marchandise produite et rendement de base (unités par travailleur et par
+## jour, sur une tuile de qualité 1, au facteur de saison 1).
+@export var output: Stockpile.Good = Stockpile.Good.FOOD
+@export var base_yield := 1.0
+## Facteur par saison (printemps, été, automne, hiver).
+@export var season_factors := PackedFloat32Array([1.0, 1.0, 1.0, 1.0])
 ## Couleur de la zone sur la carte.
 @export var color := Color.WHITE
 
@@ -37,13 +44,15 @@ func terrain_error(map: WorldMap, cell: Vector2i) -> String:
 	return ""
 
 
-## Qualité de [param cell] pour cette zone, 0–1.
+## Qualité de [param cell] pour cette zone, 0–1. Une forêt clairsemée reste
+## exploitable (un quart du rendement), jusqu'à la coupe à blanc.
 func quality_at(map: WorldMap, cell: Vector2i) -> float:
 	match quality:
 		Quality.PASTURE:
 			return map.get_pasture(cell)
 		Quality.WOOD:
-			return clampf(map.get_wood(cell) / WorldMap.WOOD_PER_FOREST, 0.0, 1.0)
+			var wood := map.get_wood(cell)
+			return 0.0 if wood <= 0.0 else clampf(0.25 + 0.75 * wood / WorldMap.WOOD_PER_FOREST, 0.0, 1.0)
 	return map.get_fertility(cell)
 
 

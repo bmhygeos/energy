@@ -107,6 +107,16 @@ func apply(p: Plan) -> Array[Vector2i]:
 	return changed
 
 
+## Retire la zone de [param cells] (forêt coupée à blanc…) ; renvoie les
+## tuiles qui en portaient une.
+func clear(cells: Array[Vector2i]) -> Array[Vector2i]:
+	var cleared: Array[Vector2i] = []
+	for cell in cells:
+		if _zones.erase(map.wrap_cell(cell)):
+			cleared.append(cell)
+	return cleared
+
+
 ## Rectangle (bornes incluses) entre deux tuiles d'un glisser.
 static func rect_between(a: Vector2i, b: Vector2i) -> Rect2i:
 	var lo := Vector2i(mini(a.x, b.x), mini(a.y, b.y))

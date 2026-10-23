@@ -12,3 +12,6 @@ on_banks = true
 min_fertility = 0.05
 workers_per_tile = 2
 color = Color(0.95, 0.8, 0.25, 1)
+output = 0
+base_yield = 12.0
+season_factors = PackedFloat32Array(0, 1, 1, 0)

@@ -1,6 +1,7 @@
 extends CanvasLayer
 ## Panneau « Main-d'œuvre » (M) : habitants, actifs, chômeurs, besoins, et
-## par type de zone les tuiles, places, travailleurs affectés et la priorité.
+## par type de zone les tuiles, places, travailleurs affectés, la production
+## prévue et la priorité.
 
 const UNEMPLOYED_COLOR := Color("ff7a6e")
 const MUTED_COLOR := Color(1, 1, 1, 0.6)
@@ -10,7 +11,7 @@ const PRIORITY_CHOICES: Array[int] = [Labor.AUTO, 0, 1, 2, 3, 4, 5]
 var _panel: PanelContainer
 var _summary: Label
 var _needs: Label
-## Par type de zone : [tuiles, places, affectés, priorité].
+## Par type de zone : [tuiles, places, affectés, prévu, priorité].
 var _rows: Dictionary[ZoneDef, Array] = {}
 
 
@@ -21,6 +22,7 @@ func _ready() -> void:
 	EventBus.zones_changed.connect(func(_c: Array[Vector2i]) -> void: _refresh())
 	EventBus.game_started.connect(func(_s: int) -> void: _refresh())
 	EventBus.season_changed.connect(func(_s: int, _y: int) -> void: _refresh())
+	EventBus.population_changed.connect(_refresh)
 	_refresh()
 
 
@@ -72,10 +74,10 @@ func _build() -> void:
 	_needs.modulate = MUTED_COLOR
 	box.add_child(_needs)
 	var grid := GridContainer.new()
-	grid.columns = 5
+	grid.columns = 6
 	grid.add_theme_constant_override("h_separation", 14)
 	box.add_child(grid)
-	for text in ["Zone", "Tuiles", "Places", "Affectés", "Priorité"]:
+	for text in ["Zone", "Tuiles", "Places", "Affectés", "Prévu /j", "Priorité"]:
 		var label := Label.new()
 		label.text = text
 		label.modulate = MUTED_COLOR
@@ -86,7 +88,7 @@ func _build() -> void:
 		name_label.add_theme_color_override("font_color", def.color.lightened(0.3))
 		grid.add_child(name_label)
 		var cells: Array = []
-		for k in 3:
+		for k in 4:
 			var label := Label.new()
 			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			grid.add_child(label)
@@ -102,7 +104,7 @@ func _build() -> void:
 		cells.append(priority)
 		_rows[def] = cells
 	var note := Label.new()
-	note.text = "Répartition au prorata priorité × places ; changer de zone prend %d h." % Labor.REASSIGN_HOURS
+	note.text = "Répartition au prorata priorité × places ; changer de zone prend %d h.\nAuto : priorité haute quand la nourriture (ou le bois) manque, basse hors saison." % Labor.REASSIGN_HOURS
 	note.modulate = MUTED_COLOR
 	note.add_theme_font_size_override("font_size", 13)
 	box.add_child(note)
@@ -125,4 +127,8 @@ func _refresh() -> void:
 		(row[0] as Label).text = str(GameState.zones.tile_count(def))
 		(row[1] as Label).text = str(GameState.zones.places(def))
 		(row[2] as Label).text = str(labor.assigned[def])
-		(row[3] as OptionButton).select(PRIORITY_CHOICES.find(labor.priorities[def]))
+		(row[3] as Label).text = "%s %s" % [Format.decimal(GameState.production.expected_per_day(def, season)),
+			Stockpile.GOOD_NAMES[def.output].to_lower()]
+		var priority := row[4] as OptionButton
+		priority.set_item_text(0, "Auto (%d)" % labor.auto_priorities[def])
+		priority.select(PRIORITY_CHOICES.find(labor.priorities[def]))
