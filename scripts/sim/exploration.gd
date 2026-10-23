@@ -36,6 +36,8 @@ const REASON_TEXTS: PackedStringArray = ["", "objectif atteint", "eau infranchis
 
 class Expedition:
 	var members := 0
+	## Chevaux de bât (rendus à l'écurie au retour).
+	var horses := 0
 	## Vivres restants.
 	var food := 0.0
 	## Trajet aller, du centre du village (indice 0) vers la cible.

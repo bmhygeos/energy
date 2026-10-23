@@ -30,6 +30,7 @@ func _init() -> void:
 	_test_city_tier()
 	_test_research()
 	_test_village()
+	_test_draft_animals()
 	_test_production()
 	_test_forest_cycle()
 	_test_irrigation()
@@ -723,6 +724,45 @@ func _test_village() -> void:
 	_check(exploration.max_expeditions() == 1 and exploration.max_days() == 20, "hameau : 1 expédition, 20 jours")
 	exploration.tier = 2
 	_check(exploration.max_expeditions() == 3 and exploration.max_days() == 40, "village : 3 expéditions, 40 jours")
+
+
+func _test_draft_animals() -> void:
+	var stable := BuildingDb.get_def(&"stable")
+	_check(stable.tier == 2 and stable.horse_capacity == 6 and stable.stone_cost > 0, "écurie : 6 chevaux, au village")
+	var draft := DraftAnimals.new()
+	_check(is_zero_approx(draft.breed(10.0)), "sans écurie : pas de poulain")
+	draft.capacity = 6
+	var foals := draft.breed(10.0)
+	_check(is_equal_approx(draft.horses, 0.1) and is_equal_approx(foals, 0.1), "10 pâturages : un poulain tous les 10 jours")
+	for k in 100:
+		draft.breed(10.0)
+	_check(is_equal_approx(draft.horses, 6.0) and draft.count() == 6, "écurie pleine : 6 chevaux au plus")
+	_check(is_equal_approx(draft.fodder_need(), 18.0), "fourrage : 3 par cheval")
+	draft.end_day(0.0)
+	_check(draft.count() == 5 and draft.horses > 5.6, "sans fourrage : 5 %% perdus (%.2f)" % draft.horses)
+	draft.horses = 2.0
+	var workers: Dictionary[Vector2i, int] = {Vector2i(3, 0): 1, Vector2i(10, 0): 1, Vector2i(20, 0): 1, Vector2i(15, 0): 2}
+	draft.harness(workers, func(c: Vector2i) -> int: return c.x)
+	_check(draft.working() == 2 and draft.harnessed.has(Vector2i(20, 0)) and draft.harnessed.has(Vector2i(15, 0)),
+		"attelés aux tuiles les plus lointaines")
+	draft.away = 1
+	draft.harness(workers, func(c: Vector2i) -> int: return c.x)
+	_check(draft.working() == 1 and draft.harnessed.has(Vector2i(20, 0)), "cheval parti en expédition : un attelage de moins")
+	draft.horses = 6.0
+	draft.harness(workers, func(c: Vector2i) -> int: return c.x)
+	_check(not draft.harnessed.has(Vector2i(3, 0)), "pas d'attelage sans trajet à raccourcir")
+	_check(DraftAnimals.draft_distance_factor(12) == 1.0 and is_equal_approx(DraftAnimals.draft_distance_factor(20), 0.88)
+		and DraftAnimals.draft_distance_factor(20) > Labor.distance_factor(20), "attelage : pénalité à partir de 12 tuiles, moitié moindre")
+	# Production d'une tuile lointaine attelée.
+	var setup := _labor_setup()
+	var prod := Production.new(setup[0], setup[1])
+	var farm := ZoneDb.get_def(&"agriculture")
+	var far := Vector2i(3 + 14, 3)
+	var plain := prod.tile_rate(farm, far, 2, 1)
+	prod.draft = DraftAnimals.new()
+	prod.draft.harnessed[far] = true
+	_check(is_equal_approx(prod.tile_rate(farm, far, 2, 1), plain / Labor.distance_factor(14) * DraftAnimals.draft_distance_factor(14)),
+		"tuile attelée : plus productive")
 
 
 func _test_city_tier() -> void:

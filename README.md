@@ -152,6 +152,21 @@ météo et interface conservés.
 - **Expéditions** : 3 à la fois et jusqu'à 40 jours de vivres au village
   (1 et 20 au hameau).
 
+### V6 (partie 2) : écurie et hippotraction
+- **Écurie** (village, 20 bois, 10 pierre) : 6 chevaux. Les troupeaux des
+  pâturages donnent des poulains (0,01 par tuile de pâturage et par jour, selon
+  sa qualité) tant qu'il y a de la place ; chaque cheval mange 3 de fourrage par
+  jour au grenier et dépérit sans lui (5 %/j).
+- **Attelage** : les chevaux sont attelés automatiquement aux tuiles
+  travaillées les plus lointaines (au-delà de 6 tuiles) ; la pénalité de
+  distance y commence à 12 tuiles et vaut −1,5 % par tuile (au lieu de 6 et
+  −3 %). Fiche de la tuile : « Attelage ».
+- **Chevaux de bât** : réglage de l'expédition ; chacun porte 4 fois les
+  vivres d'un explorateur (jours de vivres permis), absent de l'écurie pendant
+  le voyage.
+- **Puissance** : 700 W par cheval au travail. Panneau Main-d'œuvre : chevaux,
+  attelés, en expédition, fourrage.
+
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon
   la satisfaction ; une recherche à la fois ; sans recherche en cours, les

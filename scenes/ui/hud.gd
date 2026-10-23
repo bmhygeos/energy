@@ -210,7 +210,10 @@ func _refresh_power() -> void:
 		var w := power.average(good)
 		lines.append("%s : %s (%d %%)" % [Stockpile.GOOD_NAMES[good], PowerMeter.format(w),
 			roundi(100.0 * w / power.average()) if power.average() > 0.0 else 0])
-	lines.append("Repère : 1 nourriture/j ≈ 120 W, 0,2 bois/j ≈ 350 W")
+	var animals := power.average(Stockpile.COUNT)
+	if animals > 0.0:
+		lines.append("Chevaux au travail : %s (%d %%)" % [PowerMeter.format(animals), roundi(100.0 * animals / power.average())])
+	lines.append("Repère : 1 nourriture/j ≈ 120 W, 0,2 bois/j ≈ 350 W, un cheval au travail %d W" % roundi(DraftAnimals.WORK_WATTS))
 	_power_label.tooltip_text = "\n".join(lines)
 
 

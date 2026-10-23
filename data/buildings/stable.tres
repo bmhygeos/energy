@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"stable"
+display_name = "Écurie"
+description = "Chevaux de trait nés des pâturages : attelés aux champs et aux forêts lointaines, ou chevaux de bât des expéditions."
+category = 2
+tier = 2
+size = Vector2i(2, 1)
+build_hours = 48
+wood_cost = 20
+stone_cost = 10
+horse_capacity = 6
+color = Color(0.6, 0.45, 0.3, 1)
+roof_color = Color(0.45, 0.3, 0.2, 1)
+height = 14.0

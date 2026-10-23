@@ -32,6 +32,8 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Capacité de stockage ajoutée (grenier, réserve de bois).
 @export var food_capacity := 0.0
 @export var wood_capacity := 0.0
+## Places pour les chevaux (écurie).
+@export var horse_capacity := 0
 ## Habitants approvisionnés en eau (puits).
 @export var water_supply := 0
 ## Recherche : multiplicateur des points des habitants couverts (atelier…).
@@ -95,6 +97,8 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Stocke %d de nourriture" % roundi(food_capacity))
 	if wood_capacity > 0.0:
 		lines.append("Stocke %d de bois" % roundi(wood_capacity))
+	if horse_capacity > 0:
+		lines.append("Loge %d chevaux" % horse_capacity)
 	if water_supply > 0:
 		lines.append("Eau pour %d habitants" % water_supply)
 	if research_coverage > 0:

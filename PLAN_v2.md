@@ -215,18 +215,19 @@ rivière ou un lac pour en profiter.
 - **Atelier** : recherche ×2 pour 100 habitants.
 
 ### Palier 2 : hippotraction et inventions
-**Hippotraction** : l'**écurie** (bois, pierre) loge des chevaux de trait,
-élevés à partir de l'élevage (une part de sa production devient des chevaux, que
-l'écurie plafonne). Chaque cheval mange du fourrage (ex. 3 unités de nourriture
-par jour) et sert à deux choses :
+**Hippotraction** (réalisée en V6, partie 2) : l'**écurie** (bois, pierre)
+loge 6 chevaux de trait, nés des troupeaux des pâturages (un poulain par jour
+pour 100 tuiles de pâturage), que l'écurie plafonne. Chaque cheval mange du
+fourrage (3 unités de nourriture par jour) et dépérit sans lui ; il sert à
+deux choses :
 - **Portée** : les chevaux sont attelés automatiquement aux zones les plus
   éloignées ; une tuile desservie par un attelage voit sa pénalité de distance
   commencer à 12 tuiles au lieu de 6, et réduite de moitié (−1,5 % par tuile).
   Le territoire exploitable s'élargit avant les routes du palier 3.
-- **Quantité transportée** : une charrette rapporte autant que 4 porteurs, ce
-  qui libère des habitants pour d'autres activités. Une expédition peut emmener
-  des chevaux de bât qui portent 4 fois plus de vivres qu'un homme, donc va plus
-  loin.
+- **Quantité transportée** : une expédition peut emmener des chevaux de bât
+  qui portent 4 fois plus de vivres qu'un homme, donc va plus loin. Pour les
+  zones, la charrette est comprise dans la portée (moins de temps perdu en
+  trajets, donc plus de production par travailleur).
 
 Le panneau « Main-d'œuvre » affiche aussi les chevaux (disponibles, attelés,
 fourrage consommé). Leur travail s'ajoute au compteur de puissance (environ

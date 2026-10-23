@@ -22,6 +22,8 @@ var _expedition_button: Button
 var _annex_button: Button
 var _members: SpinBox
 var _days: SpinBox
+var _horses: SpinBox
+var _horses_row: HBoxContainer
 var _expedition_status: Label
 var _annex_plan: Territory.AnnexPlan
 var _toast_tween: Tween
@@ -105,7 +107,8 @@ func _refresh_tier_locks() -> void:
 	for d: BuildingDef in _build_buttons:
 		_lock(_build_buttons[d], d.tier, level)
 	if _days:
-		_days.max_value = Exploration.MAX_DAYS[level - 1]
+		_update_days_limit()
+		_horses_row.visible = level >= 2
 
 
 func _lock(button: Button, needed: int, level: int) -> void:
@@ -139,8 +142,18 @@ func _build_territory() -> void:
 		row.add_child(label)
 		row.add_child(pair[1])
 	_list.add_child(row)
-	for spin in [_members, _days]:
-		spin.value_changed.connect(func(_v: float) -> void: _refresh_hint())
+	_horses_row = HBoxContainer.new()
+	_horses = _spin_box(0, 20, 0, "Chevaux de bât : chacun porte %d fois les vivres d'un explorateur" % roundi(DraftAnimals.PACK_FACTOR))
+	var horses_label := Label.new()
+	horses_label.text = "Chevaux de bât"
+	horses_label.modulate = Color(1, 1, 1, 0.6)
+	_horses_row.add_child(horses_label)
+	_horses_row.add_child(_horses)
+	_list.add_child(_horses_row)
+	for spin in [_members, _days, _horses]:
+		spin.value_changed.connect(func(_v: float) -> void:
+			_update_days_limit()
+			_refresh_hint())
 	_expedition_status = Label.new()
 	_expedition_status.modulate = Color(1, 1, 1, 0.75)
 	_expedition_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -167,12 +180,19 @@ func _spin_box(lo: int, hi: int, value: int, tooltip: String) -> SpinBox:
 	return spin
 
 
+## Jours de vivres au plus : charge des explorateurs et des chevaux de bât.
+func _update_days_limit() -> void:
+	if GameState.exploration == null:
+		return
+	_days.max_value = maxf(1.0, floorf(GameState.max_expedition_days(int(_members.value), int(_horses.value))))
+
+
 func _expedition_food() -> float:
 	return _members.value * _days.value * Exploration.FOOD_PER_MEMBER_PER_DAY
 
 
 func _on_expedition_target(cell: Vector2i) -> void:
-	if GameState.launch_expedition(cell, int(_members.value), _days.value):
+	if GameState.launch_expedition(cell, int(_members.value), _days.value, int(_horses.value)):
 		EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
 
 
@@ -183,8 +203,9 @@ func _refresh_expedition_status() -> void:
 	var lines := PackedStringArray()
 	for e in GameState.exploration.expeditions:
 		var leg := "retour (%s)" % Exploration.REASON_TEXTS[e.reason] if e.returning else "aller"
-		lines.append("En route : %d explorateur%s, %s · vivres %s · %d tuiles découvertes" % [
-			e.members, "s" if e.members > 1 else "", leg, Format.decimal(e.food), e.revealed])
+		lines.append("En route : %d explorateur%s%s, %s · vivres %s · %d tuiles découvertes" % [
+			e.members, "s" if e.members > 1 else "", " et %d cheva%s" % [e.horses, "ux" if e.horses > 1 else "l"] if e.horses > 0 else "",
+			leg, Format.decimal(e.food), e.revealed])
 	_expedition_status.text = "\n".join(lines)
 	_expedition_status.visible = not lines.is_empty()
 
@@ -316,7 +337,7 @@ func _expedition_hint() -> String:
 	var members := int(_members.value)
 	var text := "[b]Expédition[/b] — %d explorateur%s, %s jours de vivres (%s nourriture) · cliquez sur la destination · Échap : annuler" % [
 		members, "s" if members > 1 else "", Format.decimal(_days.value), Format.decimal(_expedition_food())]
-	var error := GameState.expedition_error(members, _days.value)
+	var error := GameState.expedition_error(members, _days.value, int(_horses.value))
 	if not error.is_empty():
 		return text + "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
 	if _hovered.x >= 0:

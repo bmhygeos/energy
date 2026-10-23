@@ -35,6 +35,8 @@ var labor: Labor
 var buildings: BuildingRegistry
 ## Recherches terminées (irrigation) ; null : aucune.
 var research: Research
+## Chevaux attelés (distance des tuiles desservies) ; null : aucun.
+var draft: DraftAnimals
 ## Production du jour en cours, par marchandise (Stockpile.Good).
 var produced_today := Stockpile.zeros()
 ## Valeur naturelle des fertilités entamées, bois maximal des forêts entamées
@@ -57,7 +59,16 @@ func _init(p_zones: ZoneMap, p_labor: Labor) -> void:
 ## zone [param def] pendant la saison [param season].
 func tile_rate(def: ZoneDef, cell: Vector2i, workers: int, season: int) -> float:
 	return workers * def.base_yield * def.quality_at(map, cell) * def.season_factors[season] \
-		* Labor.distance_factor(labor.distance(cell)) * irrigation_factor(def, cell)
+		* proximity(cell) * irrigation_factor(def, cell)
+
+
+## Facteur de proximité du village de [param cell] (trajets), meilleur sur
+## une tuile desservie par un attelage.
+func proximity(cell: Vector2i) -> float:
+	var d := labor.distance(cell)
+	if draft and draft.harnessed.has(map.wrap_cell(cell)):
+		return DraftAnimals.draft_distance_factor(d)
+	return Labor.distance_factor(d)
 
 
 ## Bonus d'irrigation de la zone [param def] sur [param cell] (1 : aucun).

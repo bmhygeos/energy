@@ -11,6 +11,8 @@ var world_map: WorldMap
 var territory: Territory
 var exploration: Exploration
 var research: Research
+## Chevaux de trait (écuries).
+var draft: DraftAnimals
 ## Centre du village (abscisse ramenée sur la planète).
 var home: Vector2i
 var buildings: BuildingRegistry
@@ -66,6 +68,8 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	production = Production.new(zones, labor)
 	research = Research.new()
 	production.research = research
+	draft = DraftAnimals.new()
+	production.draft = draft
 	power = PowerMeter.new()
 	weather = Weather.new(seed_value)
 	stats = Statistics.new()
@@ -76,7 +80,7 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	_found_village()
 	_refresh_capacities()
 	_update_auto_priorities(0)
-	labor.step(GameClock.tick, workers())
+	_step_labor(GameClock.tick)
 	EventBus.game_started.emit(seed_value)
 
 
@@ -165,8 +169,15 @@ func set_priority(def: ZoneDef, priority: int) -> void:
 	_update_labor()
 
 
+## Affectation des travailleurs à l'heure [param tick], puis attelage des
+## chevaux aux tuiles travaillées les plus lointaines.
+func _step_labor(tick: int) -> void:
+	labor.step(tick, workers())
+	draft.harness(labor.workers_at, labor.distance)
+
+
 func _update_labor() -> void:
-	labor.step(GameClock.tick, workers())
+	_step_labor(GameClock.tick)
 	EventBus.labor_changed.emit()
 
 
@@ -203,14 +214,17 @@ func demolish(cell: Vector2i) -> bool:
 func _refresh_capacities() -> void:
 	housing = 0
 	water_supply = 0
+	var horse_capacity := 0
 	var capacity := Stockpile.BASE_CAPACITY.duplicate()
 	for b in buildings.all():
 		if b.is_complete():
 			housing += b.def.housing
 			water_supply += b.def.water_supply
+			horse_capacity += b.def.horse_capacity
 			capacity[Stockpile.Good.FOOD] += b.def.food_capacity
 			capacity[Stockpile.Good.WOOD] += b.def.wood_capacity
 	stockpile.capacity = capacity
+	draft.capacity = horse_capacity
 
 
 ## Part des habitants approvisionnés en eau : besoin à partir du village
@@ -226,17 +240,18 @@ func workers() -> int:
 	return maxi(0, population.active() - exploration.members_out())
 
 
-## Nourriture puisée chaque jour au grenier : les explorateurs mangent leurs
-## vivres.
+## Nourriture puisée chaque jour au grenier : habitants (les explorateurs
+## mangent leurs vivres) et fourrage des chevaux à l'écurie.
 func food_need() -> float:
-	return maxf(0.0, population.food_need() - exploration.members_out() * Exploration.FOOD_PER_MEMBER_PER_DAY)
+	return maxf(0.0, population.food_need() - exploration.members_out() * Exploration.FOOD_PER_MEMBER_PER_DAY) \
+		+ draft.fodder_need()
 
 
-## Lance une expédition de [param members] explorateurs avec [param days]
-## jours de vivres vers [param target] (repère de la vue) ; null (raison
-## notifiée) si c'est impossible.
-func launch_expedition(target: Vector2i, members: int, days: float) -> Exploration.Expedition:
-	var error := expedition_error(members, days)
+## Lance une expédition de [param members] explorateurs et [param horses]
+## chevaux de bât avec [param days] jours de vivres vers [param target]
+## (repère de la vue) ; null (raison notifiée) si c'est impossible.
+func launch_expedition(target: Vector2i, members: int, days: float, horses := 0) -> Exploration.Expedition:
+	var error := expedition_error(members, days, horses)
 	if error.is_empty() and exploration.plan_path(display_cell(home), target).size() < 2:
 		error = "Trajet impossible : de l'eau barre le chemin"
 	if not error.is_empty():
@@ -245,24 +260,39 @@ func launch_expedition(target: Vector2i, members: int, days: float) -> Explorati
 	var food := members * days * Exploration.FOOD_PER_MEMBER_PER_DAY
 	stockpile.take(Stockpile.Good.FOOD, food)
 	var e := exploration.launch(display_cell(home), target, members, food)
-	EventBus.notified.emit("Expédition partie : %d explorateur%s, %s jours de vivres" % [
-		members, "s" if members > 1 else "", Format.decimal(days)])
+	e.horses = horses
+	draft.away += horses
+	EventBus.notified.emit("Expédition partie : %d explorateur%s%s, %s jours de vivres" % [
+		members, "s" if members > 1 else "", " et %d cheva%s" % [horses, "ux" if horses > 1 else "l"] if horses > 0 else "",
+		Format.decimal(days)])
 	_update_labor()
 	EventBus.stocks_changed.emit()
 	EventBus.expeditions_changed.emit()
 	return e
 
 
-## Ce qui empêche une expédition de [param members] explorateurs avec
-## [param days] jours de vivres (vide : possible).
-func expedition_error(members: int, days: float) -> String:
+## Jours de vivres que portent [param members] explorateurs et
+## [param horses] chevaux de bât (chacun porte DraftAnimals.PACK_FACTOR fois
+## la charge d'un explorateur).
+func max_expedition_days(members: int, horses: int) -> float:
+	if members <= 0:
+		return 0.0
+	return exploration.max_days() * (members + DraftAnimals.PACK_FACTOR * horses) / members
+
+
+## Ce qui empêche une expédition de [param members] explorateurs et
+## [param horses] chevaux avec [param days] jours de vivres (vide : possible).
+func expedition_error(members: int, days: float, horses := 0) -> String:
 	if not exploration.can_launch():
 		return "Déjà %d expédition%s en route (le maximum à ce palier)" % [
 			exploration.max_expeditions(), "s" if exploration.max_expeditions() > 1 else ""]
 	if members <= 0 or days <= 0.0:
 		return "Il faut au moins un explorateur et des vivres"
-	if days > exploration.max_days():
-		return "Au plus %d jours de vivres à ce palier" % exploration.max_days()
+	if horses < 0 or horses > draft.at_home():
+		return "Pas assez de chevaux à l'écurie (%d)" % draft.at_home()
+	if days > max_expedition_days(members, horses) + 0.001:
+		return "Au plus %s jours de vivres (portés par les explorateurs%s)" % [
+			Format.decimal(max_expedition_days(members, horses)), " et les chevaux" if horses > 0 else ""]
 	if members > mini(Exploration.MAX_MEMBERS, workers()):
 		return "Pas assez d'habitants actifs disponibles"
 	if not stockpile.has(Stockpile.Good.FOOD, members * days * Exploration.FOOD_PER_MEMBER_PER_DAY):
@@ -281,11 +311,21 @@ func _step_expeditions() -> void:
 		EventBus.notified.emit("L'expédition fait demi-tour : %s" % Exploration.REASON_TEXTS[e.reason])
 	for e in report.returned:
 		stockpile.add(Stockpile.Good.FOOD, e.food)
+		draft.away = maxi(0, draft.away - e.horses)
 		EventBus.notified.emit("L'expédition est rentrée : %d tuile%s découverte%s" % [
 			e.revealed, "s" if e.revealed > 1 else "", "s" if e.revealed > 1 else ""])
 	if not report.returned.is_empty():
 		_update_labor()
 	EventBus.expeditions_changed.emit()
+
+
+## Somme des qualités des tuiles de pâturage (troupeaux, élevage des chevaux).
+func _pasture_quality() -> float:
+	var pasture := ZoneDb.get_def(&"pasture")
+	var total := 0.0
+	for cell in zones.cells_of(pasture):
+		total += pasture.quality_at(world_map, cell)
+	return total
 
 
 ## Points de recherche produits par jour.
@@ -392,7 +432,7 @@ func _on_tick(tick: int) -> void:
 		EventBus.building_completed.emit(b)
 	_step_expeditions()
 	var before := [labor.employed(), labor.in_transit(), labor.assigned.duplicate()]
-	labor.step(tick, workers())
+	_step_labor(tick)
 	if before != [labor.employed(), labor.in_transit(), labor.assigned]:
 		EventBus.labor_changed.emit()
 	# L'heure écoulée est celle qui précède le tick.
@@ -444,7 +484,9 @@ func _on_day(day: int) -> void:
 	if finished:
 		EventBus.notified.emit("Recherche terminée : %s" % finished.display_name)
 	EventBus.research_changed.emit()
-	power.push_day(production.produced_today)
+	draft.breed(_pasture_quality())
+	draft.end_day(coverage[Stockpile.Good.FOOD])
+	power.push_day(production.produced_today, draft.working() * DraftAnimals.WORK_WATTS)
 	stats.add(&"food_produced", production.produced_today[Stockpile.Good.FOOD])
 	stats.add(&"wood_produced", production.produced_today[Stockpile.Good.WOOD])
 	stats.add(&"food_lost", stockpile.lost_today[Stockpile.Good.FOOD])

@@ -128,6 +128,10 @@ func _refresh() -> void:
 	var season := GameDate.season(GameClock.tick)
 	_needs.text = "Besoins : nourriture %s /j  ·  bois %s /j%s" % [Format.decimal(GameState.food_need()),
 		Format.decimal(population.wood_need(season)), " (hiver)" if season == GameDate.WINTER else ""]
+	var draft := GameState.draft
+	if draft.capacity > 0 or draft.count() > 0:
+		_needs.text += "\nChevaux %d / %d (écuries)  ·  attelés %d  ·  en expédition %d  ·  fourrage %s /j" % [
+			draft.count(), draft.capacity, draft.working(), draft.away, Format.decimal(draft.fodder_need())]
 	for def: ZoneDef in _rows:
 		var row := _rows[def]
 		(row[0] as Label).text = str(GameState.zones.tile_count(def))
