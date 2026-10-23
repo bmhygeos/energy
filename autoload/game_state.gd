@@ -3,6 +3,8 @@ extends Node
 
 ## Planète en longitude / latitude (tuiles), multiple de WorldMap.CHUNK_SIZE.
 const PLANET_SIZE := Vector2i(1024, 512)
+## Palier à partir duquel les habitants ont besoin d'eau (puits).
+const WATER_TIER := 2
 
 var world_map: WorldMap
 ## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
@@ -29,9 +31,11 @@ var stats: Statistics
 var milestones: Milestones
 ## Logements des maisons terminées.
 var housing := 0
+## Habitants approvisionnés en eau par les puits.
+var water_supply := 0
 ## Besoins et consommation du jour en cours, par marchandise.
-var _needed_today := PackedFloat32Array([0.0, 0.0])
-var _consumed_today := PackedFloat32Array([0.0, 0.0])
+var _needed_today := Stockpile.zeros()
+var _consumed_today := Stockpile.zeros()
 
 
 func _ready() -> void:
@@ -66,8 +70,8 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	weather = Weather.new(seed_value)
 	stats = Statistics.new()
 	milestones = Milestones.new()
-	_needed_today = PackedFloat32Array([0.0, 0.0])
-	_consumed_today = PackedFloat32Array([0.0, 0.0])
+	_needed_today = Stockpile.zeros()
+	_consumed_today = Stockpile.zeros()
 	GameClock.reset()
 	_found_village()
 	_refresh_capacities()
@@ -114,12 +118,17 @@ static func random_seed() -> int:
 	return randi_range(100_000, 999_999)
 
 
-## Placement de [param def] en [param anchor] : règles du registre, pas sur
-## une zone (à effacer d'abord) et assez de bois en stock.
+## Placement de [param def] en [param anchor] : palier atteint, règles du
+## registre, pas sur une zone (à effacer d'abord) et assez de matériaux.
 func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Placement:
 	var placement := buildings.check_placement(def, anchor)
-	if placement.is_valid() and not stockpile.has(Stockpile.Good.WOOD, def.wood_cost):
-		placement.error = "Bois insuffisant (%d requis)" % def.wood_cost
+	if placement.is_valid() and def.tier > tier.level:
+		placement.error = "Disponible au palier %s" % CityTier.NAMES[def.tier - 1]
+	var costs := def.costs()
+	for good in costs.size():
+		if placement.is_valid() and not stockpile.has(good, costs[good]):
+			placement.error = "%s insuffisant%s (%d requis)" % [Stockpile.GOOD_NAMES[good],
+				"e" if good == Stockpile.Good.STONE else "", roundi(costs[good])]
 	if placement.is_valid():
 		for cell in placement.cells:
 			var zone := zones.zone_at(cell)
@@ -131,7 +140,12 @@ func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Pla
 
 ## Aperçu de la peinture de [param def] (null : effacement) entre deux tuiles.
 func plan_zones(def: ZoneDef, from: Vector2i, to: Vector2i) -> ZoneMap.Plan:
-	return zones.plan(def, ZoneMap.rect_between(from, to))
+	var plan := zones.plan(def, ZoneMap.rect_between(from, to))
+	if def and def.tier > tier.level:
+		plan.refused += plan.changed.size()
+		plan.changed.clear()
+		plan.error = "Disponible au palier %s" % CityTier.NAMES[def.tier - 1]
+	return plan
 
 
 ## Peint ou efface selon [param plan] ; renvoie le nombre de tuiles changées.
@@ -163,7 +177,9 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 	if not placement.is_valid():
 		EventBus.notified.emit(placement.error)
 		return null
-	stockpile.take(Stockpile.Good.WOOD, def.wood_cost)
+	var costs := def.costs()
+	for good in costs.size():
+		stockpile.take(good, costs[good])
 	var b := buildings.place(placement)
 	if not placement.cleared.is_empty():
 		EventBus.tiles_changed.emit(placement.cleared)
@@ -186,13 +202,23 @@ func demolish(cell: Vector2i) -> bool:
 ## Logements et capacités de stockage des bâtiments terminés.
 func _refresh_capacities() -> void:
 	housing = 0
+	water_supply = 0
 	var capacity := Stockpile.BASE_CAPACITY.duplicate()
 	for b in buildings.all():
 		if b.is_complete():
 			housing += b.def.housing
+			water_supply += b.def.water_supply
 			capacity[Stockpile.Good.FOOD] += b.def.food_capacity
 			capacity[Stockpile.Good.WOOD] += b.def.wood_capacity
 	stockpile.capacity = capacity
+
+
+## Part des habitants approvisionnés en eau : besoin à partir du village
+## (palier 2), couvert par les puits.
+func water_coverage() -> float:
+	if tier.level < WATER_TIER or population.count == 0:
+		return 1.0
+	return minf(1.0, float(water_supply) / population.count)
 
 
 ## Actifs disponibles pour les zones (hors explorateurs partis).
@@ -231,9 +257,12 @@ func launch_expedition(target: Vector2i, members: int, days: float) -> Explorati
 ## [param days] jours de vivres (vide : possible).
 func expedition_error(members: int, days: float) -> String:
 	if not exploration.can_launch():
-		return "Une expédition est déjà en route"
+		return "Déjà %d expédition%s en route (le maximum à ce palier)" % [
+			exploration.max_expeditions(), "s" if exploration.max_expeditions() > 1 else ""]
 	if members <= 0 or days <= 0.0:
 		return "Il faut au moins un explorateur et des vivres"
+	if days > exploration.max_days():
+		return "Au plus %d jours de vivres à ce palier" % exploration.max_days()
 	if members > mini(Exploration.MAX_MEMBERS, workers()):
 		return "Pas assez d'habitants actifs disponibles"
 	if not stockpile.has(Stockpile.Good.FOOD, members * days * Exploration.FOOD_PER_MEMBER_PER_DAY):
@@ -261,7 +290,11 @@ func _step_expeditions() -> void:
 
 ## Points de recherche produits par jour.
 func research_per_day() -> float:
-	return Research.points_per_day(population.count, population.satisfaction)
+	var boosts: Array[Vector2] = []
+	for b in buildings.all():
+		if b.is_complete() and b.def.research_coverage > 0:
+			boosts.append(Vector2(b.def.research_multiplier, b.def.research_coverage))
+	return Research.points_per_day(population.count, population.satisfaction, boosts)
 
 
 ## Lance la recherche [param def] ; false (raison notifiée) si indisponible.
@@ -320,8 +353,8 @@ func _update_auto_priorities(tick: int) -> void:
 	var food_short := stockpile.amount[Stockpile.Good.FOOD] < _reachable(Stockpile.Good.FOOD, food_goal)
 	var wood_short := stockpile.amount[Stockpile.Good.WOOD] < _reachable(Stockpile.Good.WOOD, wood_goal)
 	stockpile.update_full()
-	labor.update_auto(food_short, wood_short, season,
-		stockpile.full[Stockpile.Good.FOOD], stockpile.full[Stockpile.Good.WOOD])
+	var short: Array[bool] = [food_short, wood_short]
+	labor.update_auto(short, season, stockpile.full)
 
 
 ## Réserve [param goal] de [param good], ramenée à ce que le stock peut contenir.
@@ -400,10 +433,13 @@ func _on_day(day: int) -> void:
 	for good in _needed_today.size():
 		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)
 	var before := population.count
-	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing)
+	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing,
+		water_coverage())
 	_announce_population(before, change, coverage)
 	if tier.update(population.count, population.satisfaction):
+		exploration.tier = tier.level
 		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
+		EventBus.tier_changed.emit()
 	var finished := research.add_points(research_per_day())
 	if finished:
 		EventBus.notified.emit("Recherche terminée : %s" % finished.display_name)
@@ -419,8 +455,8 @@ func _on_day(day: int) -> void:
 	stats.end_day()
 	production.reset_day()
 	stockpile.reset_day()
-	_needed_today = PackedFloat32Array([0.0, 0.0])
-	_consumed_today = PackedFloat32Array([0.0, 0.0])
+	_needed_today = Stockpile.zeros()
+	_consumed_today = Stockpile.zeros()
 	_update_auto_priorities(GameClock.tick)
 	_update_labor()
 	EventBus.population_changed.emit()
@@ -432,6 +468,8 @@ func _announce_population(before: int, change: int, coverage: PackedFloat32Array
 		EventBus.notified.emit("Disette : %d %% de la nourriture nécessaire" % roundi(coverage[Stockpile.Good.FOOD] * 100.0))
 	elif coverage[Stockpile.Good.WOOD] < 1.0:
 		EventBus.notified.emit("Manque de bois : %d %% du chauffage" % roundi(coverage[Stockpile.Good.WOOD] * 100.0))
+	elif water_coverage() < 1.0 and GameClock.tick % (GameDate.HOURS_PER_DAY * 5) < GameDate.HOURS_PER_DAY:
+		EventBus.notified.emit("Manque d'eau : %d %% des habitants servis, construisez des puits" % roundi(water_coverage() * 100.0))
 	if population.count == 0 and before > 0:
 		EventBus.notified.emit("Le hameau est déserté")
 	elif change > 0 and population.count >= housing:

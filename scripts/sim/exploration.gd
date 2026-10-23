@@ -7,8 +7,10 @@ extends RefCounted
 ## devant eux, ou plus que de quoi manger sur le chemin du retour. Pure donnée ; les tuiles sont dans le
 ## repère de la vue (abscisses dépliées autour du village).
 
-## Expéditions simultanées et explorateurs par expédition (palier 1).
-const MAX_EXPEDITIONS := 1
+## Par palier de la ville (hameau, village…) : expéditions simultanées et
+## jours de vivres emportés au plus ; explorateurs par expédition.
+const MAX_EXPEDITIONS: PackedInt32Array = [1, 3, 3, 3, 3]
+const MAX_DAYS: PackedInt32Array = [20, 40, 40, 40, 40]
 const MAX_MEMBERS := 5
 ## Rayon de vue (tuiles) autour de l'expédition.
 const SIGHT_RADIUS := 3
@@ -67,6 +69,8 @@ class Report:
 var map: WorldMap
 var territory: Territory
 var expeditions: Array[Expedition] = []
+## Palier de la ville (limites des expéditions).
+var tier := 1
 
 
 func _init(p_territory: Territory) -> void:
@@ -87,7 +91,15 @@ func members_out() -> int:
 
 
 func can_launch() -> bool:
-	return expeditions.size() < MAX_EXPEDITIONS
+	return expeditions.size() < max_expeditions()
+
+
+func max_expeditions() -> int:
+	return MAX_EXPEDITIONS[tier - 1]
+
+
+func max_days() -> int:
+	return MAX_DAYS[tier - 1]
 
 
 ## Trajet en ligne droite (8-connexité) de [param from] vers [param to],

@@ -36,7 +36,7 @@ var buildings: BuildingRegistry
 ## Recherches terminées (irrigation) ; null : aucune.
 var research: Research
 ## Production du jour en cours, par marchandise (Stockpile.Good).
-var produced_today := PackedFloat32Array([0.0, 0.0])
+var produced_today := Stockpile.zeros()
 ## Valeur naturelle des fertilités entamées, bois maximal des forêts entamées
 ## et jours écoulés depuis les coupes à blanc (tuiles ramenées sur la planète).
 var _natural_fertility: Dictionary[Vector2i, float] = {}
@@ -179,4 +179,4 @@ func regrowth_days_left(cell: Vector2i) -> int:
 
 
 func reset_day() -> void:
-	produced_today = PackedFloat32Array([0.0, 0.0])
+	produced_today = Stockpile.zeros()

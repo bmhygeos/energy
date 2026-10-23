@@ -29,6 +29,7 @@ func _init() -> void:
 	_test_population_growth()
 	_test_city_tier()
 	_test_research()
+	_test_village()
 	_test_production()
 	_test_forest_cycle()
 	_test_irrigation()
@@ -225,13 +226,15 @@ func _test_start_site() -> void:
 		var changed := StartSite.ensure(map, rect)
 		var counts := StartSite._counts(rect, func(c: Vector2i) -> int: return map.get_terrain(c))
 		_check(counts.forest >= StartSite.MIN_FOREST and counts.water >= StartSite.MIN_WATER
-			and counts.farmland > 0, "graine %d : forêt, plaine et eau %s (%d retouches)" % [seed_value, counts, changed.size()])
+			and counts.stone >= StartSite.MIN_STONE and counts.farmland > 0,
+			"graine %d : forêt, plaine, eau et collines %s (%d retouches)" % [seed_value, counts, changed.size()])
 	var flat := WorldMap.new(Vector2i(64, 64), 0, FlatGenerator.new(Vector2i(64, 64)))
 	var rect := StartSite.territory_rect(Vector2i(20, 20))
 	var changed := StartSite.ensure(flat, rect)
 	var counts := StartSite._counts(rect, func(c: Vector2i) -> int: return flat.get_terrain(c))
-	_check(changed.size() == StartSite.MIN_FOREST + 1 and counts.water == 1 and counts.forest == StartSite.MIN_FOREST,
-		"plaine nue : forêt et lac ajoutés %s" % counts)
+	_check(changed.size() == StartSite.MIN_FOREST + StartSite.MIN_STONE + 1 and counts.water == 1
+		and counts.forest == StartSite.MIN_FOREST and counts.stone == StartSite.MIN_STONE,
+		"plaine nue : forêt, lac et collines ajoutés %s" % counts)
 
 
 func _test_territory() -> void:
@@ -630,8 +633,8 @@ func _test_labor_step() -> void:
 func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
-	stock.amount = PackedFloat32Array([0.0, 0.0])
-	stock.capacity = PackedFloat32Array([100.0, 50.0])
+	stock.amount = Stockpile.zeros()
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -675,6 +678,51 @@ func _test_research() -> void:
 		and is_equal_approx(research.bank, 20.0), "terminée, surplus mis de côté")
 	_check(not research.start(irrigation, 1) and not research.is_available(later, 1) and research.is_available(later, 2),
 		"pas deux fois ; la suivante attend son palier")
+
+
+func _test_village() -> void:
+	# Zones du village : carrière (pierre) et pêche (nourriture), palier 2.
+	var quarry := ZoneDb.get_def(&"quarry")
+	var fishing := ZoneDb.get_def(&"fishing")
+	_check(quarry.tier == 2 and quarry.output == Stockpile.Good.STONE and TerrainDef.Type.HILL in quarry.allowed_terrains,
+		"carrière : pierre sur les collines, au village")
+	_check(fishing.tier == 2 and fishing.output == Stockpile.Good.FOOD and TerrainDef.Type.SEA in fishing.allowed_terrains
+		and fishing.season_factors[GameDate.WINTER] > 0.0, "pêche : nourriture toute l'année, au village")
+	var flat := _flat_map()
+	var map: WorldMap = flat[0]
+	map.set_terrain(Vector2i(2, 2), TerrainDef.Type.HILL)
+	map.set_terrain(Vector2i(3, 2), TerrainDef.Type.LAKE)
+	_check(quarry.terrain_error(map, Vector2i(2, 2)).is_empty() and not quarry.terrain_error(map, Vector2i(1, 1)).is_empty(),
+		"carrière : colline oui, plaine non")
+	_check(fishing.terrain_error(map, Vector2i(3, 2)).is_empty() and is_equal_approx(fishing.quality_at(map, Vector2i(3, 2)), 1.0),
+		"pêche sur un lac, qualité uniforme")
+	# Bâtiments du village.
+	var well := BuildingDb.get_def(&"well")
+	var stone_house := BuildingDb.get_def(&"stone_house")
+	var workshop := BuildingDb.get_def(&"workshop")
+	_check(well.tier == 2 and well.water_supply > 0 and well.stone_cost > 0, "puits : eau, en pierre, au village")
+	_check(stone_house.housing > BuildingDb.get_def(&"house").housing and stone_house.describe_cost() == "10 bois, 20 pierre",
+		"maison en pierre : plus grande (%s)" % stone_house.describe_cost())
+	_check(workshop.research_multiplier == 2.0 and workshop.research_coverage == 100, "atelier : recherche ×2 pour 100 habitants")
+	_check(BuildingDb.get_def(&"granary").describe_cost().ends_with("bois"), "coût en bois seul")
+	# Atelier : les habitants couverts comptent double, les meilleurs bâtiments d'abord.
+	var boosts: Array[Vector2] = [Vector2(2.0, 100.0)]
+	_check(is_equal_approx(Research.points_per_day(150, 1.0, boosts), 250.0), "150 habitants, un atelier : 100 × 2 + 50")
+	boosts.append(Vector2(5.0, 40.0))
+	_check(is_equal_approx(Research.points_per_day(150, 1.0, boosts), 40.0 * 5 + 100.0 * 2 + 10.0), "le meilleur multiplicateur d'abord")
+	# Eau : satisfaction réduite et croissance bloquée sans puits.
+	var pop := Population.new()
+	pop.end_day(1.0, 1.0, 100, 0.0)
+	_check(is_equal_approx(pop.satisfaction, 1.0 - Population.WATER_WEIGHT), "sans eau : satisfaction −30 %%")
+	var before := pop.count
+	for k in 30:
+		pop.end_day(1.0, 1.0, 100, 0.5)
+	_check(pop.count == before, "eau insuffisante : pas de croissance")
+	# Expéditions : plus nombreuses et plus longues au village.
+	var exploration := Exploration.new(flat[1])
+	_check(exploration.max_expeditions() == 1 and exploration.max_days() == 20, "hameau : 1 expédition, 20 jours")
+	exploration.tier = 2
+	_check(exploration.max_expeditions() == 3 and exploration.max_days() == 40, "village : 3 expéditions, 40 jours")
 
 
 func _test_city_tier() -> void:
@@ -730,7 +778,7 @@ func _test_production() -> void:
 	_paint(zones, &"pasture", Rect2i(2, 4, 2, 1))
 	labor.step(0, 6)
 	var stock := Stockpile.new()
-	stock.amount = PackedFloat32Array([0.0, 0.0])
+	stock.amount = Stockpile.zeros()
 	var summer := GameDate.HOURS_PER_SEASON
 	for h in 24:
 		prod.step_hour(summer + h, stock)
@@ -803,18 +851,18 @@ func _test_auto_priorities() -> void:
 	var farm := ZoneDb.get_def(&"agriculture")
 	var pasture := ZoneDb.get_def(&"pasture")
 	var forestry := ZoneDb.get_def(&"forestry")
-	labor.update_auto(false, false, 1)
+	labor.update_auto([false, false], 1)
 	_check(labor.effective_priority(farm) == Labor.AUTO_PRIORITY, "stocks suffisants : priorité normale")
-	labor.update_auto(true, false, 1)
+	labor.update_auto([true, false], 1)
 	_check(labor.effective_priority(farm) == Labor.HIGH_PRIORITY and labor.effective_priority(pasture) == Labor.HIGH_PRIORITY
 		and labor.effective_priority(forestry) == Labor.AUTO_PRIORITY, "nourriture qui manque : champs et élevage d'abord")
-	labor.update_auto(true, true, GameDate.WINTER)
+	labor.update_auto([true, true], GameDate.WINTER)
 	_check(labor.effective_priority(farm) == 0 and labor.effective_priority(forestry) == Labor.HIGH_PRIORITY,
 		"hiver : personne aux champs, bois en priorité")
-	labor.update_auto(false, false, 1, true, false)
+	labor.update_auto([false, false], 1, [true, false])
 	_check(labor.effective_priority(farm) == 0 and labor.effective_priority(pasture) == 0
 		and labor.effective_priority(forestry) == Labor.AUTO_PRIORITY, "grenier plein : personne aux zones nourricières")
-	labor.update_auto(true, false, 1, true, false)
+	labor.update_auto([true, false], 1, [true, false])
 	_check(labor.effective_priority(farm) == Labor.HIGH_PRIORITY, "stock plein mais qui manque : priorité haute gardée")
 	labor.priorities[farm] = 4
 	_check(labor.effective_priority(farm) == 4, "priorité manuelle conservée")

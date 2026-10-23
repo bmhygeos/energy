@@ -62,20 +62,19 @@ func effective_priority(def: ZoneDef) -> int:
 
 
 ## Priorités automatiques selon les stocks pendant la saison [param season] :
-## [param food_short] / [param wood_short] si la nourriture / le bois manque,
-## [param food_full] / [param wood_full] si son stock est plein. La marchandise
-## qui manque passe en priorité haute ; une zone dont le stock est plein ou qui
-## ne produit rien cette saison ne reçoit personne, pour ne pas perdre de bras.
-func update_auto(food_short: bool, wood_short: bool, season: int,
-		food_full := false, wood_full := false) -> void:
-	var short := [food_short, wood_short]
-	var full := [food_full, wood_full]
+## [param short] / [param full] (par marchandise) si elle manque / si son
+## stock est plein (absentes : non). La marchandise qui manque passe en
+## priorité haute ; une zone dont le stock est plein ou qui ne produit rien
+## cette saison ne reçoit personne, pour ne pas perdre de bras.
+func update_auto(short: Array[bool], season: int, full: Array[bool] = []) -> void:
 	for def in ZoneDb.DEFS:
 		var good := def.output
+		var is_short := good < short.size() and short[good]
+		var is_full := good < full.size() and full[good]
 		var p := AUTO_PRIORITY
-		if short[good]:
+		if is_short:
 			p = HIGH_PRIORITY
-		if def.season_factors[season] <= 0.0 or full[good] and not short[good]:
+		if def.season_factors[season] <= 0.0 or is_full and not is_short:
 			p = 0
 		auto_priorities[def] = p
 

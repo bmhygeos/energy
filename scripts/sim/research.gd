@@ -18,10 +18,22 @@ var _progress: Dictionary[StringName, float] = {}
 var _done: Dictionary[StringName, bool] = {}
 
 
-## Points produits par jour par [param count] habitants à [param satisfaction] (0–1).
-static func points_per_day(count: int, satisfaction: float) -> float:
+## Points produits par jour par [param count] habitants à [param satisfaction]
+## (0–1). [param boosts] : bâtiments de recherche, (multiplicateur, habitants
+## couverts) ; les meilleurs couvrent d'abord, les habitants restants comptent
+## pour 1.
+static func points_per_day(count: int, satisfaction: float, boosts: Array[Vector2] = []) -> float:
 	var factor := MIN_SATISFACTION_FACTOR + (1.0 - MIN_SATISFACTION_FACTOR) * clampf(satisfaction, 0.0, 1.0)
-	return count * POINTS_PER_INHABITANT * factor
+	var sorted := boosts.duplicate()
+	sorted.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x > b.x)
+	var left := float(count)
+	var weighted := 0.0
+	for boost: Vector2 in sorted:
+		var covered := minf(left, boost.y)
+		weighted += covered * boost.x
+		left -= covered
+	weighted += left
+	return weighted * POINTS_PER_INHABITANT * factor
 
 
 func is_done(id: StringName) -> bool:

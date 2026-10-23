@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"well"
+display_name = "Puits"
+description = "Puits maçonné : l'eau des habitants, nécessaire à partir du village."
+category = 2
+tier = 2
+build_hours = 36
+wood_cost = 5
+stone_cost = 15
+water_supply = 30
+color = Color(0.6, 0.62, 0.66, 1)
+roof_color = Color(0.35, 0.5, 0.75, 1)
+height = 8.0

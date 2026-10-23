@@ -6,6 +6,8 @@ const DEFS: Array[ZoneDef] = [
 	preload("res://data/zones/agriculture.tres"),
 	preload("res://data/zones/pasture.tres"),
 	preload("res://data/zones/forestry.tres"),
+	preload("res://data/zones/fishing.tres"),
+	preload("res://data/zones/quarry.tres"),
 ]
 
 

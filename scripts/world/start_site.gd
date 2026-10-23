@@ -2,7 +2,8 @@ class_name StartSite
 extends RefCounted
 ## Choix du site du village : un territoire de départ de TERRITORY_SIZE ×
 ## TERRITORY_SIZE tuiles aux latitudes tempérées, avec forêt, terres
-## cultivables et un point d'eau (garantis par ensure).
+## cultivables, un point d'eau et quelques collines pour la pierre du
+## village (garantis par ensure).
 
 const TERRITORY_SIZE := 12
 const MIN_FOREST := 10
@@ -10,6 +11,8 @@ const MIN_FOREST := 10
 const MIN_FARMLAND := 40
 ## Rivière, lac ou mer.
 const MIN_WATER := 1
+## Collines ou montagnes (carrières du village).
+const MIN_STONE := 4
 const MIN_BUILDABLE := 100
 ## Latitudes (valeur absolue, degrés) explorées pour le départ.
 const MIN_LATITUDE := 20.0
@@ -45,8 +48,8 @@ static func find(generator: MapGenerator) -> Vector2i:
 	return best
 
 
-## Complète le territoire [param rect] de [param map] s'il manque de forêt
-## ou d'eau (après find, cas exceptionnel) ; renvoie les tuiles modifiées.
+## Complète le territoire [param rect] de [param map] s'il manque de forêt,
+## d'eau ou de collines (après find) ; renvoie les tuiles modifiées.
 static func ensure(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 	var changed: Array[Vector2i] = []
 	var counts := _counts(rect, func(c: Vector2i) -> int: return map.get_terrain(c))
@@ -66,12 +69,18 @@ static func ensure(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 		map.set_terrain(cell, T.FOREST)
 		map.set_wood(cell, WorldMap.WOOD_PER_FOREST * 0.7)
 		changed.append(cell)
+	for k in maxi(0, MIN_STONE - counts.stone):
+		if farmland.is_empty():
+			break
+		var cell: Vector2i = farmland.pop_back()
+		map.set_terrain(cell, T.HILL)
+		changed.append(cell)
 	return changed
 
 
 ## Nombre de tuiles par catégorie dans [param rect], selon [param terrain_of].
 static func _counts(rect: Rect2i, terrain_of: Callable) -> Dictionary:
-	var counts := {forest = 0, farmland = 0, water = 0, buildable = 0}
+	var counts := {forest = 0, farmland = 0, water = 0, stone = 0, buildable = 0}
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			var t: int = terrain_of.call(Vector2i(x, y))
@@ -81,6 +90,8 @@ static func _counts(rect: Rect2i, terrain_of: Callable) -> Dictionary:
 				counts.farmland += 1
 			elif t in [T.RIVER, T.LAKE, T.SEA]:
 				counts.water += 1
+			elif t == T.HILL or t == T.MOUNTAIN:
+				counts.stone += 1
 			if TerrainDb.get_def(t).buildable:
 				counts.buildable += 1
 	return counts

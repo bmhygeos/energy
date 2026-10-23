@@ -18,6 +18,9 @@ const WINTER_WOOD_FACTOR := 2.0
 ## Satisfaction : moyenne sur ce nombre de jours, nourriture pondérée.
 const SATISFACTION_DAYS := 10
 const FOOD_WEIGHT := 0.7
+## Eau (à partir du village, puits) : satisfaction réduite jusqu'à cette part
+## quand elle manque tout à fait.
+const WATER_WEIGHT := 0.3
 ## Croissance par jour (part de la population) à pleine satisfaction.
 const GROWTH_PER_DAY := 0.006
 ## Sous ce seuil de satisfaction, des habitants partent (jusqu'à
@@ -36,6 +39,7 @@ var satisfaction := 1.0
 ## Couverture des besoins de la veille (0–1).
 var food_coverage := 1.0
 var wood_coverage := 1.0
+var water_coverage := 1.0
 var _history: Array[float] = []
 ## Fraction d'habitant accumulée (naissances, départs).
 var _change := 0.0
@@ -56,12 +60,14 @@ func wood_need(season: int) -> float:
 	return count * WOOD_PER_DAY * (WINTER_WOOD_FACTOR if season == GameDate.WINTER else 1.0)
 
 
-## Clôt la journée avec la couverture des besoins (0–1) et les logements ;
-## renvoie la variation du nombre d'habitants.
-func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int) -> int:
+## Clôt la journée avec la couverture des besoins (0–1 ; l'eau, à partir du
+## village) et les logements ; renvoie la variation du nombre d'habitants.
+func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int, p_water_coverage := 1.0) -> int:
 	food_coverage = clampf(p_food_coverage, 0.0, 1.0)
 	wood_coverage = clampf(p_wood_coverage, 0.0, 1.0)
-	_history.append(FOOD_WEIGHT * food_coverage + (1.0 - FOOD_WEIGHT) * wood_coverage)
+	water_coverage = clampf(p_water_coverage, 0.0, 1.0)
+	_history.append((FOOD_WEIGHT * food_coverage + (1.0 - FOOD_WEIGHT) * wood_coverage)
+		* (1.0 - WATER_WEIGHT * (1.0 - water_coverage)))
 	if _history.size() > SATISFACTION_DAYS:
 		_history.pop_front()
 	var total := 0.0
@@ -69,7 +75,7 @@ func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int) -> in
 		total += v
 	satisfaction = total / _history.size()
 	var change := 0.0
-	if food_coverage >= 1.0 and wood_coverage >= 1.0 and count < housing:
+	if food_coverage >= 1.0 and wood_coverage >= 1.0 and water_coverage >= 1.0 and count < housing:
 		change += count * GROWTH_PER_DAY * satisfaction
 	if satisfaction < LEAVE_THRESHOLD:
 		change -= count * LEAVE_PER_DAY * (1.0 - satisfaction / LEAVE_THRESHOLD)

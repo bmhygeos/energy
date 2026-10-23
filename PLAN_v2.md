@@ -205,6 +205,15 @@ d'une rivière ou d'un lac rendent 30 % de plus ; la mer ne compte pas (eau
 salée). Un hameau côtier sans eau douce devra explorer et annexer vers une
 rivière ou un lac pour en profiter.
 
+### Palier 2 : pierre, eau et pêche (réalisé en V6, partie 1)
+- **Pierre** : matériau de construction (maisons en pierre, puits, atelier),
+  extrait par la zone Carrière sur collines et montagnes ; le territoire de
+  départ compte au moins 4 collines.
+- **Eau** : chaque puits sert un nombre d'habitants (30) ; sans eau, la
+  satisfaction baisse (jusqu'à −30 %) et la croissance s'arrête.
+- **Pêche** : zone sur rivières, lacs et côte, nourriture toute l'année.
+- **Atelier** : recherche ×2 pour 100 habitants.
+
 ### Palier 2 : hippotraction et inventions
 **Hippotraction** : l'**écurie** (bois, pierre) loge des chevaux de trait,
 élevés à partir de l'élevage (une part de sa production devient des chevaux, que

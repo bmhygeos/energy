@@ -81,16 +81,38 @@ func _build_list() -> void:
 			continue
 		_add_header(BuildingDef.CATEGORY_NAMES[category])
 		for def: BuildingDef in defs:
-			var button := _tool_button("%s   %d bois" % [def.display_name, def.wood_cost])
+			var button := _tool_button("%s   %s" % [def.display_name, def.describe_cost()])
 			button.tooltip_text = _tooltip(def)
 			button.pressed.connect(func() -> void:
 				_select_tool(button, BuildTool.Mode.BUILD, def))
 			_build_buttons[def] = button
 	_list.add_child(HSeparator.new())
 	_demolish_button = _tool_button("Démolir (X)")
+	EventBus.tier_changed.connect(_refresh_tier_locks)
+	EventBus.game_started.connect(func(_s: int) -> void: _refresh_tier_locks())
+	_refresh_tier_locks.call_deferred()
 	_demolish_button.tooltip_text = "Démolit un bâtiment ou annule un chantier."
 	_demolish_button.pressed.connect(func() -> void:
 		_select_tool(_demolish_button, BuildTool.Mode.DEMOLISH, null))
+
+
+## Zones et bâtiments d'un palier pas encore atteint : grisés, palier
+## indiqué ; vivres des expéditions selon le palier.
+func _refresh_tier_locks() -> void:
+	var level := GameState.tier.level if GameState.tier else 1
+	for d: ZoneDef in _zone_buttons:
+		_lock(_zone_buttons[d], d.tier, level)
+	for d: BuildingDef in _build_buttons:
+		_lock(_build_buttons[d], d.tier, level)
+	if _days:
+		_days.max_value = Exploration.MAX_DAYS[level - 1]
+
+
+func _lock(button: Button, needed: int, level: int) -> void:
+	var locked := needed > level
+	button.disabled = locked
+	var suffix := "   (%s)" % CityTier.NAMES[needed - 1]
+	button.text = button.text.trim_suffix(suffix) + (suffix if locked else "")
 
 
 ## Section « Territoire » : expédition (effectif, jours de vivres, état de
@@ -102,7 +124,9 @@ func _build_territory() -> void:
 		"Des habitants actifs quittent le travail et partent explorer avec des vivres pris au grenier.",
 		"Ils marchent en ligne droite vers la tuile choisie (lent en forêt, en colline et aux gués ;",
 		"lacs et mer infranchissables), révèlent les tuiles autour d'eux puis reviennent.",
-		"Au plus %d expédition à la fois, %d explorateurs." % [Exploration.MAX_EXPEDITIONS, Exploration.MAX_MEMBERS]]))
+		"Au plus %d explorateurs ; expéditions simultanées et jours de vivres : %d et %d au hameau, %d et %d à partir du village." % [
+			Exploration.MAX_MEMBERS, Exploration.MAX_EXPEDITIONS[0], Exploration.MAX_DAYS[0],
+			Exploration.MAX_EXPEDITIONS[1], Exploration.MAX_DAYS[1]]]))
 	_expedition_button.pressed.connect(func() -> void:
 		_select_tool(_expedition_button, BuildTool.Mode.EXPEDITION, null))
 	var row := HBoxContainer.new()
@@ -185,6 +209,8 @@ func _zone_tooltip(def: ZoneDef) -> String:
 	return "\n".join(PackedStringArray([def.display_name, def.description, "",
 		"Sur : " + def.describe_terrains(),
 		"Travailleurs : %d par tuile" % def.workers_per_tile,
+		"Produit : %s" % Stockpile.GOOD_NAMES[def.output].to_lower(),
+		"Palier : %s" % CityTier.NAMES[def.tier - 1],
 		"Glisser pour peindre un rectangle (les tuiles non valides sont ignorées)."]))
 
 
@@ -209,7 +235,9 @@ func _tool_button(text: String) -> Button:
 func _tooltip(def: BuildingDef) -> String:
 	var lines := PackedStringArray([def.display_name, def.description, ""])
 	lines.append("Taille : %d×%d" % [def.size.x, def.size.y])
-	lines.append("Coût : %d bois" % def.wood_cost)
+	lines.append("Coût : %s" % def.describe_cost())
+	if def.tier > 1:
+		lines.append("Palier : %s" % CityTier.NAMES[def.tier - 1])
 	lines.append("Chantier : %s" % Format.duration_hours(def.build_hours))
 	var effects := def.describe_effects()
 	if not effects.is_empty():
@@ -245,7 +273,7 @@ func _refresh_hint() -> void:
 	var text := ""
 	match _mode:
 		BuildTool.Mode.BUILD:
-			text = "[b]%s[/b] — %d bois · chantier %s" % [_def.display_name, _def.wood_cost,
+			text = "[b]%s[/b] — %s · chantier %s" % [_def.display_name, _def.describe_cost(),
 				Format.duration_hours(_def.build_hours)]
 			if _placement == null:
 				text += "\nPlacez le bâtiment sur la carte · Échap : annuler"

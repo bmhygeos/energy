@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"workshop"
+display_name = "Atelier"
+description = "Établis et outils : les artisans du village mettent au point les inventions."
+category = 2
+tier = 2
+build_hours = 72
+wood_cost = 30
+stone_cost = 20
+research_multiplier = 2.0
+research_coverage = 100
+color = Color(0.62, 0.48, 0.32, 1)
+roof_color = Color(0.4, 0.3, 0.22, 1)
+height = 16.0

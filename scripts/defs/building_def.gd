@@ -14,14 +14,17 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var category: Category = Category.OTHER
 ## Proposé dans le menu de construction.
 @export var player_buildable := true
+## Palier de la ville à partir duquel il se construit (1 : hameau).
+@export_range(1, 5) var tier := 1
 ## Emprise en tuiles (x, y) ; ancrée sur la tuile avant-bas (x et y maximaux).
 @export var size := Vector2i.ONE
 
 @export_group("Chantier")
 ## Durée du chantier, en heures de jeu (ticks).
 @export var build_hours := 24
-## Bois pris sur les stocks au lancement du chantier.
+## Bois et pierre pris sur les stocks au lancement du chantier.
 @export var wood_cost := 0
+@export var stone_cost := 0
 
 @export_group("Effets")
 ## Habitants logés (maisons).
@@ -29,6 +32,11 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Capacité de stockage ajoutée (grenier, réserve de bois).
 @export var food_capacity := 0.0
 @export var wood_capacity := 0.0
+## Habitants approvisionnés en eau (puits).
+@export var water_supply := 0
+## Recherche : multiplicateur des points des habitants couverts (atelier…).
+@export var research_multiplier := 1.0
+@export var research_coverage := 0
 
 @export_group("Placement")
 ## Terrains autorisés pour chaque tuile de l'emprise (vide : tout terrain
@@ -60,6 +68,24 @@ func footprint(anchor: Vector2i) -> Array[Vector2i]:
 	return cells
 
 
+## Coût par marchandise (Stockpile.Good).
+func costs() -> PackedFloat32Array:
+	var values := Stockpile.zeros()
+	values[Stockpile.Good.WOOD] = wood_cost
+	values[Stockpile.Good.STONE] = stone_cost
+	return values
+
+
+## Coût lisible (« 15 bois, 20 pierre » ; « gratuit »).
+func describe_cost() -> String:
+	var parts := PackedStringArray()
+	var values := costs()
+	for good in values.size():
+		if values[good] > 0.0:
+			parts.append("%d %s" % [roundi(values[good]), Stockpile.GOOD_NAMES[good].to_lower()])
+	return ", ".join(parts) if not parts.is_empty() else "gratuit"
+
+
 ## Effets lisibles, un par ligne (vide : aucun).
 func describe_effects() -> PackedStringArray:
 	var lines := PackedStringArray()
@@ -69,6 +95,10 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Stocke %d de nourriture" % roundi(food_capacity))
 	if wood_capacity > 0.0:
 		lines.append("Stocke %d de bois" % roundi(wood_capacity))
+	if water_supply > 0:
+		lines.append("Eau pour %d habitants" % water_supply)
+	if research_coverage > 0:
+		lines.append("Recherche ×%s pour %d habitants" % [Format.decimal(research_multiplier), research_coverage])
 	return lines
 
 

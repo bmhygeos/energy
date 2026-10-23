@@ -4,8 +4,9 @@ extends Resource
 ## coupe du bois) : terrains valides, travailleurs par tuile et couleur du
 ## calque. Équilibrage dans data/zones/*.tres.
 
-## Qualité d'une tuile pour la zone : fertilité, pâturage ou densité de forêt.
-enum Quality { FERTILITY, PASTURE, WOOD }
+## Qualité d'une tuile pour la zone : fertilité, pâturage, densité de forêt,
+## ou la même partout (carrière, pêche).
+enum Quality { FERTILITY, PASTURE, WOOD, UNIFORM }
 
 @export var id: StringName
 @export var display_name := ""
@@ -16,6 +17,8 @@ enum Quality { FERTILITY, PASTURE, WOOD }
 @export var on_banks := false
 ## Fertilité minimale de la tuile (0 : aucune).
 @export_range(0.0, 1.0) var min_fertility := 0.0
+## Palier de la ville à partir duquel la zone se peint (1 : hameau).
+@export_range(1, 5) var tier := 1
 ## Places de travail par tuile (section 6 du plan).
 @export var workers_per_tile := 1
 ## Ce qui fait une bonne tuile pour cette zone.
@@ -53,6 +56,8 @@ func quality_at(map: WorldMap, cell: Vector2i) -> float:
 		Quality.WOOD:
 			var wood := map.get_wood(cell)
 			return 0.0 if wood <= 0.0 else clampf(0.25 + 0.75 * wood / WorldMap.WOOD_PER_FOREST, 0.0, 1.0)
+		Quality.UNIFORM:
+			return 1.0
 	return map.get_fertility(cell)
 
 

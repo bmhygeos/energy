@@ -35,6 +35,8 @@ var _overlay_buttons: Array[Button] = []
 @onready var _population_label: Label = %PopulationLabel
 @onready var _food_label: Label = %FoodLabel
 @onready var _wood_label: Label = %WoodLabel
+@onready var _stone_label: Label = %StoneLabel
+@onready var _water_label: Label = %WaterLabel
 @onready var _power_label: Label = %PowerLabel
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
@@ -61,6 +63,7 @@ func _ready() -> void:
 	EventBus.labor_changed.connect(_refresh_population)
 	EventBus.population_changed.connect(_refresh_population)
 	EventBus.stocks_changed.connect(_refresh_stocks)
+	EventBus.tier_changed.connect(_refresh_population)
 	_on_tick(GameClock.tick)
 	_on_speed_changed(GameClock.speed)
 	_on_game_started(Rng.seed_value)
@@ -122,7 +125,21 @@ func _refresh_population() -> void:
 		population.active(), roundi(Population.ACTIVE_SHARE * 100.0), labor.employed(), labor.in_transit(), unemployed,
 		GameState.exploration.members_out(), roundi(population.satisfaction * 100.0), roundi(population.food_coverage * 100.0), roundi(population.wood_coverage * 100.0)]
 	_refresh_tier()
+	_refresh_water()
 	_refresh_power()
+
+
+## Eau (à partir du village) : part des habitants servis par les puits.
+func _refresh_water() -> void:
+	var shown := GameState.tier.level >= GameState.WATER_TIER
+	_water_label.visible = shown
+	if not shown:
+		return
+	var coverage := GameState.water_coverage()
+	_water_label.text = "Eau %d %%" % roundi(coverage * 100.0)
+	_water_label.add_theme_color_override("font_color", WARNING_COLOR if coverage < 1.0 else Color.WHITE)
+	_water_label.tooltip_text = "Eau : puits pour %d habitants, %d habitants\nSans eau, la satisfaction baisse (jusqu'à −%d %%) et la population ne grandit plus." % [
+		GameState.water_supply, GameState.population.count, roundi(Population.WATER_WEIGHT * 100.0)]
 
 
 ## Palier de la ville ; au survol, ce qu'il faut pour le suivant.
@@ -144,6 +161,7 @@ func _refresh_stocks() -> void:
 	if stock == null:
 		return
 	var tick := GameClock.tick
+	_refresh_stone()
 	var labels := [_food_label, _wood_label]
 	var days := [GameState.food_days(), GameState.wood_days()]
 	var alerts := [Labor.FOOD_ALERT_DAYS, Labor.WOOD_ALERT_DAYS]
@@ -164,6 +182,20 @@ func _refresh_stocks() -> void:
 				[&"food_lost", &"wood_lost"][good]))]
 
 
+## Pierre (à partir du village, ou dès qu'il y en a en stock).
+func _refresh_stone() -> void:
+	var stock := GameState.stockpile
+	var good := Stockpile.Good.STONE
+	_stone_label.visible = GameState.tier.level >= 2 or stock.amount[good] > 0.0
+	_stone_label.text = "Pierre %d" % roundi(stock.amount[good])
+	var expected := 0.0
+	for def in ZoneDb.DEFS:
+		if def.output == good:
+			expected += GameState.production.expected_per_day(def, GameDate.season(GameClock.tick))
+	_stone_label.tooltip_text = "Pierre : %d / %d (capacité)\nProduction prévue : %s /j (carrières)\nSert aux maisons en pierre, aux puits et à l'atelier." % [
+		roundi(stock.amount[good]), roundi(stock.capacity[good]), Format.decimal(expected)]
+
+
 ## Puissance de la cité (moyenne glissante) et par habitant ; parts au survol.
 func _refresh_power() -> void:
 	var power := GameState.power
@@ -173,6 +205,8 @@ func _refresh_power() -> void:
 		PowerMeter.format(power.per_capita(GameState.population.count))]
 	var lines := PackedStringArray(["Puissance de la cité : énergie produite, moyenne sur %d jours" % PowerMeter.WINDOW_DAYS])
 	for good in Stockpile.GOOD_NAMES.size():
+		if Stockpile.ENERGY_MJ[good] <= 0.0:
+			continue
 		var w := power.average(good)
 		lines.append("%s : %s (%d %%)" % [Stockpile.GOOD_NAMES[good], PowerMeter.format(w),
 			roundi(100.0 * w / power.average()) if power.average() > 0.0 else 0])

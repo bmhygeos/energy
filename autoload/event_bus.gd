@@ -39,6 +39,8 @@ signal expeditions_changed()
 signal territory_changed()
 ## Recherche lancée, avancée (chaque jour) ou terminée.
 signal research_changed()
+## La ville a changé de palier.
+signal tier_changed()
 ## Outil Expédition : tuile cible cliquée (repère de la vue).
 signal expedition_target_clicked(cell: Vector2i)
 ## Aperçu de l'annexion sous la souris (null : aucun).

@@ -135,6 +135,23 @@ météo et interface conservés.
 - Champs qui changent d'aspect avec les saisons (labour, blé vert, blé mûr,
   chaume).
 
+### V6 (partie 1) : village — pierre, eau, pêche, atelier
+- **Palier Village** (100 habitants, 80 % de satisfaction) : zones et bâtiments
+  du village grisés avant, avec le palier indiqué.
+- **Pierre** (nouvelle marchandise, 300 de capacité) : zone **Carrière** sur
+  collines et montagnes (2 carriers par tuile, 1,5 pierre/j chacun) ; le
+  territoire de départ compte au moins 4 collines.
+- **Pêche** : zone sur rivières, lacs et mer, 2 nourriture/j par pêcheur
+  (×0,6 l'hiver).
+- **Eau** : besoin à partir du village ; chaque **puits** (5 bois, 15 pierre)
+  sert 30 habitants. Sans eau, la satisfaction baisse jusqu'à −30 % et la
+  population ne grandit plus. Bandeau : « Eau x % ».
+- **Maison en pierre** (10 bois, 20 pierre) : 10 habitants.
+- **Atelier** (30 bois, 20 pierre) : recherche ×2 pour 100 habitants (les
+  habitants au-delà comptent pour 1).
+- **Expéditions** : 3 à la fois et jusqu'à 40 jours de vivres au village
+  (1 et 20 au hameau).
+
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon
   la satisfaction ; une recherche à la fois ; sans recherche en cours, les

@@ -25,7 +25,7 @@ theme_override_constants/separation = 12
 
 [node name="DateLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(250, 0)
+custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
 text = "Printemps, jour 1, an 1 — 00:00"
 
@@ -44,7 +44,7 @@ text = "Hameau"
 
 [node name="PopulationLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 0)
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 mouse_filter = 1
 text = "Habitants 20 / 20"
@@ -63,6 +63,22 @@ layout_mode = 2
 mouse_filter = 1
 text = "Bois 0"
 
+[node name="StoneLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "Pierre 0"
+
+[node name="WaterLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "Eau 100 %"
+
 [node name="PowerLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
@@ -75,21 +91,21 @@ unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Répartition des travailleurs entre les zones (M)"
 focus_mode = 0
-text = "Travail (M)"
+text = "Travail"
 
 [node name="ResearchButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Points de recherche et recherches du palier (R)"
 focus_mode = 0
-text = "Recherche (R)"
+text = "Recherche"
 
 [node name="StatsButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 tooltip_text = "Graphiques et jalons (G)"
-text = "Stats (G)"
+text = "Stats"
 
 [node name="Spacer" type="Control" parent="TopBar/Margin/Row"]
 layout_mode = 2
