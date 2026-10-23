@@ -62,6 +62,8 @@ func _refresh() -> void:
 			Format.decimal(GameState.production.tile_rate(zone, cell, workers, season)),
 			Stockpile.GOOD_NAMES[zone.output].to_lower(),
 			Format.decimal(GameState.production.tile_rate(zone, cell, 1, season))])
+		if GameState.production.irrigation_factor(zone, cell) > 1.0:
+			lines.append("Irriguée : +%d %%" % roundi((Production.IRRIGATION_BONUS - 1.0) * 100.0))
 	var regrowth := GameState.production.regrowth_days_left(cell)
 	if regrowth >= 0:
 		lines.append("Coupe à blanc : redevient forêt dans %d j (sans zone ni bâtiment)" % regrowth)

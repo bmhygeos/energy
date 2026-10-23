@@ -57,6 +57,7 @@ func _ready() -> void:
 	EventBus.overlay_changed.connect(_on_overlay_changed)
 	%StatsButton.pressed.connect(func() -> void: get_node("../StatsWindow").toggle())
 	%LaborButton.pressed.connect(func() -> void: get_node("../LaborPanel").toggle())
+	%ResearchButton.pressed.connect(func() -> void: get_node("../ResearchPanel").toggle())
 	EventBus.labor_changed.connect(_refresh_population)
 	EventBus.population_changed.connect(_refresh_population)
 	EventBus.stocks_changed.connect(_refresh_stocks)

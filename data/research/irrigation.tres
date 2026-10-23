@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"irrigation"
+display_name = "Irrigation"
+description = "Rigoles et canaux amènent l'eau des rivières et des lacs jusqu'aux champs."
+tier = 1
+cost = 500.0
+prerequisites = Array[StringName]([])
+effect = "Champs à 3 tuiles ou moins d'une rivière ou d'un lac : rendement +30 %."

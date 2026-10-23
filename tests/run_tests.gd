@@ -28,8 +28,10 @@ func _init() -> void:
 	_test_stockpile()
 	_test_population_growth()
 	_test_city_tier()
+	_test_research()
 	_test_production()
 	_test_forest_cycle()
+	_test_irrigation()
 	_test_auto_priorities()
 	_test_power_meter()
 	_test_weather()
@@ -651,6 +653,30 @@ func _test_stockpile() -> void:
 	_check(not stock.full[0], "sous 75 % : de nouveau à remplir")
 
 
+func _test_research() -> void:
+	var irrigation := ResearchDb.get_def(&"irrigation")
+	_check(irrigation != null and irrigation.tier == 1 and irrigation.prerequisites.is_empty(), "irrigation : recherche du hameau")
+	_check(is_equal_approx(Research.points_per_day(20, 1.0), 20.0) and is_equal_approx(Research.points_per_day(20, 0.0), 10.0),
+		"points : 1 par habitant, moitié à satisfaction nulle")
+	var research := Research.new()
+	var later := ResearchDef.new()
+	later.id = &"later"
+	later.tier = 2
+	later.cost = 50.0
+	later.prerequisites = [&"irrigation"] as Array[StringName]
+	_check(research.is_available(irrigation, 1) and not research.is_available(later, 1), "palier et prérequis")
+	_check(research.add_points(120.0) == null and is_equal_approx(research.bank, 120.0), "sans recherche : points mis de côté")
+	_check(research.start(irrigation, 1) and is_equal_approx(research.progress_of(irrigation), 120.0) and research.bank == 0.0,
+		"points mis de côté versés à la recherche lancée")
+	_check(is_equal_approx(research.days_left(20.0), (irrigation.cost - 120.0) / 20.0), "jours restants")
+	_check(research.add_points(irrigation.cost - 130.0) == null and research.current == irrigation, "pas encore terminée")
+	var finished := research.add_points(30.0)
+	_check(finished == irrigation and research.is_done(&"irrigation") and research.current == null
+		and is_equal_approx(research.bank, 20.0), "terminée, surplus mis de côté")
+	_check(not research.start(irrigation, 1) and not research.is_available(later, 1) and research.is_available(later, 2),
+		"pas deux fois ; la suivante attend son palier")
+
+
 func _test_city_tier() -> void:
 	var tier := CityTier.new()
 	_check(tier.level == 1 and tier.name() == "Hameau" and tier.next_population() == 100, "départ : hameau, village à 100")
@@ -719,6 +745,25 @@ func _test_production() -> void:
 	for d in 10:
 		prod.end_day(summer)
 	_check(is_equal_approx(zones.map.get_fertility(Vector2i(2, 2)), before), "au repos, la fertilité revient")
+
+
+func _test_irrigation() -> void:
+	var setup := _labor_setup()
+	var zones: ZoneMap = setup[0]
+	var labor: Labor = setup[1]
+	var prod := Production.new(zones, labor)
+	var farm := ZoneDb.get_def(&"agriculture")
+	var pasture := ZoneDb.get_def(&"pasture")
+	var near := Vector2i(3, 3)
+	var far := Vector2i(20, 3)
+	zones.map.set_terrain(Vector2i(6, 3), TerrainDef.Type.RIVER)
+	var before := prod.tile_rate(farm, near, 2, 1)
+	prod.research = Research.new()
+	_check(is_equal_approx(prod.tile_rate(farm, near, 2, 1), before), "sans la recherche : pas de bonus")
+	prod.research._done[&"irrigation"] = true
+	_check(is_equal_approx(prod.tile_rate(farm, near, 2, 1), before * Production.IRRIGATION_BONUS), "champ à 3 tuiles d'une rivière : +30 %")
+	_check(prod.irrigation_factor(farm, far) == 1.0, "champ loin de l'eau : pas de bonus")
+	_check(prod.irrigation_factor(pasture, near) == 1.0, "élevage : pas concerné")
 
 
 func _test_forest_cycle() -> void:

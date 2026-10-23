@@ -47,6 +47,7 @@ nécessite un navigateur avec WebGL 2.
 | Main-d'œuvre | `M` ou bouton « Travail » du bandeau : places, affectés, production prévue, priorités |
 | Explorer | « Expédition » du menu, régler explorateurs et jours de vivres, puis cliquer la destination sur la carte |
 | Annexer | « Annexer » du menu puis glisser sur des tuiles explorées au bord du territoire |
+| Recherche | `R` ou bouton « Recherche » du bandeau, puis « Rechercher » |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
@@ -133,6 +134,15 @@ météo et interface conservés.
   stocks, production, pertes, puissance.
 - Champs qui changent d'aspect avec les saisons (labour, blé vert, blé mûr,
   chaume).
+
+### Recherche (avancée de V6)
+- **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon
+  la satisfaction ; une recherche à la fois ; sans recherche en cours, les
+  points sont mis de côté et versés à la suivante.
+- **Panneau Recherche** (`R` ou bouton du bandeau) : points par jour,
+  recherche en cours, recherches du palier avec coût, avancement et effet.
+- **Irrigation** (hameau, 500 points) : champs à 3 tuiles ou moins d'une
+  rivière ou d'un lac : rendement +30 % (indiqué dans la fiche de la tuile).
 
 ### V5 : exploration
 - **Expédition** (menu, section Territoire) : 1 à 5 habitants actifs quittent

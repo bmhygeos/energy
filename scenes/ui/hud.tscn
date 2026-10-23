@@ -77,6 +77,13 @@ tooltip_text = "Répartition des travailleurs entre les zones (M)"
 focus_mode = 0
 text = "Travail (M)"
 
+[node name="ResearchButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Points de recherche et recherches du palier (R)"
+focus_mode = 0
+text = "Recherche (R)"
+
 [node name="StatsButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2

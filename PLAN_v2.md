@@ -159,7 +159,7 @@ des zones ou des bâtiments et améliore l'exploration.
 
 | Palier | Population | Nouveaux besoins | Nouvelles zones et bâtiments | Exploration |
 |---|---|---|---|---|
-| 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier | Explorateurs à pied, 1 expédition |
+| 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier ; recherche : **irrigation** | Explorateurs à pied, 1 expédition |
 | 2 – Village | 100 | Pierre (maisons en dur), eau, outils (scies, charrues) | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (recherche ×2) ; mine de fer, forge (outils) | 3 expéditions, plus de vivres, chevaux de bât, prospection du fer |
 | 3 – Bourg | 400 | Vêtements | Champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5), moulin à eau ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
 | 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; université (recherche ×10) ; **pétrole** : puits, raffinerie, moteurs ; **cuivre** : mine, lignes électriques ; premières centrales électriques et **barrage hydroélectrique**, réseau (repris de la v1) ; **camions** : routes carrossables, dépôts | Bateaux, cartographes, prospection du pétrole et du cuivre |
@@ -183,7 +183,7 @@ l'arbre :
 
   | Bâtiment | Palier | Débloqué par | Multiplicateur | Couvre | Particularité |
   |---|---|---|---|---|---|
-  | — | 1 – Hameau | — | ×1 | — | Pas de recherche active : les points s'accumulent pour le palier 2 |
+  | — | 1 – Hameau | — | ×1 | — | Recherche sans bâtiment : irrigation |
   | Atelier | 2 – Village | Palier atteint | ×2 | 100 habitants | Coût en bois et pierre |
   | Laboratoire | 3 – Bourg | Recherche | ×5 | 400 habitants | Demande des outils |
   | Université | 4 – Ville | Recherche | ×10 | 1 000 habitants | Entretien en argent (impôts) ; prépare le besoin « éducation » du palier 5 |
@@ -197,6 +197,13 @@ l'arbre :
   recherche de leurs propriétés (section « Énergies »).
 - L'électricité consommée par le centre informatique et le datacenter pèse sur le réseau : la
   recherche rapide demande une production d'énergie à la hauteur.
+
+### Palier 1 : irrigation
+Seule recherche du hameau, sans bâtiment de recherche : **irrigation** (500
+points, environ 25 jours pour 20 habitants). Les champs à 3 tuiles ou moins
+d'une rivière ou d'un lac rendent 30 % de plus ; la mer ne compte pas (eau
+salée). Un hameau côtier sans eau douce devra explorer et annexer vers une
+rivière ou un lac pour en profiter.
 
 ### Palier 2 : hippotraction et inventions
 **Hippotraction** : l'**écurie** (bois, pierre) loge des chevaux de trait,

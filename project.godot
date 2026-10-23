@@ -75,6 +75,10 @@ labor={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"keycode":77)]
 }
+research={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"keycode":82)]
+}
 tutorial={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":72)]

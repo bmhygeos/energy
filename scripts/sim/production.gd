@@ -5,7 +5,8 @@ extends RefCounted
 ## La coupe du bois vide la forêt (coupe à blanc : la tuile devient plaine et
 ## perd sa zone) ; une forêt entamée se densifie hors exploitation, une coupe
 ## à blanc sans zone ni bâtiment redevient forêt. Cultiver use la fertilité,
-## qui se reconstitue au repos. Pure donnée.
+## qui se reconstitue au repos. Avec la recherche Irrigation, les champs
+## proches d'une rivière ou d'un lac rendent davantage. Pure donnée.
 
 ## Fertilité perdue par jour par un champ cultivé (avec récolte), regagnée
 ## par jour au repos jusqu'à sa valeur naturelle.
@@ -16,6 +17,11 @@ const FOREST_REGROWTH_PER_DAY := 1.5
 ## Jours pour qu'une coupe à blanc redevienne forêt, et son bois à ce moment.
 const CLEARCUT_REGROW_DAYS := 120
 const REGROWN_WOOD := 60.0
+## Irrigation : bonus des champs à IRRIGATION_RANGE tuiles ou moins (distance
+## de Tchebychev) d'une rivière ou d'un lac.
+const IRRIGATION_BONUS := 1.3
+const IRRIGATION_RANGE := 3
+const FRESH_WATER: Array[TerrainDef.Type] = [TerrainDef.Type.RIVER, TerrainDef.Type.LAKE]
 
 
 class Report:
@@ -27,6 +33,8 @@ var map: WorldMap
 var zones: ZoneMap
 var labor: Labor
 var buildings: BuildingRegistry
+## Recherches terminées (irrigation) ; null : aucune.
+var research: Research
 ## Production du jour en cours, par marchandise (Stockpile.Good).
 var produced_today := PackedFloat32Array([0.0, 0.0])
 ## Valeur naturelle des fertilités entamées, bois maximal des forêts entamées
@@ -34,6 +42,8 @@ var produced_today := PackedFloat32Array([0.0, 0.0])
 var _natural_fertility: Dictionary[Vector2i, float] = {}
 var _forest_max: Dictionary[Vector2i, float] = {}
 var _clearcuts: Dictionary[Vector2i, int] = {}
+## Tuiles irrigables déjà calculées (l'eau douce ne bouge pas).
+var _irrigable: Dictionary[Vector2i, bool] = {}
 
 
 func _init(p_zones: ZoneMap, p_labor: Labor) -> void:
@@ -47,7 +57,28 @@ func _init(p_zones: ZoneMap, p_labor: Labor) -> void:
 ## zone [param def] pendant la saison [param season].
 func tile_rate(def: ZoneDef, cell: Vector2i, workers: int, season: int) -> float:
 	return workers * def.base_yield * def.quality_at(map, cell) * def.season_factors[season] \
-		* Labor.distance_factor(labor.distance(cell))
+		* Labor.distance_factor(labor.distance(cell)) * irrigation_factor(def, cell)
+
+
+## Bonus d'irrigation de la zone [param def] sur [param cell] (1 : aucun).
+func irrigation_factor(def: ZoneDef, cell: Vector2i) -> float:
+	if def.quality != ZoneDef.Quality.FERTILITY or research == null or not research.is_done(&"irrigation"):
+		return 1.0
+	return IRRIGATION_BONUS if is_irrigable(cell) else 1.0
+
+
+## Rivière ou lac à IRRIGATION_RANGE tuiles ou moins de [param cell].
+func is_irrigable(cell: Vector2i) -> bool:
+	var c := map.wrap_cell(cell)
+	if not _irrigable.has(c):
+		var found := false
+		for dy in range(-IRRIGATION_RANGE, IRRIGATION_RANGE + 1):
+			for dx in range(-IRRIGATION_RANGE, IRRIGATION_RANGE + 1):
+				var n := cell + Vector2i(dx, dy)
+				if map.has_cell(n) and map.get_terrain(n) in FRESH_WATER:
+					found = true
+		_irrigable[c] = found
+	return _irrigable[c]
 
 
 ## Production prévue par jour de la zone [param def] avec l'affectation

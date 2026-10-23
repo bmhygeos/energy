@@ -8,6 +8,7 @@ var world_map: WorldMap
 ## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
 var territory: Territory
 var exploration: Exploration
+var research: Research
 ## Centre du village (abscisse ramenée sur la planète).
 var home: Vector2i
 var buildings: BuildingRegistry
@@ -59,6 +60,8 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	labor = Labor.new(zones, home)
 	stockpile = Stockpile.new()
 	production = Production.new(zones, labor)
+	research = Research.new()
+	production.research = research
 	power = PowerMeter.new()
 	weather = Weather.new(seed_value)
 	stats = Statistics.new()
@@ -256,6 +259,20 @@ func _step_expeditions() -> void:
 	EventBus.expeditions_changed.emit()
 
 
+## Points de recherche produits par jour.
+func research_per_day() -> float:
+	return Research.points_per_day(population.count, population.satisfaction)
+
+
+## Lance la recherche [param def] ; false (raison notifiée) si indisponible.
+func start_research(def: ResearchDef) -> bool:
+	if not research.start(def, tier.level):
+		EventBus.notified.emit("%s n'est pas disponible" % def.display_name)
+		return false
+	EventBus.research_changed.emit()
+	return true
+
+
 ## Tuiles encore annexables (surface permise par la population).
 func annex_room() -> int:
 	return maxi(0, population.count * Territory.TILES_PER_INHABITANT - territory.count(Territory.State.TERRITORY))
@@ -387,6 +404,10 @@ func _on_day(day: int) -> void:
 	_announce_population(before, change, coverage)
 	if tier.update(population.count, population.satisfaction):
 		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
+	var finished := research.add_points(research_per_day())
+	if finished:
+		EventBus.notified.emit("Recherche terminée : %s" % finished.display_name)
+	EventBus.research_changed.emit()
 	power.push_day(production.produced_today)
 	stats.add(&"food_produced", production.produced_today[Stockpile.Good.FOOD])
 	stats.add(&"wood_produced", production.produced_today[Stockpile.Good.WOOD])
