@@ -12,6 +12,8 @@ extends RefCounted
 const MAX_EXPEDITIONS: PackedInt32Array = [1, 3, 3, 3, 3]
 const MAX_DAYS: PackedInt32Array = [20, 40, 40, 40, 40]
 const MAX_MEMBERS := 5
+## Palier à partir duquel les expéditions prospectent ce qu'elles voient.
+const PROSPECT_TIER := 2
 ## Rayon de vue (tuiles) autour de l'expédition.
 const SIGHT_RADIUS := 3
 ## Vivres consommés par explorateur et par jour.
@@ -66,6 +68,8 @@ class Report:
 	## Expéditions qui ont fait demi-tour, et celles revenues au village.
 	var turned: Array[Expedition] = []
 	var returned: Array[Expedition] = []
+	## Tuiles prospectées pendant l'heure (à partir du village).
+	var prospected: Array[Vector2i] = []
 
 
 var map: WorldMap
@@ -196,3 +200,12 @@ func _reveal(e: Expedition, report: Report) -> void:
 	territory.explore(fresh)
 	e.revealed += fresh.size()
 	report.revealed.append_array(fresh)
+	if tier >= PROSPECT_TIER:
+		var seen: Array[Vector2i] = []
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var cell := center + Vector2i(dx, dy)
+				if dx * dx + dy * dy <= r * r + r and map.has_cell(cell) and not territory.is_prospected(cell):
+					seen.append(cell)
+		territory.prospect(seen)
+		report.prospected.append_array(seen)

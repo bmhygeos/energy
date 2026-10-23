@@ -2,8 +2,8 @@ class_name StartSite
 extends RefCounted
 ## Choix du site du village : un territoire de départ de TERRITORY_SIZE ×
 ## TERRITORY_SIZE tuiles aux latitudes tempérées, avec forêt, terres
-## cultivables, un point d'eau et quelques collines pour la pierre du
-## village (garantis par ensure).
+## cultivables, un point d'eau et une colline à pierre près du centre pour les
+## carrières du village (garantis par ensure).
 
 const TERRITORY_SIZE := 12
 const MIN_FOREST := 10
@@ -11,8 +11,12 @@ const MIN_FOREST := 10
 const MIN_FARMLAND := 40
 ## Rivière, lac ou mer.
 const MIN_WATER := 1
-## Collines ou montagnes (carrières du village).
+## Collines ou montagnes (carrières du village), à STONE_RADIUS tuiles au
+## plus du centre ; à défaut, un bloc de STONE_BLOCK × STONE_BLOCK collines
+## est placé à cette distance.
 const MIN_STONE := 4
+const STONE_RADIUS := 4
+const STONE_BLOCK := 2
 const MIN_BUILDABLE := 100
 ## Latitudes (valeur absolue, degrés) explorées pour le départ.
 const MIN_LATITUDE := 20.0
@@ -49,7 +53,8 @@ static func find(generator: MapGenerator) -> Vector2i:
 
 
 ## Complète le territoire [param rect] de [param map] s'il manque de forêt,
-## d'eau ou de collines (après find) ; renvoie les tuiles modifiées.
+## d'eau ou de collines près du centre (après find) ; renvoie les tuiles
+## modifiées.
 static func ensure(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 	var changed: Array[Vector2i] = []
 	var counts := _counts(rect, func(c: Vector2i) -> int: return map.get_terrain(c))
@@ -69,13 +74,36 @@ static func ensure(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 		map.set_terrain(cell, T.FOREST)
 		map.set_wood(cell, WorldMap.WOOD_PER_FOREST * 0.7)
 		changed.append(cell)
-	for k in maxi(0, MIN_STONE - counts.stone):
-		if farmland.is_empty():
-			break
-		var cell: Vector2i = farmland.pop_back()
-		map.set_terrain(cell, T.HILL)
-		changed.append(cell)
+	changed.append_array(_ensure_stone(map, rect))
 	return changed
+
+
+## Colline à pierre près du centre de [param rect] : si moins de MIN_STONE
+## collines ou montagnes à STONE_RADIUS tuiles, un bloc de collines sur des
+## terres basses (plaine, prairie, forêt) à cette distance, côté le plus libre.
+static func _ensure_stone(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
+	var center := rect.position + rect.size / 2
+	var near := 0
+	for dy in range(-STONE_RADIUS, STONE_RADIUS + 1):
+		for dx in range(-STONE_RADIUS, STONE_RADIUS + 1):
+			var t := map.get_terrain(center + Vector2i(dx, dy))
+			if t == T.HILL or t == T.MOUNTAIN:
+				near += 1
+	if near >= MIN_STONE:
+		return []
+	var lowland: Array[int] = [T.PLAIN, T.PRAIRIE, T.FOREST]
+	var r := STONE_RADIUS - STONE_BLOCK + 1
+	for origin: Vector2i in [Vector2i(r, -1), Vector2i(-r - 1, -1), Vector2i(-1, r), Vector2i(-1, -r - 1),
+			Vector2i(r, r), Vector2i(-r - 1, -r - 1), Vector2i(r, -r - 1), Vector2i(-r - 1, r)]:
+		var block: Array[Vector2i] = []
+		for y in STONE_BLOCK:
+			for x in STONE_BLOCK:
+				block.append(center + origin + Vector2i(x, y))
+		if block.all(func(c: Vector2i) -> bool: return map.get_terrain(c) in lowland):
+			for c in block:
+				map.set_terrain(c, T.HILL)
+			return block
+	return []
 
 
 ## Nombre de tuiles par catégorie dans [param rect], selon [param terrain_of].

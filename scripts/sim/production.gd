@@ -22,6 +22,13 @@ const REGROWN_WOOD := 60.0
 const IRRIGATION_BONUS := 1.3
 const IRRIGATION_RANGE := 3
 const FRESH_WATER: Array[TerrainDef.Type] = [TerrainDef.Type.RIVER, TerrainDef.Type.LAKE]
+## Inventions du village (recherches) : bonus de rendement.
+const SAW_BONUS := 1.4
+const PLOUGH_HARNESSED_BONUS := 1.3
+const PLOUGH_BONUS := 1.1
+const ROTATION_BONUS := 1.15
+const MILL_BONUS := 1.2
+const GEARS_BONUS := 1.15
 
 
 class Report:
@@ -44,6 +51,10 @@ var produced_today := Stockpile.zeros()
 var _natural_fertility: Dictionary[Vector2i, float] = {}
 var _forest_max: Dictionary[Vector2i, float] = {}
 var _clearcuts: Dictionary[Vector2i, int] = {}
+## Outils en stock (scies, charrues) : sans eux, leurs bonus disparaissent.
+var tools_ok := true
+## Moulins (à grain) en service.
+var mills := 0
 ## Tuiles irrigables déjà calculées (l'eau douce ne bouge pas).
 var _irrigable: Dictionary[Vector2i, bool] = {}
 
@@ -59,7 +70,33 @@ func _init(p_zones: ZoneMap, p_labor: Labor) -> void:
 ## zone [param def] pendant la saison [param season].
 func tile_rate(def: ZoneDef, cell: Vector2i, workers: int, season: int) -> float:
 	return workers * def.base_yield * def.quality_at(map, cell) * def.season_factors[season] \
-		* proximity(cell) * irrigation_factor(def, cell)
+		* proximity(cell) * irrigation_factor(def, cell) * invention_factor(def, cell)
+
+
+func _done(id: StringName) -> bool:
+	return research != null and research.is_done(id)
+
+
+## Bonus des inventions du village pour [param def] sur [param cell] (1 :
+## aucun) : scie (coupe du bois), charrue, assolement et moulin (champs),
+## engrenage (carrières). Scie et charrue demandent des outils en stock.
+func invention_factor(def: ZoneDef, cell: Vector2i) -> float:
+	var factor := 1.0
+	match def.quality:
+		ZoneDef.Quality.FERTILITY:
+			if _done(&"plough") and tools_ok:
+				var harnessed := draft != null and draft.harnessed.has(map.wrap_cell(cell))
+				factor *= PLOUGH_HARNESSED_BONUS if harnessed else PLOUGH_BONUS
+			if _done(&"crop_rotation"):
+				factor *= ROTATION_BONUS
+			if mills > 0:
+				factor *= MILL_BONUS
+		ZoneDef.Quality.WOOD:
+			if _done(&"tools") and tools_ok:
+				factor *= SAW_BONUS
+	if def.output == Stockpile.Good.STONE and _done(&"gears"):
+		factor *= GEARS_BONUS
+	return factor
 
 
 ## Facteur de proximité du village de [param cell] (trajets), meilleur sur
@@ -67,7 +104,7 @@ func tile_rate(def: ZoneDef, cell: Vector2i, workers: int, season: int) -> float
 func proximity(cell: Vector2i) -> float:
 	var d := labor.distance(cell)
 	if draft and draft.harnessed.has(map.wrap_cell(cell)):
-		return DraftAnimals.draft_distance_factor(d)
+		return draft.distance_factor(d)
 	return Labor.distance_factor(d)
 
 
@@ -115,11 +152,24 @@ func step_hour(tick: int, stock: Stockpile) -> Report:
 			continue
 		if def.output == Stockpile.Good.WOOD:
 			qty = _cut(cell, qty, report)
+		elif def.deposit != 0:
+			qty = _mine(cell, qty, report)
 		stock.add(def.output, qty)
 		produced_today[def.output] += qty
 	if not report.cleared.is_empty():
 		zones.clear(report.cleared)
 	return report
+
+
+## Extrait [param qty] du gisement de [param cell] ; épuisé, la tuile perd sa
+## zone. Renvoie la quantité obtenue.
+func _mine(cell: Vector2i, qty: float, report: Report) -> float:
+	var left := map.get_deposit_amount(cell)
+	var got := minf(qty, left)
+	map.set_deposit_amount(cell, left - got)
+	if left - got <= 0.0:
+		report.cleared.append(cell)
+	return got
 
 
 ## Coupe [param qty] de bois sur [param cell] ; renvoie le bois obtenu.
@@ -148,7 +198,8 @@ func end_day(day_tick: int) -> Array[Vector2i]:
 		if def in farm and def.season_factors[season] > 0.0:
 			if not _natural_fertility.has(cell):
 				_natural_fertility[cell] = map.get_fertility(cell)
-			map.set_fertility(cell, map.get_fertility(cell) - FERTILITY_WEAR_PER_DAY)
+			if not _done(&"crop_rotation"):
+				map.set_fertility(cell, map.get_fertility(cell) - FERTILITY_WEAR_PER_DAY)
 	for cell: Vector2i in _natural_fertility.keys():
 		if labor.workers_at.has(cell) and zones.zone_at(cell) in farm:
 			continue

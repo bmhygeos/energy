@@ -51,7 +51,7 @@ nécessite un navigateur avec WebGL 2.
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
-| Nouvelle carte | champ « Graine » + Générer, ou Aléatoire |
+| Nouvelle carte | champ « Graine » + « Carte », ou « Hasard » |
 
 ## État de la v2
 
@@ -139,8 +139,10 @@ météo et interface conservés.
 - **Palier Village** (100 habitants, 80 % de satisfaction) : zones et bâtiments
   du village grisés avant, avec le palier indiqué.
 - **Pierre** (nouvelle marchandise, 300 de capacité) : zone **Carrière** sur
-  collines et montagnes (2 carriers par tuile, 1,5 pierre/j chacun) ; le
-  territoire de départ compte au moins 4 collines.
+  collines et montagnes (2 carriers par tuile, 1,5 pierre/j chacun). Chaque
+  carte place une colline à pierre près du village : au moins 4 tuiles de
+  colline à 4 tuiles du centre au plus (bloc de 2×2 ajouté s'il le faut,
+  laissé libre par les bâtiments de départ).
 - **Pêche** : zone sur rivières, lacs et mer, 2 nourriture/j par pêcheur
   (×0,6 l'hiver).
 - **Eau** : besoin à partir du village ; chaque **puits** (5 bois, 15 pierre)
@@ -166,6 +168,30 @@ météo et interface conservés.
   le voyage.
 - **Puissance** : 700 W par cheval au travail. Panneau Main-d'œuvre : chevaux,
   attelés, en expédition, fourrage.
+
+### V6 (partie 3) : inventions, fer et outils
+- **Prospection** : au passage au village, le territoire est prospecté ; à
+  partir du village, les expéditions prospectent ce qu'elles voient. Chaque
+  gisement n'apparaît qu'à son palier (fer au village, charbon au bourg…).
+- **Mine de fer** : zone sur un gisement de fer prospecté (2 mineurs, 1 fer/j
+  chacun) ; le gisement s'épuise, puis la tuile perd sa zone.
+- **Forge** (recherche Métallurgie du fer) : 2 outils/j, 1 fer et 0,5 bois
+  chacun. Fer (200) et outils (100) au bandeau avec la pierre.
+- **Inventions du village** (atelier ×2) :
+  | Invention | Prérequis | Points | Effet |
+  |---|---|---|---|
+  | Collier d'attelage | — | 1 500 | Chevaux : bât et portée de l'attelage +50 % (pénalité à partir de 18 tuiles) |
+  | Métallurgie du fer | — | 1 500 | Forge |
+  | Outils | Métallurgie | 2 000 | Coupe du bois +40 %, maisons −25 % de bois |
+  | Charrue | Collier, Outils | 2 500 | Agriculture +30 % attelée, +10 % sinon |
+  | Assolement | Charrue | 3 000 | Fertilité stable, agriculture +15 % |
+  | Engrenage | — | 1 500 | Carrières +15 %, puits +15 % |
+  | Moulin à vent | Engrenage | 2 500 | Moulin : agriculture +20 %, gâchis ÷2, ≈ 3 kW selon le vent |
+- **Besoin en outils** : bûcherons (après Outils) et laboureurs (après
+  Charrue) usent 1 outil tous les 60 jours ; sans outils en stock, scie et
+  charrue n'ont plus d'effet et la satisfaction baisse (jusqu'à −15 %).
+- Menu : bâtiments grisés tant que leur recherche manque ; fiche de la tuile :
+  bonus des inventions.
 
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon

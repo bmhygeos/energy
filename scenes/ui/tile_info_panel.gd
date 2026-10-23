@@ -63,7 +63,10 @@ func _refresh() -> void:
 			Stockpile.GOOD_NAMES[zone.output].to_lower(),
 			Format.decimal(GameState.production.tile_rate(zone, cell, 1, season))])
 		if GameState.draft.harnessed.has(map.wrap_cell(cell)):
-			lines.append("Attelage : trajets plus courts (pénalité à partir de %d tuiles)" % DraftAnimals.DRAFT_FREE_DISTANCE)
+			lines.append("Attelage : trajets plus courts (pénalité à partir de %d tuiles)" % GameState.draft.free_distance())
+		var inventions := GameState.production.invention_factor(zone, cell)
+		if not is_equal_approx(inventions, 1.0):
+			lines.append("Inventions : +%d %%" % roundi((inventions - 1.0) * 100.0))
 		if GameState.production.irrigation_factor(zone, cell) > 1.0:
 			lines.append("Irriguée : +%d %%" % roundi((Production.IRRIGATION_BONUS - 1.0) * 100.0))
 	var regrowth := GameState.production.regrowth_days_left(cell)

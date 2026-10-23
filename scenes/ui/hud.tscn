@@ -21,11 +21,11 @@ theme_override_constants/margin_bottom = 6
 
 [node name="Row" type="HBoxContainer" parent="TopBar/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="DateLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 0)
+custom_minimum_size = Vector2(205, 0)
 layout_mode = 2
 text = "Printemps, jour 1, an 1 — 00:00"
 
@@ -123,14 +123,14 @@ unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Générer la carte de cette graine"
 focus_mode = 0
-text = "Générer"
+text = "Carte"
 
 [node name="RandomButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Nouvelle carte aléatoire"
 focus_mode = 0
-text = "Aléatoire"
+text = "Hasard"
 
 [node name="Speed" type="HBoxContainer" parent="TopBar/Margin/Row"]
 layout_mode = 2

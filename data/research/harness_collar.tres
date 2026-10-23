@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"harness_collar"
+display_name = "Collier d'attelage"
+description = "Un collier rembourré qui prend appui sur les épaules du cheval au lieu de l'étrangler."
+tier = 2
+cost = 1500.0
+prerequisites = Array[StringName]([])
+effect = "Chevaux : vivres portés et portée de l'attelage +50 % (pénalité de distance à partir de 18 tuiles)."

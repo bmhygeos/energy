@@ -5,6 +5,14 @@ extends Node
 const PLANET_SIZE := Vector2i(1024, 512)
 ## Palier à partir duquel les habitants ont besoin d'eau (puits).
 const WATER_TIER := 2
+## Forge : fer et bois par outil fabriqué.
+const FORGE_IRON_PER_TOOL := 1.0
+const FORGE_WOOD_PER_TOOL := 0.5
+## Durée de vie d'un outil (scie, charrue) en jours de travail d'un habitant.
+const TOOL_LIFE_DAYS := 60.0
+## Outils : maisons moins chères en bois ; engrenage : puits plus efficaces.
+const TOOLS_HOUSE_WOOD := 0.75
+const GEARS_WATER_BONUS := 1.15
 
 var world_map: WorldMap
 ## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
@@ -102,8 +110,10 @@ func _found_village() -> void:
 	for def in defs:
 		for spot in spots:
 			var placement := buildings.check_placement(def, spot)
-			# Sans défricher : la forêt du départ reste à couper.
-			if placement.is_valid() and placement.cleared.is_empty():
+			# Sans défricher (la forêt du départ reste à couper) ni prendre la
+			# colline des futures carrières.
+			if placement.is_valid() and placement.cleared.is_empty() and not placement.cells.any(
+					func(c: Vector2i) -> bool: return world_map.get_terrain(c) in [TerrainDef.Type.HILL, TerrainDef.Type.MOUNTAIN]):
 				var b := buildings.place(placement)
 				b.build_progress = def.build_hours
 				b.status = Building.Status.RUNNING
@@ -128,7 +138,9 @@ func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Pla
 	var placement := buildings.check_placement(def, anchor)
 	if placement.is_valid() and def.tier > tier.level:
 		placement.error = "Disponible au palier %s" % CityTier.NAMES[def.tier - 1]
-	var costs := def.costs()
+	if placement.is_valid() and def.research and not research.is_done(def.research):
+		placement.error = "Recherche requise : %s" % ResearchDb.get_def(def.research).display_name
+	var costs := costs_of(def)
 	for good in costs.size():
 		if placement.is_valid() and not stockpile.has(good, costs[good]):
 			placement.error = "%s insuffisant%s (%d requis)" % [Stockpile.GOOD_NAMES[good],
@@ -140,6 +152,14 @@ func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Pla
 				placement.error = "Zone présente (%s) : effacez-la d'abord" % zone.display_name
 				break
 	return placement
+
+
+## Coût de [param def] avec les inventions (outils : maisons −25 % de bois).
+func costs_of(def: BuildingDef) -> PackedFloat32Array:
+	var values := def.costs()
+	if def.category == BuildingDef.Category.HOUSING and research and research.is_done(&"tools"):
+		values[Stockpile.Good.WOOD] = ceilf(values[Stockpile.Good.WOOD] * TOOLS_HOUSE_WOOD)
+	return values
 
 
 ## Aperçu de la peinture de [param def] (null : effacement) entre deux tuiles.
@@ -188,7 +208,7 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 	if not placement.is_valid():
 		EventBus.notified.emit(placement.error)
 		return null
-	var costs := def.costs()
+	var costs := costs_of(def)
 	for good in costs.size():
 		stockpile.take(good, costs[good])
 	var b := buildings.place(placement)
@@ -225,6 +245,15 @@ func _refresh_capacities() -> void:
 			capacity[Stockpile.Good.WOOD] += b.def.wood_capacity
 	stockpile.capacity = capacity
 	draft.capacity = horse_capacity
+	if research.is_done(&"gears"):
+		water_supply = roundi(water_supply * GEARS_WATER_BONUS)
+	var mills := 0
+	for b in buildings.all():
+		if b.is_complete() and b.def.grinds_grain:
+			mills += 1
+	production.mills = mills
+	stockpile.spoilage_factor = 0.5 if mills > 0 else 1.0
+	draft.collar = research.is_done(&"harness_collar")
 
 
 ## Part des habitants approvisionnés en eau : besoin à partir du village
@@ -272,12 +301,12 @@ func launch_expedition(target: Vector2i, members: int, days: float, horses := 0)
 
 
 ## Jours de vivres que portent [param members] explorateurs et
-## [param horses] chevaux de bât (chacun porte DraftAnimals.PACK_FACTOR fois
+## [param horses] chevaux de bât (chacun porte DraftAnimals.pack_factor() fois
 ## la charge d'un explorateur).
 func max_expedition_days(members: int, horses: int) -> float:
 	if members <= 0:
 		return 0.0
-	return exploration.max_days() * (members + DraftAnimals.PACK_FACTOR * horses) / members
+	return exploration.max_days() * (members + draft.pack_factor() * horses) / members
 
 
 ## Ce qui empêche une expédition de [param members] explorateurs et
@@ -307,6 +336,8 @@ func _step_expeditions() -> void:
 	if not report.revealed.is_empty():
 		EventBus.tiles_changed.emit(report.revealed)
 		EventBus.territory_changed.emit()
+	if not report.prospected.is_empty():
+		EventBus.tiles_changed.emit(report.prospected)
 	for e in report.turned:
 		EventBus.notified.emit("L'expédition fait demi-tour : %s" % Exploration.REASON_TEXTS[e.reason])
 	for e in report.returned:
@@ -317,6 +348,71 @@ func _step_expeditions() -> void:
 	if not report.returned.is_empty():
 		_update_labor()
 	EventBus.expeditions_changed.emit()
+
+
+## Nouveau palier : les habitants prospectent leur territoire (gisements du
+## palier visibles).
+func _prospect_territory() -> void:
+	var cells := territory.territory_cells()
+	territory.prospect(cells)
+	var shown: Array[Vector2i] = []
+	for c in cells:
+		shown.append(display_cell(c))
+	EventBus.tiles_changed.emit(shown)
+
+
+## Forges : fer et bois du jour transformés en outils, dans la limite du stock.
+func _run_forges() -> void:
+	var rate := 0.0
+	for b in buildings.all():
+		if b.is_complete():
+			rate += b.def.tools_per_day
+	var room := stockpile.capacity[Stockpile.Good.TOOLS] - stockpile.amount[Stockpile.Good.TOOLS]
+	var n := minf(minf(rate, room), minf(stockpile.amount[Stockpile.Good.IRON] / FORGE_IRON_PER_TOOL,
+		stockpile.amount[Stockpile.Good.WOOD] / FORGE_WOOD_PER_TOOL))
+	if n <= 0.0:
+		return
+	stockpile.take(Stockpile.Good.IRON, n * FORGE_IRON_PER_TOOL)
+	stockpile.take(Stockpile.Good.WOOD, n * FORGE_WOOD_PER_TOOL)
+	stockpile.add(Stockpile.Good.TOOLS, n)
+	production.produced_today[Stockpile.Good.TOOLS] += n
+
+
+## Habitants qui usent des outils : bûcherons (scies, recherche Outils) et
+## laboureurs (charrues, recherche Charrue).
+func tool_users() -> int:
+	var users := 0
+	if research.is_done(&"tools"):
+		users += labor.assigned[ZoneDb.get_def(&"forestry")]
+	if research.is_done(&"plough"):
+		users += labor.assigned[ZoneDb.get_def(&"agriculture")]
+	return users
+
+
+## Outils usés par jour.
+func tools_need() -> float:
+	return tool_users() / TOOL_LIFE_DAYS
+
+
+## Usure du jour : prend les outils au stock ; renvoie la part obtenue (1 sans
+## besoin). Sans outils, les bonus de la scie et de la charrue disparaissent.
+func _wear_tools() -> float:
+	var need := tools_need()
+	if need <= 0.0:
+		production.tools_ok = true
+		return 1.0
+	var got := stockpile.take(Stockpile.Good.TOOLS, need)
+	production.tools_ok = got >= need * 0.999
+	return got / need
+
+
+## Puissance mécanique des moulins à vent le jour de [param tick] (selon le vent).
+func _mill_watts(tick: int) -> float:
+	var watts := 0.0
+	for b in buildings.all():
+		if b.is_complete():
+			watts += b.def.mechanical_watts
+	return watts * weather.wind_at(tick)
 
 
 ## Somme des qualités des tuiles de pâturage (troupeaux, élevage des chevaux).
@@ -472,21 +568,27 @@ func _on_day(day: int) -> void:
 	var coverage := PackedFloat32Array()
 	for good in _needed_today.size():
 		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)
+	_run_forges()
+	var tools := _wear_tools()
 	var before := population.count
 	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing,
-		water_coverage())
+		water_coverage(), tools)
 	_announce_population(before, change, coverage)
 	if tier.update(population.count, population.satisfaction):
 		exploration.tier = tier.level
+		territory.tier = tier.level
+		_prospect_territory()
 		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
 		EventBus.tier_changed.emit()
 	var finished := research.add_points(research_per_day())
 	if finished:
 		EventBus.notified.emit("Recherche terminée : %s" % finished.display_name)
+		_refresh_capacities()
 	EventBus.research_changed.emit()
 	draft.breed(_pasture_quality())
 	draft.end_day(coverage[Stockpile.Good.FOOD])
-	power.push_day(production.produced_today, draft.working() * DraftAnimals.WORK_WATTS)
+	power.push_day(production.produced_today, PackedFloat32Array([draft.working() * DraftAnimals.WORK_WATTS,
+		_mill_watts(day_tick)]))
 	stats.add(&"food_produced", production.produced_today[Stockpile.Good.FOOD])
 	stats.add(&"wood_produced", production.produced_today[Stockpile.Good.WOOD])
 	stats.add(&"food_lost", stockpile.lost_today[Stockpile.Good.FOOD])

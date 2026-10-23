@@ -91,6 +91,7 @@ func _build_list() -> void:
 	_list.add_child(HSeparator.new())
 	_demolish_button = _tool_button("Démolir (X)")
 	EventBus.tier_changed.connect(_refresh_tier_locks)
+	EventBus.research_changed.connect(_refresh_tier_locks)
 	EventBus.game_started.connect(func(_s: int) -> void: _refresh_tier_locks())
 	_refresh_tier_locks.call_deferred()
 	_demolish_button.tooltip_text = "Démolit un bâtiment ou annule un chantier."
@@ -98,24 +99,30 @@ func _build_list() -> void:
 		_select_tool(_demolish_button, BuildTool.Mode.DEMOLISH, null))
 
 
-## Zones et bâtiments d'un palier pas encore atteint : grisés, palier
-## indiqué ; vivres des expéditions selon le palier.
+## Zones et bâtiments d'un palier pas encore atteint ou d'une recherche pas
+## encore faite : grisés, palier ou recherche indiqués ; coûts (inventions) ;
+## vivres des expéditions selon le palier.
 func _refresh_tier_locks() -> void:
 	var level := GameState.tier.level if GameState.tier else 1
 	for d: ZoneDef in _zone_buttons:
-		_lock(_zone_buttons[d], d.tier, level)
+		_lock(_zone_buttons[d], d.display_name, d.tier, level)
 	for d: BuildingDef in _build_buttons:
-		_lock(_build_buttons[d], d.tier, level)
+		var label := "%s   %s" % [d.display_name, d.describe_cost(GameState.costs_of(d))]
+		var missing := d.research and not GameState.research.is_done(d.research)
+		if missing and d.tier <= level:
+			_build_buttons[d].disabled = true
+			_build_buttons[d].text = "%s   (%s)" % [label, ResearchDb.get_def(d.research).display_name]
+		else:
+			_lock(_build_buttons[d], label, d.tier, level)
 	if _days:
 		_update_days_limit()
 		_horses_row.visible = level >= 2
 
 
-func _lock(button: Button, needed: int, level: int) -> void:
+func _lock(button: Button, label: String, needed: int, level: int) -> void:
 	var locked := needed > level
 	button.disabled = locked
-	var suffix := "   (%s)" % CityTier.NAMES[needed - 1]
-	button.text = button.text.trim_suffix(suffix) + (suffix if locked else "")
+	button.text = label + ("   (%s)" % CityTier.NAMES[needed - 1] if locked else "")
 
 
 ## Section « Territoire » : expédition (effectif, jours de vivres, état de
@@ -259,6 +266,8 @@ func _tooltip(def: BuildingDef) -> String:
 	lines.append("Coût : %s" % def.describe_cost())
 	if def.tier > 1:
 		lines.append("Palier : %s" % CityTier.NAMES[def.tier - 1])
+	if def.research:
+		lines.append("Recherche : %s" % ResearchDb.get_def(def.research).display_name)
 	lines.append("Chantier : %s" % Format.duration_hours(def.build_hours))
 	var effects := def.describe_effects()
 	if not effects.is_empty():
@@ -294,7 +303,7 @@ func _refresh_hint() -> void:
 	var text := ""
 	match _mode:
 		BuildTool.Mode.BUILD:
-			text = "[b]%s[/b] — %s · chantier %s" % [_def.display_name, _def.describe_cost(),
+			text = "[b]%s[/b] — %s · chantier %s" % [_def.display_name, _def.describe_cost(GameState.costs_of(_def)),
 				Format.duration_hours(_def.build_hours)]
 			if _placement == null:
 				text += "\nPlacez le bâtiment sur la carte · Échap : annuler"

@@ -16,6 +16,8 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var player_buildable := true
 ## Palier de la ville à partir duquel il se construit (1 : hameau).
 @export_range(1, 5) var tier := 1
+## Recherche à terminer avant de le construire (vide : aucune).
+@export var research: StringName
 ## Emprise en tuiles (x, y) ; ancrée sur la tuile avant-bas (x et y maximaux).
 @export var size := Vector2i.ONE
 
@@ -32,6 +34,13 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Capacité de stockage ajoutée (grenier, réserve de bois).
 @export var food_capacity := 0.0
 @export var wood_capacity := 0.0
+## Forge : outils fabriqués par jour (FORGE_IRON_PER_TOOL fer et
+## FORGE_WOOD_PER_TOOL bois chacun).
+@export var tools_per_day := 0.0
+## Moulin : moud le grain (agriculture, gâchis) ; puissance mécanique moyenne
+## à vent normal (W).
+@export var grinds_grain := false
+@export var mechanical_watts := 0.0
 ## Places pour les chevaux (écurie).
 @export var horse_capacity := 0
 ## Habitants approvisionnés en eau (puits).
@@ -78,10 +87,12 @@ func costs() -> PackedFloat32Array:
 	return values
 
 
-## Coût lisible (« 15 bois, 20 pierre » ; « gratuit »).
-func describe_cost() -> String:
+## Coût lisible (« 15 bois, 20 pierre » ; « gratuit ») de [param values]
+## (par défaut, le coût de base).
+func describe_cost(values: PackedFloat32Array = PackedFloat32Array()) -> String:
 	var parts := PackedStringArray()
-	var values := costs()
+	if values.is_empty():
+		values = costs()
 	for good in values.size():
 		if values[good] > 0.0:
 			parts.append("%d %s" % [roundi(values[good]), Stockpile.GOOD_NAMES[good].to_lower()])
@@ -97,6 +108,10 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Stocke %d de nourriture" % roundi(food_capacity))
 	if wood_capacity > 0.0:
 		lines.append("Stocke %d de bois" % roundi(wood_capacity))
+	if tools_per_day > 0.0:
+		lines.append("Fabrique %s outils par jour (fer et bois)" % Format.decimal(tools_per_day))
+	if grinds_grain:
+		lines.append("Moud le grain : agriculture +20 %, gâchis de la nourriture moitié moindre")
 	if horse_capacity > 0:
 		lines.append("Loge %d chevaux" % horse_capacity)
 	if water_supply > 0:

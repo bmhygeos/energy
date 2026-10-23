@@ -4,6 +4,13 @@ extends RefCounted
 
 const DEFS: Array[ResearchDef] = [
 	preload("res://data/research/irrigation.tres"),
+	preload("res://data/research/harness_collar.tres"),
+	preload("res://data/research/iron_metallurgy.tres"),
+	preload("res://data/research/tools.tres"),
+	preload("res://data/research/plough.tres"),
+	preload("res://data/research/crop_rotation.tres"),
+	preload("res://data/research/gears.tres"),
+	preload("res://data/research/windmill.tres"),
 ]
 
 

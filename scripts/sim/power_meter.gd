@@ -8,18 +8,23 @@ extends RefCounted
 const WINDOW_DAYS := 30
 const SECONDS_PER_DAY := 86400.0
 
-## Puissance moyenne de chaque jour clos, par marchandise puis travail des
-## chevaux (dernière valeur, indice Stockpile.COUNT) (W).
+## Sources mécaniques, après les marchandises (indices Stockpile.COUNT + k).
+const EXTRA_NAMES: PackedStringArray = ["Chevaux au travail", "Moulins à vent"]
+
+## Puissance moyenne de chaque jour clos, par marchandise puis par source
+## mécanique (EXTRA_NAMES) (W).
 var _days: Array[PackedFloat32Array] = []
 
 
 ## Enregistre la production d'un jour clos (unités par marchandise) et la
-## puissance du travail animal [param animal_watts] (W).
-func push_day(produced: PackedFloat32Array, animal_watts := 0.0) -> void:
+## puissance des sources mécaniques [param extra] (W, dans l'ordre de
+## EXTRA_NAMES ; absentes : 0).
+func push_day(produced: PackedFloat32Array, extra: PackedFloat32Array = PackedFloat32Array()) -> void:
 	var watts := PackedFloat32Array()
 	for good in produced.size():
 		watts.append(produced[good] * Stockpile.ENERGY_MJ[good] * 1e6 / SECONDS_PER_DAY)
-	watts.append(animal_watts)
+	for k in EXTRA_NAMES.size():
+		watts.append(extra[k] if k < extra.size() else 0.0)
 	_days.append(watts)
 	if _days.size() > WINDOW_DAYS:
 		_days.pop_front()

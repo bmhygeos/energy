@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"forge"
+display_name = "Forge"
+description = "Le forgeron transforme le fer en scies et en socs de charrue."
+category = 2
+tier = 2
+research = &"iron_metallurgy"
+build_hours = 48
+wood_cost = 20
+stone_cost = 20
+tools_per_day = 2.0
+color = Color(0.45, 0.4, 0.38, 1)
+roof_color = Color(0.3, 0.25, 0.22, 1)
+height = 14.0

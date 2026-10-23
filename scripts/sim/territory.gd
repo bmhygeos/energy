@@ -10,6 +10,10 @@ const STATE_NAMES: PackedStringArray = ["Inconnue", "Explorée", "Territoire"]
 ## Bits d'un octet : état (2 bits) et gisement prospecté.
 const STATE_MASK := 3
 const PROSPECTED_BIT := 4
+## Palier à partir duquel chaque gisement (WorldMap.Deposit) se prospecte :
+## fer au village, charbon au bourg, pétrole et cuivre à la ville, uranium et
+## lithium à la cité-État.
+const DEPOSIT_TIER: PackedInt32Array = [0, 3, 2, 4, 4, 5, 5]
 ## Annexion (gratuite) : surface du territoire permise par habitant.
 const TILES_PER_INHABITANT := 8
 
@@ -21,6 +25,8 @@ class AnnexPlan:
 	var error := ""
 
 var map: WorldMap
+## Palier de la ville : seuls les gisements de ce palier ou d'avant sont vus.
+var tier := 1
 var _blocks: Dictionary[Vector2i, PackedByteArray] = {}
 
 
@@ -114,9 +120,13 @@ func is_prospected(cell: Vector2i) -> bool:
 	return map.has_cell(cell) and _byte(cell) & PROSPECTED_BIT != 0
 
 
-## Gisement connu du joueur (NONE tant que la tuile n'est pas prospectée).
+## Gisement connu du joueur : tuile prospectée et gisement de son palier
+## (NONE sinon).
 func known_deposit(cell: Vector2i) -> int:
-	return map.get_deposit(cell) if is_prospected(cell) else WorldMap.Deposit.NONE
+	if not is_prospected(cell):
+		return WorldMap.Deposit.NONE
+	var kind := map.get_deposit(cell)
+	return kind if DEPOSIT_TIER[kind] <= tier else WorldMap.Deposit.NONE
 
 
 ## Tuiles connues (abscisses ramenées sur la planète).

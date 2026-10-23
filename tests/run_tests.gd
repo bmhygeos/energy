@@ -31,6 +31,7 @@ func _init() -> void:
 	_test_research()
 	_test_village()
 	_test_draft_animals()
+	_test_inventions()
 	_test_production()
 	_test_forest_cycle()
 	_test_irrigation()
@@ -226,16 +227,23 @@ func _test_start_site() -> void:
 			"graine %d : latitude tempérée (%.0f°)" % [seed_value, lat])
 		var changed := StartSite.ensure(map, rect)
 		var counts := StartSite._counts(rect, func(c: Vector2i) -> int: return map.get_terrain(c))
+		var near := StartSite._counts(Rect2i(home - Vector2i.ONE * StartSite.STONE_RADIUS, Vector2i.ONE * (2 * StartSite.STONE_RADIUS + 1)),
+			func(c: Vector2i) -> int: return map.get_terrain(c))
 		_check(counts.forest >= StartSite.MIN_FOREST and counts.water >= StartSite.MIN_WATER
-			and counts.stone >= StartSite.MIN_STONE and counts.farmland > 0,
-			"graine %d : forêt, plaine, eau et collines %s (%d retouches)" % [seed_value, counts, changed.size()])
+			and near.stone >= StartSite.MIN_STONE and counts.farmland > 0,
+			"graine %d : forêt, plaine, eau, et collines à %d tuiles du centre %s (%d retouches)" % [
+				seed_value, StartSite.STONE_RADIUS, counts, changed.size()])
 	var flat := WorldMap.new(Vector2i(64, 64), 0, FlatGenerator.new(Vector2i(64, 64)))
 	var rect := StartSite.territory_rect(Vector2i(20, 20))
 	var changed := StartSite.ensure(flat, rect)
 	var counts := StartSite._counts(rect, func(c: Vector2i) -> int: return flat.get_terrain(c))
-	_check(changed.size() == StartSite.MIN_FOREST + StartSite.MIN_STONE + 1 and counts.water == 1
+	var hills := changed.filter(func(c: Vector2i) -> bool: return flat.get_terrain(c) == TerrainDef.Type.HILL)
+	_check(changed.size() == StartSite.MIN_FOREST + StartSite.STONE_BLOCK * StartSite.STONE_BLOCK + 1 and counts.water == 1
 		and counts.forest == StartSite.MIN_FOREST and counts.stone == StartSite.MIN_STONE,
 		"plaine nue : forêt, lac et collines ajoutés %s" % counts)
+	_check(hills.size() == 4 and hills.all(func(c: Vector2i) -> bool:
+		return maxi(absi(c.x - 20), absi(c.y - 20)) <= StartSite.STONE_RADIUS and maxi(absi(c.x - 20), absi(c.y - 20)) >= 3),
+		"colline à pierre à 3–4 tuiles du centre %s" % [hills])
 
 
 func _test_territory() -> void:
@@ -258,8 +266,10 @@ func _test_territory() -> void:
 	chunk.deposit_amount[map._local(a)] = 5000.0
 	_check(territory.known_deposit(a) == WorldMap.Deposit.NONE, "gisement caché avant prospection")
 	territory.prospect([a, Vector2i(30, 30)] as Array[Vector2i])
+	_check(territory.known_deposit(a) == WorldMap.Deposit.NONE, "fer prospecté mais caché avant le village")
+	territory.tier = 2
 	_check(territory.known_deposit(a) == WorldMap.Deposit.IRON and territory.is_territory(a),
-		"gisement révélé par la prospection, état conservé")
+		"gisement révélé par la prospection au village, état conservé")
 	_check(not territory.is_prospected(Vector2i(30, 30)), "pas de prospection d'une tuile inconnue")
 
 
@@ -635,7 +645,7 @@ func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
 	stock.amount = Stockpile.zeros()
-	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -763,6 +773,76 @@ func _test_draft_animals() -> void:
 	prod.draft.harnessed[far] = true
 	_check(is_equal_approx(prod.tile_rate(farm, far, 2, 1), plain / Labor.distance_factor(14) * DraftAnimals.draft_distance_factor(14)),
 		"tuile attelée : plus productive")
+
+
+func _test_inventions() -> void:
+	# Arbre du village.
+	var tier2 := ResearchDb.DEFS.filter(func(d: ResearchDef) -> bool: return d.tier == 2)
+	_check(tier2.size() == 7, "7 inventions au village (%d)" % tier2.size())
+	var plough_pre: Array[StringName] = [&"harness_collar", &"tools"]
+	var rotation_pre: Array[StringName] = [&"plough"]
+	var windmill_pre: Array[StringName] = [&"gears"]
+	_check(ResearchDb.get_def(&"plough").prerequisites == plough_pre
+		and ResearchDb.get_def(&"crop_rotation").prerequisites == rotation_pre
+		and ResearchDb.get_def(&"windmill").prerequisites == windmill_pre, "prérequis : charrue, assolement, moulin")
+	var ok := true
+	for def in ResearchDb.DEFS:
+		for id in def.prerequisites:
+			ok = ok and ResearchDb.get_def(id) != null and ResearchDb.get_def(id).tier <= def.tier
+	_check(ok, "prérequis existants et pas d'un palier plus haut")
+	_check(BuildingDb.get_def(&"forge").research == &"iron_metallurgy" and BuildingDb.get_def(&"windmill").research == &"windmill",
+		"forge et moulin réservés à leur recherche")
+	# Effets sur la production.
+	var setup := _labor_setup()
+	var prod := Production.new(setup[0], setup[1])
+	prod.research = Research.new()
+	var farm := ZoneDb.get_def(&"agriculture")
+	var forestry := ZoneDb.get_def(&"forestry")
+	var quarry := ZoneDb.get_def(&"quarry")
+	var cell := Vector2i(3, 3)
+	_check(prod.invention_factor(farm, cell) == 1.0 and prod.invention_factor(forestry, cell) == 1.0, "sans invention : pas de bonus")
+	for id in [&"tools", &"plough", &"crop_rotation", &"gears"]:
+		prod.research._done[id] = true
+	_check(is_equal_approx(prod.invention_factor(forestry, cell), Production.SAW_BONUS), "scie : bois +40 %%")
+	_check(is_equal_approx(prod.invention_factor(farm, cell), Production.PLOUGH_BONUS * Production.ROTATION_BONUS),
+		"charrue sans attelage +10 %%, assolement +15 %%")
+	prod.draft = DraftAnimals.new()
+	prod.draft.harnessed[cell] = true
+	prod.mills = 1
+	_check(is_equal_approx(prod.invention_factor(farm, cell), Production.PLOUGH_HARNESSED_BONUS * Production.ROTATION_BONUS * Production.MILL_BONUS),
+		"charrue attelée +30 %%, moulin +20 %%")
+	_check(is_equal_approx(prod.invention_factor(quarry, cell), Production.GEARS_BONUS), "engrenage : carrière +15 %%")
+	prod.tools_ok = false
+	_check(is_equal_approx(prod.invention_factor(forestry, cell), 1.0)
+		and is_equal_approx(prod.invention_factor(farm, cell), Production.ROTATION_BONUS * Production.MILL_BONUS),
+		"sans outils en stock : ni scie ni charrue")
+	# Collier : charge et portée +50 %.
+	var draft := DraftAnimals.new()
+	_check(draft.free_distance() == 12 and is_equal_approx(draft.pack_factor(), 4.0), "attelage sans collier")
+	draft.collar = true
+	_check(draft.free_distance() == 18 and is_equal_approx(draft.pack_factor(), 6.0), "collier : portée 18 tuiles, bât ×6")
+	# Outils : satisfaction réduite sans eux.
+	var pop := Population.new()
+	pop.end_day(1.0, 1.0, 100, 1.0, 0.0)
+	_check(is_equal_approx(pop.satisfaction, 1.0 - Population.TOOLS_WEIGHT), "sans outils : satisfaction −15 %%")
+	# Mine de fer : gisement prospecté, épuisement.
+	var flat := _flat_map()
+	var map: WorldMap = flat[0]
+	var territory: Territory = flat[1]
+	var zones := ZoneMap.new(map, territory, BuildingRegistry.new(map, territory))
+	var mine := ZoneDb.get_def(&"iron_mine")
+	var ore := Vector2i(2, 2)
+	map._chunk(ore).deposit[map._local(ore)] = WorldMap.Deposit.IRON
+	map._chunk(ore).deposit_amount[map._local(ore)] = 1.0
+	territory.prospect([ore] as Array[Vector2i])
+	_check(not zones.check_cell(mine, ore).is_empty(), "fer caché au hameau : pas de mine")
+	territory.tier = 2
+	_check(zones.check_cell(mine, ore).is_empty() and not zones.check_cell(mine, Vector2i(3, 3)).is_empty(),
+		"mine sur un gisement de fer prospecté seulement")
+	_check(Territory.DEPOSIT_TIER[WorldMap.Deposit.COAL] == 3 and territory.known_deposit(ore) == WorldMap.Deposit.IRON,
+		"le charbon attend le bourg")
+	map.set_deposit_amount(ore, 0.0)
+	_check(map.get_deposit(ore) == WorldMap.Deposit.NONE, "gisement épuisé")
 
 
 func _test_city_tier() -> void:

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"crop_rotation"
+display_name = "Assolement"
+description = "Rotation des cultures : céréales, légumineuses et repos se succèdent."
+tier = 2
+cost = 3000.0
+prerequisites = Array[StringName]([&"plough"])
+effect = "La fertilité des champs ne baisse plus ; agriculture +15 %."

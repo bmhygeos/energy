@@ -21,6 +21,8 @@ const FOOD_WEIGHT := 0.7
 ## Eau (à partir du village, puits) : satisfaction réduite jusqu'à cette part
 ## quand elle manque tout à fait.
 const WATER_WEIGHT := 0.3
+## Outils (scies, charrues) : satisfaction réduite jusqu'à cette part sans eux.
+const TOOLS_WEIGHT := 0.15
 ## Croissance par jour (part de la population) à pleine satisfaction.
 const GROWTH_PER_DAY := 0.006
 ## Sous ce seuil de satisfaction, des habitants partent (jusqu'à
@@ -40,6 +42,7 @@ var satisfaction := 1.0
 var food_coverage := 1.0
 var wood_coverage := 1.0
 var water_coverage := 1.0
+var tools_coverage := 1.0
 var _history: Array[float] = []
 ## Fraction d'habitant accumulée (naissances, départs).
 var _change := 0.0
@@ -62,12 +65,14 @@ func wood_need(season: int) -> float:
 
 ## Clôt la journée avec la couverture des besoins (0–1 ; l'eau, à partir du
 ## village) et les logements ; renvoie la variation du nombre d'habitants.
-func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int, p_water_coverage := 1.0) -> int:
+func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int, p_water_coverage := 1.0,
+		p_tools_coverage := 1.0) -> int:
 	food_coverage = clampf(p_food_coverage, 0.0, 1.0)
 	wood_coverage = clampf(p_wood_coverage, 0.0, 1.0)
 	water_coverage = clampf(p_water_coverage, 0.0, 1.0)
+	tools_coverage = clampf(p_tools_coverage, 0.0, 1.0)
 	_history.append((FOOD_WEIGHT * food_coverage + (1.0 - FOOD_WEIGHT) * wood_coverage)
-		* (1.0 - WATER_WEIGHT * (1.0 - water_coverage)))
+		* (1.0 - WATER_WEIGHT * (1.0 - water_coverage)) * (1.0 - TOOLS_WEIGHT * (1.0 - tools_coverage)))
 	if _history.size() > SATISFACTION_DAYS:
 		_history.pop_front()
 	var total := 0.0

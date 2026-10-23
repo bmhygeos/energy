@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"gears"
+display_name = "Engrenage"
+description = "Roues dentées et treuils transmettent l'effort."
+tier = 2
+cost = 1500.0
+prerequisites = Array[StringName]([])
+effect = "Carrières +15 %, puits +15 % d'habitants servis ; prérequis du moulin à vent."

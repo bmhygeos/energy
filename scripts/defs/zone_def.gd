@@ -21,6 +21,8 @@ enum Quality { FERTILITY, PASTURE, WOOD, UNIFORM }
 @export_range(1, 5) var tier := 1
 ## Places de travail par tuile (section 6 du plan).
 @export var workers_per_tile := 1
+## Gisement exigé (WorldMap.Deposit, prospecté ; 0 : aucun) ; il s'épuise.
+@export var deposit := 0
 ## Ce qui fait une bonne tuile pour cette zone.
 @export var quality: Quality = Quality.FERTILITY
 @export_group("Production")

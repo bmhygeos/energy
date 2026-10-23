@@ -207,12 +207,24 @@ rivière ou un lac pour en profiter.
 
 ### Palier 2 : pierre, eau et pêche (réalisé en V6, partie 1)
 - **Pierre** : matériau de construction (maisons en pierre, puits, atelier),
-  extrait par la zone Carrière sur collines et montagnes ; le territoire de
-  départ compte au moins 4 collines.
+  extrait par la zone Carrière sur collines et montagnes ; chaque carte place
+  une colline à pierre (au moins 4 tuiles) à 4 tuiles du centre du village au
+  plus.
 - **Eau** : chaque puits sert un nombre d'habitants (30) ; sans eau, la
   satisfaction baisse (jusqu'à −30 %) et la croissance s'arrête.
 - **Pêche** : zone sur rivières, lacs et côte, nourriture toute l'année.
 - **Atelier** : recherche ×2 pour 100 habitants.
+
+### Palier 2 : inventions, fer et outils (réalisé en V6, partie 3)
+- **Prospection** : le territoire est prospecté au passage d'un palier ; les
+  expéditions prospectent ce qu'elles voient à partir du village. Un gisement
+  n'apparaît qu'à son palier.
+- **Mine de fer** (zone sur gisement prospecté, qui s'épuise) et **forge**
+  (fer et bois → outils, après la métallurgie du fer).
+- **Outils** : 1 par bûcheron ou laboureur équipé tous les 60 jours ; sans
+  outils, scie et charrue sans effet et satisfaction réduite (−15 % au plus).
+- Coûts des inventions : 1 500 à 3 000 points (une dizaine de jours chacune
+  pour un village de 100 habitants avec un atelier).
 
 ### Palier 2 : hippotraction et inventions
 **Hippotraction** (réalisée en V6, partie 2) : l'**écurie** (bois, pierre)

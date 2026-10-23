@@ -22,6 +22,8 @@ const DRAFT_PENALTY := 0.015
 const PACK_FACTOR := 4.0
 ## Puissance d'un cheval au travail (compteur de puissance).
 const WORK_WATTS := 700.0
+## Collier d'attelage (recherche) : charge et portée multipliées.
+const COLLAR_BONUS := 1.5
 
 ## Chevaux (fractionnaire : les poulains grandissent peu à peu).
 var horses := 0.0
@@ -31,6 +33,8 @@ var capacity := 0
 var away := 0
 ## Tuiles (ramenées sur la planète) desservies par un attelage.
 var harnessed: Dictionary[Vector2i, bool] = {}
+## Collier d'attelage recherché.
+var collar := false
 
 
 func count() -> int:
@@ -84,6 +88,20 @@ func working() -> int:
 	return harnessed.size()
 
 
+## Vivres portés par un cheval de bât, en multiple de ceux d'un explorateur.
+func pack_factor() -> float:
+	return PACK_FACTOR * (COLLAR_BONUS if collar else 1.0)
+
+
+## Distance sans pénalité d'une tuile attelée.
+func free_distance() -> int:
+	return roundi(DRAFT_FREE_DISTANCE * (COLLAR_BONUS if collar else 1.0))
+
+
 ## Facteur de proximité d'une tuile desservie par un attelage.
-static func draft_distance_factor(tiles: int) -> float:
-	return clampf(1.0 - DRAFT_PENALTY * maxi(0, tiles - DRAFT_FREE_DISTANCE), 0.0, 1.0)
+func distance_factor(tiles: int) -> float:
+	return draft_distance_factor(tiles, free_distance())
+
+
+static func draft_distance_factor(tiles: int, free := DRAFT_FREE_DISTANCE) -> float:
+	return clampf(1.0 - DRAFT_PENALTY * maxi(0, tiles - free), 0.0, 1.0)

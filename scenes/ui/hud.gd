@@ -188,12 +188,20 @@ func _refresh_stone() -> void:
 	var good := Stockpile.Good.STONE
 	_stone_label.visible = GameState.tier.level >= 2 or stock.amount[good] > 0.0
 	_stone_label.text = "Pierre %d" % roundi(stock.amount[good])
+	var tools := Stockpile.Good.TOOLS
+	var iron := Stockpile.Good.IRON
+	if stock.amount[tools] > 0.0 or GameState.tools_need() > 0.0:
+		_stone_label.text += " · Outils %d" % roundi(stock.amount[tools])
+	_stone_label.add_theme_color_override("font_color", WARNING_COLOR if not GameState.production.tools_ok else Color.WHITE)
 	var expected := 0.0
 	for def in ZoneDb.DEFS:
 		if def.output == good:
 			expected += GameState.production.expected_per_day(def, GameDate.season(GameClock.tick))
-	_stone_label.tooltip_text = "Pierre : %d / %d (capacité)\nProduction prévue : %s /j (carrières)\nSert aux maisons en pierre, aux puits et à l'atelier." % [
-		roundi(stock.amount[good]), roundi(stock.capacity[good]), Format.decimal(expected)]
+	_stone_label.tooltip_text = "Pierre : %d / %d (capacité)\nProduction prévue : %s /j (carrières)\nSert aux maisons en pierre, aux puits et à l'atelier.\n\nFer : %d / %d (mines de fer)\nOutils : %d / %d (forges : fer et bois)\nUsure : %s outils /j (%d bûcherons et laboureurs équipés)%s" % [
+		roundi(stock.amount[good]), roundi(stock.capacity[good]), Format.decimal(expected),
+		roundi(stock.amount[iron]), roundi(stock.capacity[iron]), roundi(stock.amount[tools]), roundi(stock.capacity[tools]),
+		Format.decimal(GameState.tools_need(), 2), GameState.tool_users(),
+		"\nPlus d'outils : scie et charrue sans effet." if not GameState.production.tools_ok else ""]
 
 
 ## Puissance de la cité (moyenne glissante) et par habitant ; parts au survol.
@@ -210,9 +218,10 @@ func _refresh_power() -> void:
 		var w := power.average(good)
 		lines.append("%s : %s (%d %%)" % [Stockpile.GOOD_NAMES[good], PowerMeter.format(w),
 			roundi(100.0 * w / power.average()) if power.average() > 0.0 else 0])
-	var animals := power.average(Stockpile.COUNT)
-	if animals > 0.0:
-		lines.append("Chevaux au travail : %s (%d %%)" % [PowerMeter.format(animals), roundi(100.0 * animals / power.average())])
+	for k in PowerMeter.EXTRA_NAMES.size():
+		var w := power.average(Stockpile.COUNT + k)
+		if w > 0.0:
+			lines.append("%s : %s (%d %%)" % [PowerMeter.EXTRA_NAMES[k], PowerMeter.format(w), roundi(100.0 * w / power.average())])
 	lines.append("Repère : 1 nourriture/j ≈ 120 W, 0,2 bois/j ≈ 350 W, un cheval au travail %d W" % roundi(DraftAnimals.WORK_WATTS))
 	_power_label.tooltip_text = "\n".join(lines)
 

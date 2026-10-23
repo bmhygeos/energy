@@ -1,20 +1,21 @@
 class_name Stockpile
 extends RefCounted
-## Stocks centralisés de la cité (nourriture, bois, pierre) : capacité, gâchis de la
+## Stocks centralisés de la cité (nourriture, bois, pierre, fer, outils) :
+## capacité, gâchis de la
 ## nourriture au-delà de la moitié du grenier, pertes au-delà de la capacité,
 ## et énergie contenue (compteur de puissance). Pure donnée.
 
-enum Good { FOOD, WOOD, STONE }
+enum Good { FOOD, WOOD, STONE, IRON, TOOLS }
 
-const COUNT := 3
-const GOOD_NAMES: PackedStringArray = ["Nourriture", "Bois", "Pierre"]
+const COUNT := 5
+const GOOD_NAMES: PackedStringArray = ["Nourriture", "Bois", "Pierre", "Fer", "Outils"]
 ## Contenu énergétique d'une unité (MJ) : 2 500 kcal de nourriture, 10 kg de
-## bois sec ; la pierre n'en a pas.
-const ENERGY_MJ: PackedFloat32Array = [10.5, 150.0, 0.0]
+## bois sec ; les matériaux n'en ont pas.
+const ENERGY_MJ: PackedFloat32Array = [10.5, 150.0, 0.0, 0.0, 0.0]
 ## Capacité du village sans bâtiment de stockage.
-const BASE_CAPACITY: PackedFloat32Array = [200.0, 150.0, 300.0]
+const BASE_CAPACITY: PackedFloat32Array = [200.0, 150.0, 300.0, 200.0, 100.0]
 ## Stocks au départ : de quoi tenir jusqu'aux premières récoltes.
-const START: PackedFloat32Array = [550.0, 120.0, 0.0]
+const START: PackedFloat32Array = [550.0, 120.0, 0.0, 0.0, 0.0]
 ## Nourriture gâtée par jour, en part de l'excédent au-delà de la moitié de
 ## la capacité.
 const SPOILAGE_PER_DAY := 0.01
@@ -26,10 +27,12 @@ const REFILL_RATIO := 0.75
 
 var amount := zeros()
 ## Stocks pleins (voir update_full).
-var full: Array[bool] = [false, false, false]
+var full: Array[bool] = [false, false, false, false, false]
 var capacity := zeros()
 ## Pertes de la journée en cours (gâchis et débordement), par marchandise.
 var lost_today := zeros()
+## Multiplicateur du gâchis de la nourriture (moitié avec un moulin).
+var spoilage_factor := 1.0
 
 
 ## Une valeur nulle par marchandise.
@@ -82,7 +85,7 @@ func days_of(good: Good, per_day: float) -> float:
 func end_day() -> void:
 	var excess := amount[Good.FOOD] - capacity[Good.FOOD] / 2.0
 	if excess > 0.0:
-		var spoiled := excess * SPOILAGE_PER_DAY
+		var spoiled := excess * SPOILAGE_PER_DAY * spoilage_factor
 		amount[Good.FOOD] -= spoiled
 		lost_today[Good.FOOD] += spoiled
 

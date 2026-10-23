@@ -197,6 +197,14 @@ func get_deposit_amount(cell: Vector2i) -> float:
 	return _chunk(cell).deposit_amount[_local(cell)]
 
 
+## Quantité restante du gisement de [param cell] (épuisé à 0 : plus de gisement).
+func set_deposit_amount(cell: Vector2i, amount: float) -> void:
+	var chunk := _chunk(cell)
+	chunk.deposit_amount[_local(cell)] = maxf(0.0, amount)
+	if amount <= 0.0:
+		chunk.deposit[_local(cell)] = Deposit.NONE
+
+
 ## Change le terrain de [param cell] (défrichement…) et met à jour l'accès à
 ## l'eau de la tuile et de ses voisines.
 func set_terrain(cell: Vector2i, type: int) -> void:

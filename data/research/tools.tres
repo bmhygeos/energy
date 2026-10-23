@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"tools"
+display_name = "Outils"
+description = "Scies et haches forgées pour les bûcherons."
+tier = 2
+cost = 2000.0
+prerequisites = Array[StringName]([&"iron_metallurgy"])
+effect = "Coupe du bois +40 % (outils en stock), maisons −25 % de bois ; les scies s'usent."
