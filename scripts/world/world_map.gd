@@ -197,6 +197,13 @@ func get_deposit_amount(cell: Vector2i) -> float:
 	return _chunk(cell).deposit_amount[_local(cell)]
 
 
+## Place un gisement [param kind] de [param amount] tonnes sur [param cell].
+func set_deposit(cell: Vector2i, kind: int, amount: float) -> void:
+	var chunk := _chunk(cell)
+	chunk.deposit[_local(cell)] = kind
+	chunk.deposit_amount[_local(cell)] = amount
+
+
 ## Quantité restante du gisement de [param cell] (épuisé à 0 : plus de gisement).
 func set_deposit_amount(cell: Vector2i, amount: float) -> void:
 	var chunk := _chunk(cell)

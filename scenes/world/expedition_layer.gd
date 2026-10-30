@@ -1,8 +1,7 @@
 class_name ExpeditionLayer
 extends Node2D
 ## Expéditions sur la carte (trajet, position, rayon de vue), aperçu du
-## trajet de l'outil Expédition et aperçu de l'annexion (au-dessus de la
-## brume).
+## trajet de l'outil Expédition (au-dessus de la brume).
 
 const PATH_COLOR := Color(1.0, 0.9, 0.55, 0.85)
 const PREVIEW_COLOR := Color(1.0, 1.0, 1.0, 0.55)
@@ -10,13 +9,10 @@ const BLOCKED_COLOR := Color(1.0, 0.48, 0.43, 0.9)
 const MARKER_COLOR := Color(0.95, 0.75, 0.25, 1.0)
 const MARKER_OUTLINE := Color(0.15, 0.1, 0.05, 1.0)
 const SIGHT_COLOR := Color(1.0, 0.9, 0.55, 0.35)
-const ANNEX_FILL := Color(0.49, 0.91, 0.53, 0.35)
-const ANNEX_BORDER := Color(0.49, 0.91, 0.53, 0.9)
 
 ## Trajet prévu sous la souris (outil Expédition) et cible demandée.
 var _preview: Array[Vector2i] = []
 var _preview_target := Vector2i(-1, -1)
-var _annex: Array[Vector2i] = []
 
 
 func _ready() -> void:
@@ -31,23 +27,13 @@ func show_path(path: Array[Vector2i], target: Vector2i) -> void:
 	queue_redraw()
 
 
-func show_annex(cells: Array[Vector2i]) -> void:
-	_annex = cells
-	queue_redraw()
-
-
 func clear_previews() -> void:
 	_preview = []
 	_preview_target = Vector2i(-1, -1)
-	_annex = []
 	queue_redraw()
 
 
 func _draw() -> void:
-	for cell in _annex:
-		var d := Iso.diamond(cell)
-		draw_colored_polygon(d, ANNEX_FILL)
-		draw_polyline(d + PackedVector2Array([d[0]]), ANNEX_BORDER, 1.5, true)
 	if _preview.size() >= 2:
 		_draw_path(_preview, PREVIEW_COLOR)
 	if _preview_target.x >= 0 and (_preview.is_empty() or _preview[-1] != _preview_target):

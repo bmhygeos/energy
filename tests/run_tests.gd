@@ -15,7 +15,6 @@ func _init() -> void:
 	_test_start_site()
 	_test_territory()
 	_test_exploration()
-	_test_annex()
 	_test_format()
 	_test_building_defs()
 	_test_placement()
@@ -234,6 +233,7 @@ func _test_start_site() -> void:
 			and near.stone >= StartSite.MIN_STONE and counts.farmland > 0,
 			"graine %d : forêt, plaine, eau, et collines à %d tuiles du centre %s (%d retouches)" % [
 				seed_value, StartSite.STONE_RADIUS, counts, changed.size()])
+		_check(_iron_near(map, home) >= StartSite.MIN_IRON, "graine %d : fer près du village (%d tuiles)" % [seed_value, _iron_near(map, home)])
 	var flat := WorldMap.new(Vector2i(64, 64), 0, FlatGenerator.new(Vector2i(64, 64)))
 	var rect := StartSite.territory_rect(Vector2i(20, 20))
 	var changed := StartSite.ensure(flat, rect)
@@ -245,6 +245,26 @@ func _test_start_site() -> void:
 	_check(hills.size() == 4 and hills.all(func(c: Vector2i) -> bool:
 		return maxi(absi(c.x - 20), absi(c.y - 20)) <= StartSite.STONE_RADIUS and maxi(absi(c.x - 20), absi(c.y - 20)) >= 3),
 		"colline à pierre à 3–4 tuiles du centre %s" % [hills])
+	var iron: Array[Vector2i] = []
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			if flat.get_deposit(Vector2i(x, y)) == WorldMap.Deposit.IRON:
+				iron.append(Vector2i(x, y))
+	_check(iron.size() == StartSite.MIN_IRON and _iron_near(flat, Vector2i(20, 20)) == StartSite.MIN_IRON
+		and maxi(absi(iron[0].x - iron[1].x), absi(iron[0].y - iron[1].y)) == 1
+		and is_equal_approx(flat.get_deposit_amount(iron[0]), StartSite.IRON_AMOUNT),
+		"plaine nue : un filon de fer de 2 tuiles à 3–5 tuiles du centre %s" % [iron])
+
+
+## Tuiles de fer à StartSite.IRON_MIN_DISTANCE–IRON_RADIUS tuiles de [param home].
+func _iron_near(map: WorldMap, home: Vector2i) -> int:
+	var n := 0
+	for dy in range(-StartSite.IRON_RADIUS, StartSite.IRON_RADIUS + 1):
+		for dx in range(-StartSite.IRON_RADIUS, StartSite.IRON_RADIUS + 1):
+			if maxi(absi(dx), absi(dy)) >= StartSite.IRON_MIN_DISTANCE \
+					and map.get_deposit(home + Vector2i(dx, dy)) == WorldMap.Deposit.IRON:
+				n += 1
+	return n
 
 
 func _test_territory() -> void:
@@ -313,36 +333,15 @@ func _test_exploration() -> void:
 	_check(e.food >= 0.0 and e.food < 1.5, "vivres presque épuisés au retour (%.2f)" % e.food)
 	_check(territory.is_known(Vector2i(max_reach + 3, 4)) and not territory.is_known(Vector2i(max_reach + 5, 4)),
 		"tuiles révélées dans le rayon de vue")
-	_check(e.revealed > 0 and territory.count(Territory.State.EXPLORED) == territory.known_cells().size() - 64,
-		"tuiles révélées comptées (%d)" % e.revealed)
+	_check(e.revealed > 0 and territory.count(Territory.State.EXPLORED) == 0
+		and territory.count(Territory.State.TERRITORY) == territory.known_cells().size(),
+		"tuiles vues annexées au territoire (%d)" % e.revealed)
 	_check(territory.state_at(home) == Territory.State.TERRITORY, "le territoire reste territoire")
 	# Cible atteinte avec des vivres en trop.
 	e = exploration.launch(home, Vector2i(10, 4), 1, 20.0)
 	while not exploration.expeditions.is_empty():
 		exploration.step_hour()
 	_check(e.reason == Exploration.Reason.TARGET and e.food > 15.0, "objectif atteint, vivres rapportés (%.1f)" % e.food)
-
-
-func _test_annex() -> void:
-	var flat := _flat_map()
-	var territory: Territory = flat[1]
-	var explored: Array[Vector2i] = []
-	for y in 12:
-		for x in range(8, 12):
-			explored.append(Vector2i(x, y))
-	explored.append(Vector2i(20, 20))
-	territory.explore(explored)
-	var plan := territory.plan_annex(Rect2i(8, 0, 2, 8), 100)
-	_check(plan.cells.size() == 16 and plan.refused == 0, "rectangle exploré au bord du territoire : annexable")
-	plan = territory.plan_annex(Rect2i(8, 0, 2, 12), 100)
-	_check(plan.cells.size() == 24, "de proche en proche au-delà du bord (%d)" % plan.cells.size())
-	plan = territory.plan_annex(Rect2i(8, 0, 2, 8), 5)
-	_check(plan.cells.size() == 5 and plan.refused == 11 and plan.cells.all(func(c: Vector2i) -> bool: return c.x == 8),
-		"limite : les plus proches de la frontière d'abord")
-	plan = territory.plan_annex(Rect2i(19, 19, 3, 3), 100)
-	_check(plan.cells.is_empty() and plan.refused == 9, "isolée ou inconnue : refusée (%s)" % plan.error)
-	territory.annex(territory.plan_annex(Rect2i(8, 0, 1, 1), 100).cells)
-	_check(territory.is_territory(Vector2i(8, 0)), "tuile annexée")
 
 
 func _test_format() -> void:
@@ -556,8 +555,9 @@ func _test_population() -> void:
 	pop.count = 25
 	_check(pop.active() == 15, "60 % d'actifs")
 	_check(is_equal_approx(pop.food_need(), 25.0), "1 nourriture par habitant et par jour")
-	_check(is_equal_approx(pop.wood_need(0), 5.0) and is_equal_approx(pop.wood_need(GameDate.WINTER), 10.0),
-		"bois : 0,2 par habitant, double en hiver")
+	_check(is_equal_approx(pop.wood_need(0), 5.0) and is_equal_approx(pop.wood_need(GameDate.WINTER), 10.0) \
+		and is_equal_approx(pop.wood_need(GameDate.SUMMER), 2.5),
+		"bois : 0,2 par habitant, moitié en été, double en hiver")
 
 
 ## Zones et répartition sur une petite planète de plaine (territoire 8×8).
@@ -872,6 +872,14 @@ func _test_granary_upgrades() -> void:
 		housing = house.housing
 		house = house.upgrade
 	_check(house_tiers == expected and more, "maison : un niveau par palier, plus de logements %s" % [house_tiers])
+	var camp := BuildingDb.get_def(&"woodshed")
+	_check(camp.display_name == "Camp d'abattage" and camp.upgrade.id == &"sawmill" and camp.upgrade.tier == 2
+		and camp.upgrade.wood_capacity > camp.wood_capacity, "camp d'abattage → scierie au village")
+	var setup := _labor_setup()
+	var prod := Production.new(setup[0], setup[1])
+	var forestry := ZoneDb.get_def(&"forestry")
+	prod.sawmill_bonus = camp.upgrade.forestry_bonus
+	_check(is_equal_approx(prod.invention_factor(forestry, Vector2i(3, 3)), 1.2), "scierie : coupe du bois +20 %%")
 	_check(BuildingDb.get_def(&"stone_house").player_buildable and not BuildingDb.get_def(&"town_house").player_buildable,
 		"maison en pierre : construite ou améliorée ; au-delà, par amélioration")
 	_check(not BuildingDb.get_def(&"stone_granary").player_buildable and BuildingDb.get_def(&"large_granary").iron_cost > 0,
@@ -995,20 +1003,23 @@ func _test_forest_cycle() -> void:
 	labor.step(0, 1)
 	var stock := Stockpile.new()
 	var wood_before := stock.amount[1]
-	var cleared: Array[Vector2i] = []
+	var clearcut: Array[Vector2i] = []
+	var forestry := ZoneDb.get_def(&"forestry")
 	for h in 24 * 30:
-		cleared.append_array(prod.step_hour(h, stock).cleared)
-		if not cleared.is_empty():
+		clearcut.append_array(prod.step_hour(h, stock).clearcut)
+		if not clearcut.is_empty():
 			break
-	_check(cleared == [cell] and map.get_terrain(cell) == TerrainDef.Type.PLAIN and zones.zone_at(cell) == null,
-		"coupe à blanc : plaine, zone retirée")
+	_check(clearcut == [cell] and map.get_terrain(cell) == TerrainDef.Type.PLAIN and zones.zone_at(cell) == forestry,
+		"coupe à blanc : plaine, zone gardée")
 	_check(absf(stock.amount[1] - wood_before - 10.0) < 0.01, "tout le bois de la tuile récolté (%.3f)" % (stock.amount[1] - wood_before))
 	labor.step(24 * 30, 1)
+	_check(zones.places(forestry) == 0 and not labor.workers_at.has(cell), "coupe à blanc : plus de place de travail")
 	var regrown: Array[Vector2i] = []
 	for d in Production.CLEARCUT_REGROW_DAYS:
 		regrown.append_array(prod.end_day(0))
 	_check(regrown == [cell] and map.get_terrain(cell) == TerrainDef.Type.FOREST and map.get_wood(cell) > 0.0,
-		"repousse après %d jours sans zone" % Production.CLEARCUT_REGROW_DAYS)
+		"repousse après %d jours sous la zone de coupe" % Production.CLEARCUT_REGROW_DAYS)
+	_check(zones.places(forestry) == forestry.workers_per_tile, "forêt revenue : la zone produit de nouveau")
 	var wood := map.get_wood(cell)
 	prod.end_day(0)
 	_check(map.get_wood(cell) > wood, "une jeune forêt se densifie")

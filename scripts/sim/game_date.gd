@@ -10,6 +10,7 @@ const HOURS_PER_SEASON := HOURS_PER_DAY * DAYS_PER_SEASON
 const HOURS_PER_YEAR := HOURS_PER_SEASON * SEASONS_PER_YEAR
 
 const SEASON_NAMES: PackedStringArray = ["Printemps", "Été", "Automne", "Hiver"]
+const SUMMER := 1
 const WINTER := 3
 
 

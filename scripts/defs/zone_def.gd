@@ -63,6 +63,12 @@ func quality_at(map: WorldMap, cell: Vector2i) -> float:
 	return map.get_fertility(cell)
 
 
+## La tuile [param cell] peut-elle produire ? Une coupe du bois sans bois
+## (coupe à blanc) attend la repousse de la forêt.
+func is_productive(map: WorldMap, cell: Vector2i) -> bool:
+	return quality != Quality.WOOD or map.get_wood(cell) > 0.0
+
+
 ## Terrains valides, lisibles.
 func describe_terrains() -> String:
 	var names := PackedStringArray()

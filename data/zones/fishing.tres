@@ -15,5 +15,5 @@ workers_per_tile = 1
 quality = 3
 color = Color(0.3, 0.6, 0.95, 1)
 output = 0
-base_yield = 2.0
+base_yield = 4.0
 season_factors = PackedFloat32Array(1, 1, 1, 0.6)

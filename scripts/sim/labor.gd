@@ -180,7 +180,7 @@ func _place_workers() -> void:
 		var left := assigned[def]
 		if left <= 0:
 			continue
-		var cells := zones.cells_of(def)
+		var cells := zones.cells_of(def).filter(func(c: Vector2i) -> bool: return def.is_productive(map, c))
 		var scores: Dictionary[Vector2i, float] = {}
 		for cell in cells:
 			scores[cell] = tile_score(def, cell)

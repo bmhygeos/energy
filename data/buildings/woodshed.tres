@@ -1,15 +1,17 @@
 [gd_resource type="Resource" script_class="BuildingDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+[ext_resource type="Resource" path="res://data/buildings/sawmill.tres" id="2_up"]
 
 [resource]
 script = ExtResource("1_def")
 id = &"woodshed"
-display_name = "Réserve de bois"
-description = "Bûcher abrité : le bois de chauffage de l'hiver."
+display_name = "Camp d'abattage"
+description = "Camp des bûcherons : le bois coupé y est empilé pour l'hiver ; devient une scierie au village."
 category = 1
 build_hours = 24
 wood_cost = 20
+upgrade = ExtResource("2_up")
 wood_capacity = 300.0
 color = Color(0.55, 0.4, 0.25, 1)
 roof_color = Color(0.35, 0.3, 0.25, 1)

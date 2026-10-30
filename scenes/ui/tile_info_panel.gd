@@ -71,7 +71,7 @@ func _refresh() -> void:
 			lines.append("Irriguée : +%d %%" % roundi((Production.IRRIGATION_BONUS - 1.0) * 100.0))
 	var regrowth := GameState.production.regrowth_days_left(cell)
 	if regrowth >= 0:
-		lines.append("Coupe à blanc : redevient forêt dans %d j (sans zone ni bâtiment)" % regrowth)
+		lines.append("Coupe à blanc : redevient forêt dans %d j (sans bâtiment ni autre zone que la coupe)" % regrowth)
 	lines.append_array([
 		Format.coordinates(map.latitude(cell.y), map.longitude(cell.x)),
 		"Altitude : %d m" % roundi((map.get_elevation(cell) - map.generator.sea_level) * 8000.0),

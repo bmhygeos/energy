@@ -46,7 +46,6 @@ nécessite un navigateur avec WebGL 2.
 | Tracer une zone | bouton de zone du menu (Agriculture, Élevage, Coupe du bois) puis glisser sur la carte (rectangle ; les tuiles non valides sont ignorées) ; « Effacer les zones » puis glisser pour les retirer |
 | Main-d'œuvre | `M` ou bouton « Travail » du bandeau : places, affectés, production prévue, priorités |
 | Explorer | « Expédition » du menu, régler explorateurs et jours de vivres, puis cliquer la destination sur la carte |
-| Annexer | « Annexer » du menu puis glisser sur des tuiles explorées au bord du territoire |
 | Recherche | `R` ou bouton « Recherche » du bandeau, puis « Rechercher » |
 | Améliorer | « Améliorer » du menu puis clic sur une maison ou un grenier |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
@@ -89,7 +88,7 @@ météo et interface conservés.
 
 ### V3 : population et main-d'œuvre
 - **Habitants** : 20 au départ, dont 60 % d'actifs. **Besoins** par jour :
-  1 nourriture et 0,2 bois par habitant (bois ×2 en hiver), affichés dans le
+  1 nourriture et 0,2 bois par habitant (bois ×0,5 en été, ×2 en hiver), affichés dans le
   bandeau et le panneau ; consommés à partir de V4 (stocks).
 - **Répartition automatique** des actifs entre les types de zone, au prorata
   priorité × places (tuiles × travailleurs par tuile), plafonnée par les places ;
@@ -109,12 +108,14 @@ météo et interface conservés.
   bois 4,5.
 - **Fertilité** : un champ cultivé s'use, il se reconstitue au repos.
 - **Forêt** : la coupe vide le bois sur pied (rendement qui baisse avec la
-  densité) ; coupée à blanc, la tuile devient plaine et perd sa zone, puis
-  redevient forêt après 120 jours sans zone ni bâtiment ; une forêt entamée se
-  densifie au repos.
+  densité) ; coupée à blanc, la tuile devient plaine mais garde sa zone de
+  coupe, qui ne fournit plus de bois (ni n'occupe de travailleurs) jusqu'à la
+  repousse : la tuile redevient forêt après 120 jours sans bâtiment ni autre
+  zone ; une forêt entamée se densifie au repos.
 - **Stocks** (nourriture, bois) : capacité du village + greniers (600) et
-  réserves de bois (300) ; surplus perdu ; la nourriture se gâte (1 %/j de
-  l'excédent au-delà de la moitié du grenier). Les bâtiments coûtent du bois.
+  camps d'abattage (300 ; scierie au village : 600 et coupe du bois +20 %) ;
+  surplus perdu ; la nourriture se gâte (1 %/j de l'excédent au-delà de la
+  moitié du grenier). Les bâtiments coûtent du bois.
 - **Consommation** heure par heure ; **satisfaction** = couverture des besoins
   sur 10 jours. **Croissance** si les besoins sont couverts et qu'il reste des
   logements (maisons : 5 habitants) ; départs si la satisfaction baisse ou sans
@@ -144,7 +145,7 @@ météo et interface conservés.
   carte place une colline à pierre près du village : au moins 4 tuiles de
   colline à 4 tuiles du centre au plus (bloc de 2×2 ajouté s'il le faut,
   laissé libre par les bâtiments de départ).
-- **Pêche** : zone sur rivières, lacs et mer, 2 nourriture/j par pêcheur
+- **Pêche** : zone sur rivières, lacs et mer, 4 nourriture/j par pêcheur
   (×0,6 l'hiver).
 - **Eau** : besoin à partir du village ; chaque **puits** (5 bois, 15 pierre)
   sert 30 habitants. Sans eau, la satisfaction baisse jusqu'à −30 % et la
@@ -175,7 +176,10 @@ météo et interface conservés.
   partir du village, les expéditions prospectent ce qu'elles voient. Chaque
   gisement n'apparaît qu'à son palier (fer au village, charbon au bourg…).
 - **Mine de fer** : zone sur un gisement de fer prospecté (2 mineurs, 1 fer/j
-  chacun) ; le gisement s'épuise, puis la tuile perd sa zone.
+  chacun) ; le gisement s'épuise, puis la tuile perd sa zone. Chaque carte
+  place un filon de fer près du village : au moins 2 tuiles de fer entre 3 et
+  5 tuiles du centre (6 000 t chacune, ajoutées s'il le faut, laissées libres
+  par les bâtiments de départ), visibles dès le passage au village.
 - **Forge** (recherche Métallurgie du fer) : 2 outils/j, 1 fer et 0,5 bois
   chacun. Fer (200) et outils (100) au bandeau avec la pierre.
 - **Inventions du village** (atelier ×2) :
@@ -231,11 +235,10 @@ météo et interface conservés.
 - **Marche** : 4 tuiles/j en plaine et prairie, 3 en désert et toundra, 2 en
   forêt et colline, 1,5 sur la glace, 1 en montagne et aux gués ; lacs et mer
   infranchissables (arrêt devant l'eau).
-- **Vue** : rayon de 3 tuiles ; les tuiles inconnues deviennent explorées.
+- **Vue** : rayon de 3 tuiles ; les tuiles vues sont annexées au territoire.
 - **Demi-tour** à la cible, devant l'eau ou quand il ne reste que les vivres
   du retour ; les vivres restants reviennent au grenier.
-- **Annexion** (glisser un rectangle) : tuiles explorées reliées au territoire
-  de proche en proche, gratuitement, au plus 8 tuiles de territoire par
-  habitant.
-- Trajet prévu, position et rayon de vue de l'expédition sur la carte ; aperçu
-  de l'annexion ; explorateurs dans le bandeau et le panneau Main-d'œuvre.
+- **Annexion automatique** : pas d'outil d'annexion, l'expédition intègre au
+  territoire tout ce qu'elle voit (sans limite de surface).
+- Trajet prévu, position et rayon de vue de l'expédition sur la carte ;
+  explorateurs dans le bandeau et le panneau Main-d'œuvre.

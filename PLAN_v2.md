@@ -33,7 +33,7 @@ production stockée → besoins satisfaits → la population croît → nouveaux
 | État | Affichage | Jouable |
 |---|---|---|
 | Inconnue | Noire | Non |
-| Explorée | Visible (terrain, ressources), assombrie | Non : peut être annexée |
+| Explorée | Visible (terrain, ressources), assombrie | Non (les expéditions annexent directement) |
 | Territoire | Normale | Oui : zones et bâtiments |
 
 - **Départ** : environ 12×12 tuiles de territoire autour du centre du village,
@@ -49,9 +49,8 @@ La carte ne s'agrandit que par l'**exploration** :
 - L'expédition avance sur la carte (lente en forêt et en colline, impossible sur
   l'eau au début), révèle les tuiles dans son rayon de vue, puis revient ; sans
   vivres, elle rentre plus tôt. Plus tard : risques (pertes, rencontres).
-- **Annexion** : une tuile explorée qui touche le territoire peut y être
-  intégrée, sans coût. La surface annexable est limitée par la population
-  (8 tuiles par habitant) : le territoire suit les besoins de la ville.
+- **Annexion automatique** : les tuiles révélées par une expédition sont
+  intégrées au territoire, sans coût ni outil dédié.
 - Les paliers (section 7) améliorent l'exploration : plus d'explorateurs, vivres
   pour des expéditions plus longues, éclaireurs à cheval, bateaux, cartographes.
 
@@ -82,8 +81,8 @@ Pour ne pas avoir à tout refaire plus tard, dès la V1 :
   | Besoin | Consommation | Remarque |
   |---|---|---|
   | Nourriture | 1 unité / habitant / jour | Ressource unique : champs et élevage produisent la même |
-  | Bois | 0,2 / habitant / jour, ×2 en hiver | Chauffage et entretien des maisons |
-- **Stocks** centralisés (grenier, réserve de bois) au centre du village, de
+  | Bois | 0,2 / habitant / jour, ×0,5 en été, ×2 en hiver | Chauffage et entretien des maisons |
+- **Stocks** centralisés (grenier, camp d'abattage) au centre du village, de
   capacité limitée ; la nourriture se gâte un peu (ex. −1 % par jour au-delà de la
   moitié du grenier).
 - **Croissance** : si les besoins sont couverts et qu'il reste du logement, la
@@ -227,6 +226,8 @@ puits, au village (ou en annexant vers une rivière ou un lac).
   pour un village de 100 habitants avec un atelier).
 
 ### Maisons et greniers améliorables (un niveau par palier)
+Le camp d'abattage (réserve de bois du hameau, 300) devient une **scierie** au
+village (600, coupe du bois +20 %).
 Les maisons s'améliorent sur place, logements gardés pendant les travaux :
 maison (5 habitants, hameau) → maison en pierre (10, village) → maison
 bourgeoise (16, bourg) → immeuble (30, ville) → tour d'habitation (60,
@@ -301,8 +302,8 @@ compteur de puissance par habitant :
   autres données de terrain) mais **invisibles** au départ. Toutes les
   ressources deviennent **prospectables dès leur palier**, et leurs **mines**
   (ou puits) sont disponibles dès ce palier : une expédition de prospection
-  révèle les gisements sur les tuiles explorées, puis il faut annexer la tuile
-  pour l'exploiter.
+  révèle les gisements des tuiles qu'elle voit et les annexe : la mine peut
+  s'y construire.
 - **Recherche des propriétés** : pour le fer, le cuivre, le pétrole, l'uranium
   et le lithium, une recherche est nécessaire pour savoir les **transformer et
   les utiliser** ; avant, le minerai extrait s'accumule sans usage (le charbon

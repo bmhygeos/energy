@@ -1,6 +1,6 @@
 extends CanvasLayer
-## Menu de construction (à gauche : zones à peindre, territoire — expédition
-## et annexion —, bâtiments, démolition),
+## Menu de construction (à gauche : zones à peindre, territoire — expédition —,
+## bâtiments, démolition),
 ## bandeau d'aide de l'outil actif (en bas) et messages brefs au joueur.
 
 const OK_COLOR := "#7ee787"
@@ -20,13 +20,11 @@ var _erase_zone_button: Button
 var _demolish_button: Button
 var _upgrade_button: Button
 var _expedition_button: Button
-var _annex_button: Button
 var _members: SpinBox
 var _days: SpinBox
 var _horses: SpinBox
 var _horses_row: HBoxContainer
 var _expedition_status: Label
-var _annex_plan: Territory.AnnexPlan
 var _toast_tween: Tween
 
 @onready var _list: VBoxContainer = %List
@@ -48,9 +46,6 @@ func _ready() -> void:
 			_refresh_hint())
 	EventBus.zone_plan_previewed.connect(func(p: ZoneMap.Plan) -> void:
 		_zone_plan = p
-		_refresh_hint())
-	EventBus.annex_plan_previewed.connect(func(p: Territory.AnnexPlan) -> void:
-		_annex_plan = p
 		_refresh_hint())
 	EventBus.tile_hovered.connect(func(_c: Vector2i) -> void:
 		if _mode == BuildTool.Mode.EXPEDITION:
@@ -93,7 +88,8 @@ func _build_list() -> void:
 	_upgrade_button = _tool_button("Améliorer")
 	_upgrade_button.tooltip_text = "\n".join(PackedStringArray(["Améliore un bâtiment sur place, un niveau par palier ; il reste en service pendant les travaux.",
 		"Maison → maison en pierre → maison bourgeoise → immeuble → tour d'habitation",
-		"Grenier → grenier en pierre → grand grenier → entrepôt → silo"]))
+		"Grenier → grenier en pierre → grand grenier → entrepôt → silo",
+		"Camp d'abattage → scierie (village)"]))
 	_upgrade_button.pressed.connect(func() -> void:
 		_select_tool(_upgrade_button, BuildTool.Mode.UPGRADE, null))
 	_demolish_button = _tool_button("Démolir (X)")
@@ -133,14 +129,14 @@ func _lock(button: Button, label: String, needed: int, level: int) -> void:
 
 
 ## Section « Territoire » : expédition (effectif, jours de vivres, état de
-## l'expédition en cours) et annexion.
+## l'expédition en cours).
 func _build_territory() -> void:
 	_add_header("Territoire")
 	_expedition_button = _tool_button("Expédition")
 	_expedition_button.tooltip_text = "\n".join(PackedStringArray(["Expédition",
 		"Des habitants actifs quittent le travail et partent explorer avec des vivres pris au grenier.",
 		"Ils marchent en ligne droite vers la tuile choisie (lent en forêt, en colline et aux gués ;",
-		"lacs et mer infranchissables), révèlent les tuiles autour d'eux puis reviennent.",
+		"lacs et mer infranchissables), annexent au territoire les tuiles autour d'eux puis reviennent.",
 		"Au plus %d explorateurs ; expéditions simultanées et jours de vivres : %d et %d au hameau, %d et %d à partir du village." % [
 			Exploration.MAX_MEMBERS, Exploration.MAX_EXPEDITIONS[0], Exploration.MAX_DAYS[0],
 			Exploration.MAX_EXPEDITIONS[1], Exploration.MAX_DAYS[1]]]))
@@ -173,13 +169,6 @@ func _build_territory() -> void:
 	_expedition_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_expedition_status.custom_minimum_size = Vector2(220, 0)
 	_list.add_child(_expedition_status)
-	_annex_button = _tool_button("Annexer")
-	_annex_button.tooltip_text = "\n".join(PackedStringArray(["Annexer",
-		"Intègre au territoire les tuiles explorées reliées à la frontière (glisser un rectangle).",
-		"Gratuit.",
-		"Surface permise : %d tuiles par habitant." % Territory.TILES_PER_INHABITANT]))
-	_annex_button.pressed.connect(func() -> void:
-		_select_tool(_annex_button, BuildTool.Mode.ANNEX, null))
 	_refresh_expedition_status()
 
 
@@ -302,8 +291,6 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 	_demolish_button.set_pressed_no_signal(_mode == BuildTool.Mode.DEMOLISH)
 	_upgrade_button.set_pressed_no_signal(_mode == BuildTool.Mode.UPGRADE)
 	_expedition_button.set_pressed_no_signal(_mode == BuildTool.Mode.EXPEDITION)
-	_annex_button.set_pressed_no_signal(_mode == BuildTool.Mode.ANNEX)
-	_annex_plan = null
 	_refresh_hint()
 
 
@@ -356,8 +343,6 @@ func _refresh_hint() -> void:
 					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
 		BuildTool.Mode.EXPEDITION:
 			text = _expedition_hint()
-		BuildTool.Mode.ANNEX:
-			text = _annex_hint()
 	_hint.text = text
 	_hint_panel.visible = not text.is_empty()
 
@@ -382,18 +367,6 @@ func _expedition_hint() -> String:
 		if trip > _days.value:
 			note += " : demi-tour avant la cible, faute de vivres"
 		text += "\n[color=%s]%s[/color]" % [color, note]
-	return text
-
-
-func _annex_hint() -> String:
-	var text := "[b]Annexer[/b] — glisser sur des tuiles explorées au bord du territoire · place : %d tuiles · Échap : annuler" % GameState.annex_room()
-	if _annex_plan:
-		var n := _annex_plan.cells.size()
-		if n > 0:
-			text += "\n[color=%s]%d tuile%s annexée%s[/color]" % [OK_COLOR, n, "s" if n > 1 else "", "s" if n > 1 else ""]
-		if _annex_plan.refused > 0:
-			text += "%s[color=%s]%d ignorée%s : %s[/color]" % ["  ·  " if n > 0 else "\n", ERROR_COLOR,
-				_annex_plan.refused, "s" if _annex_plan.refused > 1 else "", _annex_plan.error]
 	return text
 
 

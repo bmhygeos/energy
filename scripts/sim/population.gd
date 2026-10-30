@@ -11,10 +11,10 @@ const START := 20
 ## Part des habitants qui travaille (le reste : enfants, anciens).
 const ACTIVE_SHARE := 0.6
 ## Nourriture (unités) et bois (unités de 10 kg) par habitant et par jour ;
-## le bois double en hiver (chauffage).
+## le bois varie selon la saison (chauffage) : moitié en été, double en hiver.
 const FOOD_PER_DAY := 1.0
 const WOOD_PER_DAY := 0.2
-const WINTER_WOOD_FACTOR := 2.0
+const SEASON_WOOD_FACTOR: PackedFloat32Array = [1.0, 0.5, 1.0, 2.0]
 ## Satisfaction : moyenne sur ce nombre de jours, nourriture pondérée.
 const SATISFACTION_DAYS := 10
 const FOOD_WEIGHT := 0.7
@@ -60,7 +60,7 @@ func food_need() -> float:
 
 ## Bois nécessaire par jour pendant la saison [param season] (unités).
 func wood_need(season: int) -> float:
-	return count * WOOD_PER_DAY * (WINTER_WOOD_FACTOR if season == GameDate.WINTER else 1.0)
+	return count * WOOD_PER_DAY * SEASON_WOOD_FACTOR[season]
 
 
 ## Clôt la journée avec la couverture des besoins (0–1 ; l'eau, à partir du

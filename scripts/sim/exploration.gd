@@ -187,7 +187,7 @@ func step_hour() -> Report:
 	return report
 
 
-## Rend explorées les tuiles en vue de [param e].
+## Annexe au territoire les tuiles en vue de [param e].
 func _reveal(e: Expedition, report: Report) -> void:
 	var center := e.cell()
 	var r := SIGHT_RADIUS
@@ -195,9 +195,9 @@ func _reveal(e: Expedition, report: Report) -> void:
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):
 			var cell := center + Vector2i(dx, dy)
-			if dx * dx + dy * dy <= r * r + r and map.has_cell(cell) and not territory.is_known(cell):
+			if dx * dx + dy * dy <= r * r + r and map.has_cell(cell) and not territory.is_territory(cell):
 				fresh.append(cell)
-	territory.explore(fresh)
+	territory.annex(fresh)
 	e.revealed += fresh.size()
 	report.revealed.append_array(fresh)
 	if tier >= PROSPECT_TIER:

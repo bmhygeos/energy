@@ -3,8 +3,9 @@ extends RefCounted
 ## Production des zones : rendement de chaque tuile occupée = travailleurs ×
 ## rendement de base × qualité × facteur de saison × proximité du village.
 ## La coupe du bois vide la forêt (coupe à blanc : la tuile devient plaine et
-## perd sa zone) ; une forêt entamée se densifie hors exploitation, une coupe
-## à blanc sans zone ni bâtiment redevient forêt. Cultiver use la fertilité,
+## garde sa zone de coupe, sans bois jusqu'à la repousse) ; une forêt entamée
+## se densifie hors exploitation, une coupe à blanc sans bâtiment ni autre zone
+## que la coupe du bois redevient forêt. Cultiver use la fertilité,
 ## qui se reconstitue au repos. Avec la recherche Irrigation, les champs
 ## proches d'une rivière ou d'un lac rendent davantage. Pure donnée.
 
@@ -32,8 +33,10 @@ const GEARS_BONUS := 1.15
 
 
 class Report:
-	## Tuiles devenues plaine (coupe à blanc) pendant l'heure.
+	## Tuiles qui ont perdu leur zone (gisement épuisé) pendant l'heure.
 	var cleared: Array[Vector2i] = []
+	## Tuiles devenues plaine (coupe à blanc, zone gardée) pendant l'heure.
+	var clearcut: Array[Vector2i] = []
 
 
 var map: WorldMap
@@ -55,6 +58,8 @@ var _clearcuts: Dictionary[Vector2i, int] = {}
 var tools_ok := true
 ## Moulins (à grain) en service.
 var mills := 0
+## Bonus de la coupe du bois des scieries (le meilleur ; 0 : aucune).
+var sawmill_bonus := 0.0
 ## Tuiles irrigables par une rivière ou un lac déjà calculées (l'eau douce ne
 ## bouge pas).
 var _irrigable: Dictionary[Vector2i, bool] = {}
@@ -97,6 +102,7 @@ func invention_factor(def: ZoneDef, cell: Vector2i) -> float:
 		ZoneDef.Quality.WOOD:
 			if _done(&"tools") and tools_ok:
 				factor *= SAW_BONUS
+			factor *= 1.0 + sawmill_bonus
 	if def.output == Stockpile.Good.STONE and _done(&"gears"):
 		factor *= GEARS_BONUS
 	return factor
@@ -190,7 +196,7 @@ func _cut(cell: Vector2i, qty: float, report: Report) -> float:
 		map.set_terrain(cell, TerrainDef.Type.PLAIN)
 		_forest_max.erase(cell)
 		_clearcuts[cell] = 0
-		report.cleared.append(cell)
+		report.clearcut.append(cell)
 	return got
 
 
@@ -223,13 +229,14 @@ func end_day(day_tick: int) -> Array[Vector2i]:
 		map.set_wood(cell, wood)
 		if wood >= _forest_max[cell]:
 			_forest_max.erase(cell)
-	# Coupes à blanc sans zone ni bâtiment : redeviennent forêt.
+	# Coupes à blanc sans bâtiment ni autre zone que la coupe : redeviennent forêt.
 	var regrown: Array[Vector2i] = []
 	for cell: Vector2i in _clearcuts.keys():
 		if map.get_terrain(cell) != TerrainDef.Type.PLAIN or buildings.building_at(cell):
 			_clearcuts.erase(cell)
 			continue
-		if zones.zone_at(cell):
+		var zone := zones.zone_at(cell)
+		if zone and zone.quality != ZoneDef.Quality.WOOD:
 			continue
 		_clearcuts[cell] += 1
 		if _clearcuts[cell] >= CLEARCUT_REGROW_DAYS:

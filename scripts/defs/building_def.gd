@@ -35,7 +35,7 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export_group("Effets")
 ## Habitants logés (maisons).
 @export var housing := 0
-## Capacité de stockage ajoutée (grenier, réserve de bois).
+## Capacité de stockage ajoutée (grenier, camp d'abattage).
 @export var food_capacity := 0.0
 @export var wood_capacity := 0.0
 ## Forge : outils fabriqués par jour (FORGE_IRON_PER_TOOL fer et
@@ -44,6 +44,8 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Moulin : moud le grain (agriculture, gâchis) ; puissance mécanique moyenne
 ## à vent normal (W).
 @export var grinds_grain := false
+## Scierie : bonus de la coupe du bois (part ; un seul compte).
+@export var forestry_bonus := 0.0
 @export var mechanical_watts := 0.0
 ## Places pour les chevaux (écurie).
 @export var horse_capacity := 0
@@ -115,6 +117,8 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Stocke %d de bois" % roundi(wood_capacity))
 	if tools_per_day > 0.0:
 		lines.append("Fabrique %s outils par jour (fer et bois)" % Format.decimal(tools_per_day))
+	if forestry_bonus > 0.0:
+		lines.append("Coupe du bois +%d %%" % roundi(forestry_bonus * 100.0))
 	if grinds_grain:
 		lines.append("Moud le grain : agriculture +20 %, gâchis de la nourriture moitié moindre")
 	if horse_capacity > 0:

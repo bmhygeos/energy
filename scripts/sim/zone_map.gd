@@ -52,9 +52,10 @@ func tile_count(def: ZoneDef) -> int:
 	return cells_of(def).size()
 
 
-## Places de travail offertes par la zone [param def].
+## Places de travail offertes par la zone [param def] (tuiles productives).
 func places(def: ZoneDef) -> int:
-	return tile_count(def) * def.workers_per_tile
+	return cells_of(def).filter(func(c: Vector2i) -> bool: return def.is_productive(map, c)).size() \
+		* def.workers_per_tile
 
 
 ## Motif qui empêche la zone [param def] sur [param cell] (vide : valide).

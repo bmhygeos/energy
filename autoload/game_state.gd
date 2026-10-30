@@ -113,13 +113,19 @@ func _found_village() -> void:
 		for spot in spots:
 			var placement := buildings.check_placement(def, spot)
 			# Sans défricher (la forêt du départ reste à couper) ni prendre la
-			# colline des futures carrières.
-			if placement.is_valid() and placement.cleared.is_empty() and not placement.cells.any(
-					func(c: Vector2i) -> bool: return world_map.get_terrain(c) in [TerrainDef.Type.HILL, TerrainDef.Type.MOUNTAIN]):
+			# colline des futures carrières ou le fer des futures mines.
+			if placement.is_valid() and placement.cleared.is_empty() and not placement.cells.any(_reserved_at_start):
 				var b := buildings.place(placement)
 				b.build_progress = def.build_hours
 				b.status = Building.Status.RUNNING
 				break
+
+
+## Tuile gardée pour les carrières (colline, montagne) ou les mines
+## (gisement) du village, où ne pas poser les bâtiments de départ.
+func _reserved_at_start(cell: Vector2i) -> bool:
+	return world_map.get_terrain(cell) in [TerrainDef.Type.HILL, TerrainDef.Type.MOUNTAIN] \
+		or world_map.get_deposit(cell) != WorldMap.Deposit.NONE
 
 
 ## Tuile [param cell] dans le repère de la vue : abscisse dépliée autour du
@@ -297,14 +303,18 @@ func _refresh_capacities() -> void:
 		water_factor *= PUMP_WATER_BONUS
 	water_supply = roundi(water_supply * water_factor)
 	var mills := 0
+	var sawmill := 0.0
 	var wells: Array[Vector2i] = []
 	for b in buildings.all():
 		if b.is_complete() and b.def.grinds_grain:
 			mills += 1
+		if b.is_complete():
+			sawmill = maxf(sawmill, b.def.forestry_bonus)
 		if b.is_complete() and b.def.water_supply > 0:
 			for c in b.cells:
 				wells.append(world_map.wrap_cell(c))
 	production.wells = wells
+	production.sawmill_bonus = sawmill
 	production.mills = mills
 	stockpile.spoilage_factor = 0.5 if mills > 0 else 1.0
 	draft.collar = research.is_done(&"harness_collar")
@@ -496,31 +506,6 @@ func start_research(def: ResearchDef) -> bool:
 	return true
 
 
-## Tuiles encore annexables (surface permise par la population).
-func annex_room() -> int:
-	return maxi(0, population.count * Territory.TILES_PER_INHABITANT - territory.count(Territory.State.TERRITORY))
-
-
-## Annexion du rectangle de [param from] à [param to] (repère de la vue),
-## limitée par la surface que permet la population (sans coût).
-func plan_annex(from: Vector2i, to: Vector2i) -> Territory.AnnexPlan:
-	return territory.plan_annex(ZoneMap.rect_between(from, to), annex_room())
-
-
-## Annexe les tuiles de [param plan] ; renvoie leur nombre.
-func apply_annex(plan: Territory.AnnexPlan) -> int:
-	if plan.cells.is_empty():
-		if not plan.error.is_empty():
-			EventBus.notified.emit("Annexion impossible : " + plan.error)
-		return 0
-	var n := plan.cells.size()
-	territory.annex(plan.cells)
-	EventBus.tiles_changed.emit(plan.cells)
-	EventBus.territory_changed.emit()
-	EventBus.notified.emit("%d tuile%s annexée%s" % [n, "s" if n > 1 else "", "s" if n > 1 else ""])
-	return n
-
-
 ## Jours de réserve de nourriture et de bois au rythme actuel.
 func food_days() -> float:
 	return stockpile.days_of(Stockpile.Good.FOOD, food_need())
@@ -587,9 +572,9 @@ func _on_tick(tick: int) -> void:
 		EventBus.labor_changed.emit()
 	# L'heure écoulée est celle qui précède le tick.
 	var report := production.step_hour(tick - 1, stockpile)
-	if not report.cleared.is_empty():
+	if not report.cleared.is_empty() or not report.clearcut.is_empty():
 		var shown: Array[Vector2i] = []
-		for cell in report.cleared:
+		for cell in report.cleared + report.clearcut:
 			shown.append(display_cell(cell))
 		EventBus.tiles_changed.emit(shown)
 		EventBus.zones_changed.emit(shown)
@@ -617,8 +602,11 @@ func _consume(tick: int) -> void:
 func _on_day(day: int) -> void:
 	var day_tick := GameClock.tick - 1
 	stockpile.end_day()
-	for cell in production.end_day(day_tick):
+	var regrown := production.end_day(day_tick)
+	for cell in regrown:
 		EventBus.tiles_changed.emit([display_cell(cell)] as Array[Vector2i])
+	if not regrown.is_empty():
+		_update_labor()
 	var coverage := PackedFloat32Array()
 	for good in _needed_today.size():
 		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)

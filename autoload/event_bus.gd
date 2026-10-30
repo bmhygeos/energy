@@ -35,7 +35,7 @@ signal stocks_changed()
 signal population_changed()
 ## Expéditions lancées, en marche ou revenues.
 signal expeditions_changed()
-## Tuiles devenues explorées ou annexées (brume et frontière à redessiner).
+## Tuiles devenues territoire (brume et frontière à redessiner).
 signal territory_changed()
 ## Recherche lancée, avancée (chaque jour) ou terminée.
 signal research_changed()
@@ -43,8 +43,6 @@ signal research_changed()
 signal tier_changed()
 ## Outil Expédition : tuile cible cliquée (repère de la vue).
 signal expedition_target_clicked(cell: Vector2i)
-## Aperçu de l'annexion sous la souris (null : aucun).
-signal annex_plan_previewed(plan: Territory.AnnexPlan)
 ## Message bref pour le joueur (erreur de construction…).
 signal notified(message: String)
 ## Jalon du bac à sable atteint (Milestones.Def).
