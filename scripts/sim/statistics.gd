@@ -5,16 +5,29 @@ extends RefCounted
 ## (end_day). Pure donnée.
 
 ## Séries journalières (une valeur par jour clos) : population, emploi et
-## stocks en moyenne sur la journée ; production, pertes, satisfaction (%) et
-## puissance (W, moyenne glissante) du jour.
+## stocks en moyenne sur la journée ; production, pertes, satisfaction (%),
+## puissance (W, moyenne glissante), territoire (tuiles), chevaux, eau (% des
+## habitants servis) et points de recherche du jour.
 const SERIES: Array[StringName] = [
-	&"population", &"active", &"employed", &"unemployed", &"food_stock", &"wood_stock",
-	&"food_produced", &"wood_produced", &"food_lost", &"wood_lost", &"satisfaction",
-	&"power", &"power_per_capita",
+	&"population", &"active", &"employed", &"unemployed",
+	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
+	&"food_produced", &"wood_produced", &"stone_produced", &"iron_produced", &"tools_produced",
+	&"coal_produced", &"oil_produced",
+	&"food_lost", &"wood_lost", &"satisfaction", &"power", &"power_per_capita",
+	&"territory", &"horses", &"water", &"research",
 ]
 ## Séries dont la valeur du jour est la moyenne horaire (sinon : la somme).
 const AVERAGED: Array[StringName] = [
-	&"population", &"active", &"employed", &"unemployed", &"food_stock", &"wood_stock",
+	&"population", &"active", &"employed", &"unemployed",
+	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
+]
+## Marchandise (Stockpile.Good) → séries de stock et de production.
+const STOCK_KEYS: Array[StringName] = [
+	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
+]
+const PRODUCED_KEYS: Array[StringName] = [
+	&"food_produced", &"wood_produced", &"stone_produced", &"iron_produced", &"tools_produced",
+	&"coal_produced", &"oil_produced",
 ]
 
 ## Nombre de jours clos.
@@ -51,6 +64,14 @@ func end_day() -> void:
 
 func values(key: StringName) -> PackedFloat32Array:
 	return series[key]
+
+
+## Somme de toutes les valeurs closes de [param key].
+func total(key: StringName) -> float:
+	var sum := 0.0
+	for v in series[key]:
+		sum += v
+	return sum
 
 
 ## Dernière valeur close de [param key] (0 avant le premier jour).

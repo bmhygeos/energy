@@ -235,7 +235,7 @@ cité-État).
 
 Le grenier s'améliore sur place à chaque palier, sans cesser de servir pendant
 les travaux : grenier (600, hameau) → grenier en pierre (1 200, village) →
-grand grenier (2 000, bourg) → entrepôt (3 500, ville) → silo (6 000,
+grand grenier (4 000, bourg) → entrepôt (7 000, ville) → silo (12 000,
 cité-État). Les niveaux supérieurs coûtent de la pierre puis du fer.
 
 ### Palier 2 : hippotraction et inventions
@@ -427,7 +427,7 @@ effectif, vivres).
 | V4 | Production et saisons | Rendements, récoltes saisonnières, stocks, gâchis, repousse de la forêt, croissance et famine, compteur de puissance |
 | V5 | Exploration | Expéditions (effectif, vivres, trajet, révélation), annexion des tuiles explorées |
 | V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, assolement, métallurgie du fer et forge, outils, engrenage, moulin à vent), mine de fer |
-| V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 |
+| V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 (outil `simulate_pacing`, points de recherche mis de côté plafonnés) |
 | V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 

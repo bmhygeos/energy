@@ -2,13 +2,17 @@ class_name Research
 extends RefCounted
 ## Recherche (section 7 du plan) : la ville produit des points par habitant
 ## et par jour, modulés par la satisfaction, et mène une recherche à la fois.
-## Sans recherche en cours, les points sont mis de côté et versés à la
-## suivante ; une recherche interrompue garde son avancement. Pure donnée.
+## Sans recherche en cours, les points sont mis de côté (au plus
+## MAX_BANK_DAYS jours de points) et versés à la suivante ; une recherche
+## interrompue garde son avancement. Pure donnée.
 
 ## Points par habitant et par jour (à satisfaction pleine).
 const POINTS_PER_INHABITANT := 1.0
 ## Part des points produite même à satisfaction nulle.
 const MIN_SATISFACTION_FACTOR := 0.5
+## Points mis de côté au plus, en jours de points : un hameau qui n'a plus
+## rien à chercher ne finance pas d'avance toutes les inventions du village.
+const MAX_BANK_DAYS := 10.0
 
 ## Recherche en cours (null : aucune).
 var current: ResearchDef
@@ -69,7 +73,7 @@ func start(def: ResearchDef, tier: int) -> bool:
 ## Ajoute les [param points] du jour ; renvoie la recherche terminée, ou null.
 func add_points(points: float) -> ResearchDef:
 	if current == null:
-		bank += points
+		bank = maxf(bank, minf(bank + points, points * MAX_BANK_DAYS))
 		return null
 	var def := current
 	_progress[def.id] = _progress.get(def.id, 0.0) + points

@@ -84,6 +84,7 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	weather = Weather.new(seed_value)
 	stats = Statistics.new()
 	milestones = Milestones.new()
+	milestones.defs = Milestones.standard()
 	_needed_today = Stockpile.zeros()
 	_consumed_today = Stockpile.zeros()
 	GameClock.reset()
@@ -292,8 +293,8 @@ func _refresh_capacities() -> void:
 			housing += d.housing
 			water_supply += d.water_supply
 			horse_capacity += d.horse_capacity
-			capacity[Stockpile.Good.FOOD] += d.food_capacity
-			capacity[Stockpile.Good.WOOD] += d.wood_capacity
+			for good in Stockpile.COUNT:
+				capacity[good] += d.capacity_of(good)
 	stockpile.capacity = capacity
 	draft.capacity = horse_capacity
 	var water_factor := 1.0
@@ -585,8 +586,8 @@ func _on_tick(tick: int) -> void:
 	stats.add(&"active", population.active())
 	stats.add(&"employed", labor.employed())
 	stats.add(&"unemployed", labor.unemployed())
-	stats.add(&"food_stock", stockpile.amount[Stockpile.Good.FOOD])
-	stats.add(&"wood_stock", stockpile.amount[Stockpile.Good.WOOD])
+	for good in Stockpile.COUNT:
+		stats.add(Statistics.STOCK_KEYS[good], stockpile.amount[good])
 	stats.end_hour()
 
 
@@ -622,7 +623,8 @@ func _on_day(day: int) -> void:
 		_prospect_territory()
 		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
 		EventBus.tier_changed.emit()
-	var finished := research.add_points(research_per_day())
+	var points := research_per_day()
+	var finished := research.add_points(points)
 	if finished:
 		EventBus.notified.emit("Recherche terminée : %s" % finished.display_name)
 		_refresh_capacities()
@@ -631,13 +633,17 @@ func _on_day(day: int) -> void:
 	draft.end_day(coverage[Stockpile.Good.FOOD])
 	power.push_day(production.produced_today, PackedFloat32Array([draft.working() * DraftAnimals.WORK_WATTS,
 		_mill_watts(day_tick)]))
-	stats.add(&"food_produced", production.produced_today[Stockpile.Good.FOOD])
-	stats.add(&"wood_produced", production.produced_today[Stockpile.Good.WOOD])
+	for good in Stockpile.COUNT:
+		stats.add(Statistics.PRODUCED_KEYS[good], production.produced_today[good])
 	stats.add(&"food_lost", stockpile.lost_today[Stockpile.Good.FOOD])
 	stats.add(&"wood_lost", stockpile.lost_today[Stockpile.Good.WOOD])
 	stats.add(&"satisfaction", population.satisfaction * 100.0)
 	stats.add(&"power", power.average())
 	stats.add(&"power_per_capita", power.per_capita(population.count))
+	stats.add(&"territory", territory.count(Territory.State.TERRITORY))
+	stats.add(&"horses", draft.horses)
+	stats.add(&"water", water_coverage() * 100.0)
+	stats.add(&"research", points)
 	stats.end_day()
 	production.reset_day()
 	stockpile.reset_day()
@@ -666,6 +672,13 @@ func _check_milestones(day: int) -> void:
 	var facts := Milestones.Facts.new()
 	facts.stats = stats
 	facts.buildings = buildings.all()
+	facts.day = day
+	facts.population = population.count
+	facts.tier = tier.level
+	facts.territory = territory.count(Territory.State.TERRITORY)
+	facts.horses = draft.horses
+	facts.water_coverage = water_coverage()
+	facts.research = research
 	for def in milestones.check(facts, day):
 		EventBus.milestone_reached.emit(def)
 		EventBus.notified.emit("Jalon atteint : %s — %s" % [def.display_name, def.description])

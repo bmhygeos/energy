@@ -1,12 +1,16 @@
 extends CanvasLayer
 ## Fenêtre des statistiques (G) : graphiques journaliers par onglet
-## (population, stocks et production, puissance) et jalons du bac à sable.
+## (population, stocks et production, territoire et village, puissance) et
+## jalons du bac à sable.
 
 const RANGES: PackedInt32Array = [30, 120, 0]
 const RANGE_NAMES: PackedStringArray = ["30 jours", "1 an", "Tout"]
 const REACHED_COLOR := Color("4caf50")
 const FOOD_COLOR := Color("e3b448")
 const WOOD_COLOR := Color("a0703c")
+## Couleur de chaque marchandise (Stockpile.Good).
+const GOOD_COLORS: Array[Color] = [FOOD_COLOR, WOOD_COLOR, Color("9aa3ad"), Color("5f7f9e"), Color("d9774b"),
+	Color("5a5a64"), Color("2f6f6a")]
 const PENDING_COLOR := Color("8b8f99")
 
 var _range := 1
@@ -113,11 +117,16 @@ func _build() -> void:
 	_add_tab("Population", [
 		_chart(&"population", "Habitants et actifs", "habitants"),
 		_chart(&"labor", "Emploi (moyenne du jour)", "travailleurs"),
-		_chart(&"satisfaction", "Satisfaction", "%"),
+		_chart(&"satisfaction", "Satisfaction et eau", "%"),
 	])
 	_add_tab("Stocks et production", [
 		_chart(&"stocks", "Stocks (moyenne du jour)", "unités"),
 		_chart(&"produced", "Production et pertes du jour", "unités"),
+	])
+	_add_tab("Territoire et village", [
+		_chart(&"territory", "Territoire", "tuiles"),
+		_chart(&"horses", "Chevaux de trait", "chevaux"),
+		_chart(&"research", "Recherche", "points / jour"),
 	])
 	_add_tab("Puissance", [
 		_chart(&"power", "Puissance de la cité (moyenne sur %d j)" % PowerMeter.WINDOW_DAYS, "kW"),
@@ -167,16 +176,25 @@ func _refresh() -> void:
 		Chart.Series.new("Au travail", stats.values(&"employed"), Color("4caf50")),
 		Chart.Series.new("Chômeurs", stats.values(&"unemployed"), Color("e5484d")),
 	], first)
-	_show(&"satisfaction", [Chart.Series.new("Satisfaction", stats.values(&"satisfaction"), Color("f2d14b"))], first)
-	_show(&"stocks", [
-		Chart.Series.new("Nourriture", stats.values(&"food_stock"), FOOD_COLOR),
-		Chart.Series.new("Bois", stats.values(&"wood_stock"), WOOD_COLOR),
-	], first)
-	_show(&"produced", [
-		Chart.Series.new("Nourriture produite", stats.values(&"food_produced"), FOOD_COLOR),
-		Chart.Series.new("Bois produit", stats.values(&"wood_produced"), WOOD_COLOR),
-		Chart.Series.new("Nourriture perdue", stats.values(&"food_lost"), Color("e5484d")),
-	], first)
+	var satisfaction := [Chart.Series.new("Satisfaction", stats.values(&"satisfaction"), Color("f2d14b"))]
+	if GameState.tier.level >= GameState.WATER_TIER:
+		satisfaction.append(Chart.Series.new("Habitants servis en eau", stats.values(&"water"), Color("4aa3df")))
+	_show(&"satisfaction", satisfaction, first)
+	# Pierre, fer et outils n'apparaissent qu'une fois produits.
+	var stocks := []
+	var produced := []
+	for good in Stockpile.COUNT:
+		if good > Stockpile.Good.WOOD and stats.total(Statistics.PRODUCED_KEYS[good]) <= 0.0:
+			continue
+		var good_name := Stockpile.GOOD_NAMES[good]
+		stocks.append(Chart.Series.new(good_name, stats.values(Statistics.STOCK_KEYS[good]), GOOD_COLORS[good]))
+		produced.append(Chart.Series.new(good_name, stats.values(Statistics.PRODUCED_KEYS[good]), GOOD_COLORS[good]))
+	produced.append(Chart.Series.new("Nourriture perdue", stats.values(&"food_lost"), Color("e5484d")))
+	_show(&"stocks", stocks, first)
+	_show(&"produced", produced, first)
+	_show(&"territory", [Chart.Series.new("Territoire", stats.values(&"territory"), Color("7ee787"))], first)
+	_show(&"horses", [Chart.Series.new("Chevaux", stats.values(&"horses"), Color("c08a5a"))], first)
+	_show(&"research", [Chart.Series.new("Points", stats.values(&"research"), Color("b37feb"))], first)
 	var kw := PackedFloat32Array()
 	for w in stats.values(&"power"):
 		kw.append(w / 1000.0)

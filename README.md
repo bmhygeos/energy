@@ -22,6 +22,7 @@ python3 -m http.server -d build/web 8060      # tester la version web : http://l
 # Outils
 godot --headless -s res://tools/generate_tile_art.gd        # régénère assets/tiles/*.png
 godot --headless -s res://tools/render_map_preview.gd -- 42 /tmp/planete.png 2   # planète (1 pixel / 2 tuiles) et site de départ
+godot --headless -s res://tools/simulate_pacing.gd -- 42 8    # rythme des paliers : partie jouée seule (graine, années)
 ```
 
 L'export nécessite les modèles d'export Godot 4.7.2 (Éditeur → Gérer les
@@ -182,6 +183,12 @@ météo et interface conservés.
   par les bâtiments de départ), visibles dès le passage au village.
 - **Forge** (recherche Métallurgie du fer) : 2 outils/j, 1 fer et 0,5 bois
   chacun. Fer (200) et outils (100) au bandeau avec la pierre.
+- **Stockage** (menu Stockage) : parc à pierre (village, 20 bois, +400
+  pierre), entrepôt à outils (village, +200 outils),
+  parc à fer (village, +400 fer), parc à charbon (bourg, +1 000 charbon),
+  réservoir de pétrole (ville, +1 000 pétrole). Charbon (100 de base) et
+  pétrole (aucune capacité sans réservoir) sont des marchandises prêtes pour
+  les paliers 3 et 4, pas encore produites.
 - **Inventions du village** (atelier ×2) :
   | Invention | Prérequis | Points | Effet |
   |---|---|---|---|
@@ -204,9 +211,9 @@ météo et interface conservés.
   |---|---|---|---|
   | Grenier | Hameau | 600 | (construction : 40 bois) |
   | Grenier en pierre | Village | 1 200 | 20 bois, 30 pierre |
-  | Grand grenier | Bourg | 2 000 | 30 bois, 40 pierre, 10 fer |
-  | Entrepôt | Ville | 3 500 | 20 bois, 60 pierre, 30 fer |
-  | Silo | Cité-État | 6 000 | 80 pierre, 60 fer |
+  | Grand grenier | Bourg | 4 000 | 30 bois, 40 pierre, 10 fer |
+  | Entrepôt | Ville | 7 000 | 20 bois, 60 pierre, 30 fer |
+  | Silo | Cité-État | 12 000 | 80 pierre, 60 fer |
 - **Maisons améliorables** de la même façon (logements gardés pendant les
   travaux ; la maison en pierre se construit aussi directement) :
   | Niveau | Palier | Habitants | Coût de l'amélioration |
@@ -217,10 +224,30 @@ météo et interface conservés.
   | Immeuble | Ville | 30 | 10 bois, 50 pierre, 20 fer |
   | Tour d'habitation | Cité-État | 60 | 80 pierre, 50 fer |
 
+### V7 : interface et équilibrage
+- **Statistiques** (`G`) : stocks et production de toutes les marchandises
+  (pierre, fer et outils dès leur première production), eau servie avec la
+  satisfaction, onglet « Territoire et village » (territoire, chevaux, points
+  de recherche par jour).
+- **Jalons** (onglet de la même fenêtre, annoncés en jeu) : premier hiver,
+  au-delà de l'horizon (300 tuiles), irrigation, hameau prospère (50
+  habitants), village, eau pour tous, maisons en dur, maître de forge, écurie
+  pleine, inventions du village, grand territoire (2 000 tuiles), bourg.
+- **Tutoriel** réécrit (11 étapes) : zones, camp d'abattage, hiver et
+  panneau Main-d'œuvre, expédition, recherche, croissance jusqu'au village,
+  puits et nouveautés du village, statistiques.
+- **Rythme** : `godot --headless -s res://tools/simulate_pacing.gd -- 42 8`
+  joue une partie avec une stratégie simple et affiche l'évolution, les
+  paliers et les jalons. Mesuré : village vers le jour 270 (≈ 2 ans 1/4,
+  11 min à ×1), bourg vers le jour 520. Les points mis de côté sont plafonnés
+  à 10 jours : sans cela, le hameau finançait d'avance toutes les inventions
+  du village, terminées en 4 semaines (désormais ≈ 2 mois et demi).
+
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon
   la satisfaction ; une recherche à la fois ; sans recherche en cours, les
-  points sont mis de côté et versés à la suivante.
+  points sont mis de côté (10 jours de points au plus) et versés à la
+  suivante.
 - **Panneau Recherche** (`R` ou bouton du bandeau) : points par jour,
   recherche en cours, recherches du palier avec coût, avancement et effet.
 - **Irrigation** (hameau, 500 points) : champs à 3 tuiles ou moins d'une

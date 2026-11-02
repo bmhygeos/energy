@@ -35,9 +35,15 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export_group("Effets")
 ## Habitants logés (maisons).
 @export var housing := 0
-## Capacité de stockage ajoutée (grenier, camp d'abattage).
+## Capacité de stockage ajoutée (grenier, camp d'abattage, parc à pierre,
+## entrepôt à outils, parcs à fer et à charbon, réservoir de pétrole).
 @export var food_capacity := 0.0
 @export var wood_capacity := 0.0
+@export var stone_capacity := 0.0
+@export var iron_capacity := 0.0
+@export var tools_capacity := 0.0
+@export var coal_capacity := 0.0
+@export var oil_capacity := 0.0
 ## Forge : outils fabriqués par jour (FORGE_IRON_PER_TOOL fer et
 ## FORGE_WOOD_PER_TOOL bois chacun).
 @export var tools_per_day := 0.0
@@ -111,10 +117,9 @@ func describe_effects() -> PackedStringArray:
 	var lines := PackedStringArray()
 	if housing > 0:
 		lines.append("Loge %d habitants" % housing)
-	if food_capacity > 0.0:
-		lines.append("Stocke %d de nourriture" % roundi(food_capacity))
-	if wood_capacity > 0.0:
-		lines.append("Stocke %d de bois" % roundi(wood_capacity))
+	for good in Stockpile.COUNT:
+		if capacity_of(good) > 0.0:
+			lines.append("Stocke %d de %s" % [roundi(capacity_of(good)), Stockpile.GOOD_NAMES[good].to_lower()])
 	if tools_per_day > 0.0:
 		lines.append("Fabrique %s outils par jour (fer et bois)" % Format.decimal(tools_per_day))
 	if forestry_bonus > 0.0:
@@ -147,3 +152,23 @@ static func _terrain_names(terrains: Array[TerrainDef.Type]) -> String:
 	for t in terrains:
 		names.append(TerrainDb.get_def(t).display_name.to_lower())
 	return ", ".join(names)
+
+
+## Capacité de stockage ajoutée pour [param good] (Stockpile.Good).
+func capacity_of(good: int) -> float:
+	match good:
+		Stockpile.Good.FOOD:
+			return food_capacity
+		Stockpile.Good.WOOD:
+			return wood_capacity
+		Stockpile.Good.STONE:
+			return stone_capacity
+		Stockpile.Good.IRON:
+			return iron_capacity
+		Stockpile.Good.TOOLS:
+			return tools_capacity
+		Stockpile.Good.COAL:
+			return coal_capacity
+		Stockpile.Good.OIL:
+			return oil_capacity
+	return 0.0

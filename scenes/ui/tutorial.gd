@@ -21,6 +21,7 @@ const DONE_COLOR := Color("4caf50")
 var _steps: Array[Step] = []
 var _index := 0
 var _stats_opened := false
+var _labor_opened := false
 var _overlay_used := false
 var _dismissed := false
 var _elapsed := 0.0
@@ -41,6 +42,7 @@ func _ready() -> void:
 	EventBus.game_started.connect(func(_s: int) -> void:
 		_index = 0
 		_stats_opened = false
+		_labor_opened = false
 		_overlay_used = false
 		_panel.visible = not _dismissed
 		_show_step())
@@ -58,6 +60,9 @@ func _process(delta: float) -> void:
 	var stats := get_node_or_null("../StatsWindow")
 	if stats and stats.is_open():
 		_stats_opened = true
+	var labor := get_node_or_null("../LaborPanel")
+	if labor and labor.is_open():
+		_labor_opened = true
 	_elapsed += delta
 	if not _panel.visible or _elapsed < CHECK_INTERVAL:
 		return
@@ -69,19 +74,33 @@ func _process(delta: float) -> void:
 
 func _make_steps() -> Array[Step]:
 	return [
-		Step.new("Bienvenue", "Vous êtes le gouverneur d'une future cité-État. Tout commence par un hameau : bientôt, vous tracerez des zones où les habitants travailleront, puis vous explorerez le monde.\n\n[b]Caméra[/b] : ZQSD ou flèches, glisser avec le clic droit, molette pour zoomer.\n[b]Temps[/b] : Espace pour la pause, 1 / 2 / 3 pour les vitesses."),
+		Step.new("Bienvenue", "Vous êtes le gouverneur d'une future cité-État. Tout commence par un hameau de %d habitants : vous tracerez des zones où ils travailleront, explorerez le monde et ferez grandir le hameau jusqu'au village, puis au-delà.\n\n[b]Caméra[/b] : ZQSD ou flèches, glisser avec le clic droit, molette pour zoomer.\n[b]Temps[/b] : Espace pour la pause, 1 / 2 / 3 pour les vitesses." % Population.START),
 		Step.new("Lire la carte", "Votre territoire est encadré en jaune ; le reste de la planète est encore inconnu. Un clic sur une tuile affiche son terrain à droite. Les [b]calques[/b] (O ou boutons en bas à droite) montrent le relief, la fertilité, le pâturage et l'eau. Affichez-en un.",
 			func() -> bool: return _overlay_used),
-		Step.new("Construire", "Le hameau a un grenier et des maisons. L'hiver venu, il faudra deux fois plus de bois : dans le menu [b]Construction[/b], placez un [b]Camp d'abattage[/b] (20 bois).\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
-			func() -> bool: return _has(&"woodshed")),
-		Step.new("Tracer des zones", "Le gouverneur ne bâtit pas chaque ferme : il [b]trace des zones[/b] où les habitants iront travailler. Choisissez [b]Agriculture[/b] (plaines et berges), [b]Élevage[/b] (prairies, collines) ou [b]Coupe du bois[/b] (forêts), puis glissez sur la carte.\n\nLes habitants actifs s'y répartissent d'eux-mêmes, d'abord sur les meilleures tuiles proches du village. Le panneau [b]Main-d'œuvre[/b] (M) règle la priorité de chaque activité.",
+		Step.new("Tracer des zones", "Le gouverneur ne bâtit pas chaque ferme : il [b]trace des zones[/b] où les habitants iront travailler. Dans le menu [b]Construction[/b], choisissez [b]Agriculture[/b] (plaines et berges), [b]Élevage[/b] (prairies, collines) ou [b]Coupe du bois[/b] (forêts), puis glissez sur la carte.\n\nLes habitants actifs s'y répartissent d'eux-mêmes, d'abord sur les meilleures tuiles proches du village. Une forêt coupée à blanc garde sa zone et repousse.",
 			func() -> bool: return not GameState.zones.all_cells().is_empty()),
-		Step.new("Passer l'hiver", "Les champs ne donnent rien en hiver : remplissez le [b]grenier[/b] pour l'hiver (survolez les stocks du bandeau). Le bois de chauffage double en hiver.\n\nSi les besoins sont couverts et qu'il reste des logements, la population grandit : construisez des [b]maisons[/b] et des greniers. La disette fait partir les habitants.",
-			func() -> bool: return _stats_opened or GameClock.tick >= GameDate.HOURS_PER_SEASON),
-		Step.new("Suivre la partie", "La fenêtre [b]Statistiques[/b] (G) trace la population, les stocks et la [b]puissance[/b] de la cité (énergie produite, en haut du bandeau). Ouvrez-la.",
+		Step.new("Construire", "Le bois se range au [b]Camp d'abattage[/b] : placez-en un (20 bois) depuis le menu [b]Construction[/b].\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
+			func() -> bool: return _has(&"woodshed")),
+		Step.new("Passer l'hiver", "Les champs ne donnent rien en hiver et le chauffage y double ; en été, il faut deux fois moins de bois. Remplissez le [b]grenier[/b] et le camp d'abattage avant l'hiver (survolez les stocks du bandeau).\n\nLe panneau [b]Main-d'œuvre[/b] (M) montre la production prévue et règle la priorité de chaque activité. Ouvrez-le.",
+			func() -> bool: return _labor_opened),
+		Step.new("Explorer", "Le territoire grandit par l'[b]exploration[/b] : bouton [b]Expédition[/b] du menu, réglez les explorateurs et les jours de vivres (pris au grenier), puis cliquez la destination. Les tuiles que voit l'expédition [b]rejoignent le territoire[/b].",
+			func() -> bool: return (not GameState.exploration.expeditions.is_empty()
+				or GameState.territory.count(Territory.State.TERRITORY) > StartSite.TERRITORY_SIZE * StartSite.TERRITORY_SIZE)),
+		Step.new("Rechercher", "La [b]Recherche[/b] (R) avance chaque jour selon le nombre d'habitants et leur satisfaction. Lancez [b]Irrigation[/b] : les champs proches d'une rivière ou d'un lac rendront 30 %% de plus.",
+			func() -> bool: return GameState.research.current != null or GameState.research.is_done(&"irrigation")),
+		Step.new("Grandir", "Si la nourriture et le bois suffisent et qu'il reste des logements, la population grandit : construisez des [b]maisons[/b] et agrandissez les zones. La disette et le froid font partir les habitants.\n\nÀ [b]%d habitants[/b] satisfaits (%d %% ou plus), le hameau devient un [b]village[/b]." % [
+				CityTier.POPULATION[1], roundi(CityTier.SATISFACTION_REQUIRED * 100.0)],
+			func() -> bool: return GameState.tier.level >= 2),
+		Step.new("Le village", "Le village a besoin d'[b]eau[/b] : construisez un [b]Puits[/b] (un pour %d habitants). Il débloque aussi la [b]Carrière[/b] (pierre, sur la colline près du village), la [b]Pêche[/b], la [b]Mine de fer[/b] (gisement près du village), l'[b]Atelier[/b] (recherche ×2), l'[b]Écurie[/b] et l'outil [b]Améliorer[/b] (maisons en pierre, scierie, grenier en pierre)." % _well_capacity(),
+			func() -> bool: return _has(&"well")),
+		Step.new("Suivre la partie", "La fenêtre [b]Statistiques[/b] (G) trace la population, les stocks, le territoire et la [b]puissance[/b] de la cité ; l'onglet [b]Jalons[/b] propose des objectifs. Ouvrez-la.",
 			func() -> bool: return _stats_opened),
-		Step.new("À vous de jouer", "Passez vos premiers hivers ! L'exploration et les paliers suivants arrivent dans les prochaines versions. H rouvre ce tutoriel."),
+		Step.new("À vous de jouer", "Prochain cap : les inventions du village (forge et outils, charrue, moulin à vent…), puis le [b]bourg[/b] à %d habitants. H rouvre ce tutoriel." % CityTier.POPULATION[2]),
 	]
+
+
+func _well_capacity() -> int:
+	return BuildingDb.get_def(&"well").water_supply
 
 
 func _has(id: StringName) -> bool:

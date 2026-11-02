@@ -646,7 +646,7 @@ func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
 	stock.amount = Stockpile.zeros()
-	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -666,6 +666,17 @@ func _test_stockpile() -> void:
 	stock.amount[0] = 70.0
 	stock.update_full()
 	_check(not stock.full[0], "sous 75 % : de nouveau à remplir")
+	_check(not stock.full[Stockpile.Good.OIL], "sans réservoir (capacité nulle) : pas plein")
+	# Stockage : parc à pierre, entrepôt à outils, parcs à fer et à charbon, réservoir de pétrole.
+	var stores := {&"stone_yard": [Stockpile.Good.STONE, 2], &"tool_store": [Stockpile.Good.TOOLS, 2], &"iron_yard": [Stockpile.Good.IRON, 2],
+		&"coal_yard": [Stockpile.Good.COAL, 3], &"oil_tank": [Stockpile.Good.OIL, 4]}
+	for id: StringName in stores:
+		var def := BuildingDb.get_def(id)
+		var good: int = stores[id][0]
+		_check(def != null and def.capacity_of(good) > 0.0 and def.tier == stores[id][1]
+			and def.category == BuildingDef.Category.STORAGE,
+			"%s : stocke %s, palier %d" % [id, Stockpile.GOOD_NAMES[good].to_lower(), stores[id][1]])
+	_check(Stockpile.BASE_CAPACITY[Stockpile.Good.OIL] == 0.0, "pétrole : réservoir nécessaire")
 
 
 func _test_research() -> void:
@@ -690,6 +701,10 @@ func _test_research() -> void:
 		and is_equal_approx(research.bank, 20.0), "terminée, surplus mis de côté")
 	_check(not research.start(irrigation, 1) and not research.is_available(later, 1) and research.is_available(later, 2),
 		"pas deux fois ; la suivante attend son palier")
+	for d in 30:
+		research.add_points(50.0)
+	_check(is_equal_approx(research.bank, 50.0 * Research.MAX_BANK_DAYS),
+		"points mis de côté plafonnés à %d jours" % roundi(Research.MAX_BANK_DAYS))
 
 
 func _test_village() -> void:
@@ -1076,6 +1091,7 @@ func _test_statistics() -> void:
 	_check(stats.days == 2 and stats.values(&"test") == PackedFloat32Array([5.0, 0.0]),
 		"une valeur par jour clos (somme des heures)")
 	_check(stats.values(&"population")[0] == 15.0, "série moyennée : moyenne horaire")
+	_check(stats.total(&"test") == 5.0, "total d'une série")
 
 
 func _test_milestones() -> void:
@@ -1089,3 +1105,23 @@ func _test_milestones() -> void:
 	var reached := milestones.check(facts, 3)
 	_check(reached.size() == 1 and milestones.reached[&"built"] == 3, "jalon atteint le jour 3")
 	_check(milestones.check(facts, 4).is_empty(), "jalon atteint une seule fois")
+	# Jalons de la partie.
+	var standard := Milestones.new()
+	standard.defs = Milestones.standard()
+	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
+	_check(ids.size() == 12 and &"village" in ids and &"bourg" in ids, "jalons de la partie : %d" % ids.size())
+	var day_facts := Milestones.Facts.new()
+	day_facts.stats = Statistics.new()
+	day_facts.research = Research.new()
+	day_facts.population = Population.START
+	day_facts.territory = 144
+	_check(standard.check(day_facts, 10).is_empty(), "départ : aucun jalon")
+	day_facts.day = GameDate.DAYS_PER_SEASON * GameDate.SEASONS_PER_YEAR - 1
+	day_facts.tier = 2
+	var got := standard.check(day_facts, day_facts.day).map(func(d: Milestones.Def) -> StringName: return d.id)
+	_check(got == [&"first_winter", &"village"], "premier hiver passé et village %s" % [got])
+	day_facts.buildings = [Building.new(2, BuildingDb.get_def(&"well"), Vector2i.ZERO)]
+	day_facts.buildings[0].build_progress = BuildingDb.get_def(&"well").build_hours
+	day_facts.buildings[0].status = Building.Status.RUNNING
+	_check(standard.check(day_facts, 200).map(func(d: Milestones.Def) -> StringName: return d.id) == [&"water"],
+		"eau pour tous : un puits et tous servis")

@@ -202,6 +202,11 @@ func _refresh_stone() -> void:
 		roundi(stock.amount[iron]), roundi(stock.capacity[iron]), roundi(stock.amount[tools]), roundi(stock.capacity[tools]),
 		Format.decimal(GameState.tools_need(), 2), GameState.tool_users(),
 		"\nPlus d'outils : scie et charrue sans effet." if not GameState.production.tools_ok else ""]
+	# Charbon et pétrole : dès qu'il y a de quoi les stocker.
+	for other in [Stockpile.Good.COAL, Stockpile.Good.OIL]:
+		if stock.capacity[other] > Stockpile.BASE_CAPACITY[other] or stock.amount[other] > 0.0:
+			_stone_label.tooltip_text += "\n%s : %d / %d" % [Stockpile.GOOD_NAMES[other],
+				roundi(stock.amount[other]), roundi(stock.capacity[other])]
 
 
 ## Puissance de la cité (moyenne glissante) et par habitant ; parts au survol.

@@ -1,21 +1,22 @@
 class_name Stockpile
 extends RefCounted
-## Stocks centralisés de la cité (nourriture, bois, pierre, fer, outils) :
-## capacité, gâchis de la
+## Stocks centralisés de la cité (nourriture, bois, pierre, fer, outils,
+## charbon, pétrole) : capacité, gâchis de la
 ## nourriture au-delà de la moitié du grenier, pertes au-delà de la capacité,
 ## et énergie contenue (compteur de puissance). Pure donnée.
 
-enum Good { FOOD, WOOD, STONE, IRON, TOOLS }
+enum Good { FOOD, WOOD, STONE, IRON, TOOLS, COAL, OIL }
 
-const COUNT := 5
-const GOOD_NAMES: PackedStringArray = ["Nourriture", "Bois", "Pierre", "Fer", "Outils"]
+const COUNT := 7
+const GOOD_NAMES: PackedStringArray = ["Nourriture", "Bois", "Pierre", "Fer", "Outils", "Charbon", "Pétrole"]
 ## Contenu énergétique d'une unité (MJ) : 2 500 kcal de nourriture, 10 kg de
-## bois sec ; les matériaux n'en ont pas.
-const ENERGY_MJ: PackedFloat32Array = [10.5, 150.0, 0.0, 0.0, 0.0]
-## Capacité du village sans bâtiment de stockage.
-const BASE_CAPACITY: PackedFloat32Array = [200.0, 150.0, 300.0, 200.0, 100.0]
+## bois sec, de charbon ou de pétrole ; les matériaux n'en ont pas.
+const ENERGY_MJ: PackedFloat32Array = [10.5, 150.0, 0.0, 0.0, 0.0, 290.0, 420.0]
+## Capacité du village sans bâtiment de stockage (le pétrole demande un
+## réservoir).
+const BASE_CAPACITY: PackedFloat32Array = [200.0, 150.0, 300.0, 200.0, 100.0, 100.0, 0.0]
 ## Stocks au départ : de quoi tenir jusqu'aux premières récoltes.
-const START: PackedFloat32Array = [550.0, 120.0, 0.0, 0.0, 0.0]
+const START: PackedFloat32Array = [550.0, 120.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ## Nourriture gâtée par jour, en part de l'excédent au-delà de la moitié de
 ## la capacité.
 const SPOILAGE_PER_DAY := 0.01
@@ -27,7 +28,7 @@ const REFILL_RATIO := 0.75
 
 var amount := zeros()
 ## Stocks pleins (voir update_full).
-var full: Array[bool] = [false, false, false, false, false]
+var full: Array[bool] = []
 var capacity := zeros()
 ## Pertes de la journée en cours (gâchis et débordement), par marchandise.
 var lost_today := zeros()
@@ -45,6 +46,8 @@ static func zeros() -> PackedFloat32Array:
 func _init() -> void:
 	amount = START.duplicate()
 	capacity = BASE_CAPACITY.duplicate()
+	full.resize(COUNT)
+	full.fill(false)
 
 
 ## Ajoute [param qty] de [param good] ; le surplus au-delà de la capacité est
@@ -70,7 +73,9 @@ func has(good: Good, qty: float) -> bool:
 ## Met à jour les stocks pleins : produire davantage serait perdu.
 func update_full() -> void:
 	for good in amount.size():
-		if amount[good] >= capacity[good] * FULL_RATIO:
+		if capacity[good] <= 0.0:
+			full[good] = false
+		elif amount[good] >= capacity[good] * FULL_RATIO:
 			full[good] = true
 		elif amount[good] < capacity[good] * REFILL_RATIO:
 			full[good] = false

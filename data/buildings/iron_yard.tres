@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"iron_yard"
+display_name = "Parc à fer"
+description = "Aire empierrée où le minerai et les lingots de fer sont entassés."
+category = 1
+tier = 2
+build_hours = 24
+wood_cost = 15
+stone_cost = 15
+iron_capacity = 400.0
+color = Color(0.45, 0.48, 0.52, 1)
+roof_color = Color(0.3, 0.33, 0.38, 1)
+height = 6.0
