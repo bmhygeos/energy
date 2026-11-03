@@ -60,6 +60,13 @@ func _ready() -> void:
 	%StatsButton.pressed.connect(func() -> void: get_node("../StatsWindow").toggle())
 	%LaborButton.pressed.connect(func() -> void: get_node("../LaborPanel").toggle())
 	%ResearchButton.pressed.connect(func() -> void: get_node("../ResearchPanel").toggle())
+	# Aide : le tutoriel se rouvre aussi sans clavier (tablette).
+	var help := Button.new()
+	help.text = "Aide"
+	help.tooltip_text = "Afficher ou masquer le tutoriel (H)"
+	help.focus_mode = Control.FOCUS_NONE
+	help.pressed.connect(func() -> void: get_node("../Tutorial").toggle())
+	%StatsButton.add_sibling(help)
 	EventBus.labor_changed.connect(_refresh_population)
 	EventBus.population_changed.connect(_refresh_population)
 	EventBus.stocks_changed.connect(_refresh_stocks)

@@ -87,6 +87,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
 		if not _is_drag_mode() or _drag_start.x < 0:
 			return
+		if get_viewport().get_camera_2d().get("gesture_used"):
+			# Deux doigts posés pendant le glisser : déplacement de la vue, pas de zone.
+			_drag_start = Vector2i(-1, -1)
+			_zone_plan = null
+			EventBus.zone_plan_previewed.emit(null)
+			get_viewport().set_input_as_handled()
+			return
 		_update_zone_plan()
 		if _zone_plan:
 			GameState.apply_zones(_zone_plan)

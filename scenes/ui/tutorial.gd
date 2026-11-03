@@ -51,9 +51,14 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("tutorial"):
-		_panel.visible = not _panel.visible
-		_dismissed = not _panel.visible
+		toggle()
 		get_viewport().set_input_as_handled()
+
+
+## Affiche ou masque le tutoriel (H, bouton Aide du bandeau).
+func toggle() -> void:
+	_panel.visible = not _panel.visible
+	_dismissed = not _panel.visible
 
 
 func _process(delta: float) -> void:

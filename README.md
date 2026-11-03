@@ -33,6 +33,12 @@ hébergement statique (itch.io, GitHub Pages…) sans en-têtes COOP/COEP. Elle
 doit être servie en HTTP (pas d'ouverture directe du fichier `index.html`) et
 nécessite un navigateur avec WebGL 2.
 
+Elle est publiée sur https://bmhygeos.github.io/energy/ (branche `gh-pages`,
+contenu de `build/web` sans les fichiers `.import`). Sur tablette : toucher
+pour sélectionner ou construire, glisser à un doigt (outil Sélection) ou à deux
+doigts pour déplacer la vue, pincer pour zoomer ; bouton « Aide » pour le
+tutoriel.
+
 ## Contrôles
 
 | Action | Touches |

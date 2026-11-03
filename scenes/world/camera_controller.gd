@@ -1,7 +1,9 @@
 extends Camera2D
 ## Caméra de la carte : déplacement clavier (ZQSD/WASD selon la disposition,
 ## flèches), glisser avec le bouton du milieu ou droit, zoom à la molette
-## centré sur le curseur, bornée aux tuiles connues.
+## centré sur le curseur, bornée aux tuiles connues. Au doigt (tablette) :
+## glisser à un doigt avec l'outil Sélection, à deux doigts avec tout outil,
+## pincer pour zoomer.
 
 @export var pan_speed := 900.0  ## Pixels écran par seconde.
 @export var zoom_min := 0.25
@@ -10,10 +12,18 @@ extends Camera2D
 
 var _dragging := false
 var _bounds := Rect2()
+## Doigts posés : index → position à l'écran.
+var _touches: Dictionary[int, Vector2] = {}
+var _select_mode := true
+## Un geste à deux doigts a eu lieu depuis que le premier doigt s'est posé :
+## la carte ignore alors le relâchement (pas de zone peinte par erreur).
+var gesture_used := false
 
 
 func _ready() -> void:
 	EventBus.game_started.connect(func(_seed: int) -> void: reset_view())
+	EventBus.tool_changed.connect(func(mode: int, _def: Resource) -> void:
+		_select_mode = mode == BuildTool.Mode.SELECT)
 	reset_view()
 
 
@@ -60,6 +70,36 @@ func _unhandled_input(event: InputEvent) -> void:
 				return  # clic gauche : laissé à la carte (sélection, construction)
 	elif event is InputEventMouseMotion and _dragging:
 		position -= (event as InputEventMouseMotion).relative / zoom.x
+		_clamp_position()
+	elif event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			if _touches.is_empty():
+				gesture_used = false
+			_touches[touch.index] = touch.position
+			gesture_used = gesture_used or _touches.size() >= 2
+		else:
+			_touches.erase(touch.index)
+		return  # le toucher reste émulé en souris pour la carte
+	elif event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		if not _touches.has(drag.index):
+			return
+		if _touches.size() >= 2:
+			# Deux doigts : déplacement de leur milieu et pincement.
+			var other: int = _touches.keys().filter(func(i: int) -> bool: return i != drag.index)[0]
+			var before := _touches[drag.index].distance_to(_touches[other])
+			_touches[drag.index] = drag.position
+			var after := drag.position.distance_to(_touches[other])
+			position -= drag.relative / 2.0 / zoom.x
+			if before > 1.0:
+				_zoom_at(after / before, (drag.position + _touches[other]) / 2.0)
+		elif _select_mode:
+			_touches[drag.index] = drag.position
+			position -= drag.relative / zoom.x
+		else:
+			_touches[drag.index] = drag.position
+			return
 		_clamp_position()
 	elif event is InputEventMagnifyGesture:
 		_zoom_at((event as InputEventMagnifyGesture).factor, event.position)
