@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"weaver"
+display_name = "Atelier de tissage"
+description = "Rouets et métiers à tisser : le lin et la laine deviennent des vêtements."
+category = 2
+tier = 3
+build_hours = 72
+wood_cost = 40
+stone_cost = 30
+iron_cost = 5
+clothes_per_day = 4.0
+color = Color(0.7, 0.62, 0.55, 1)
+roof_color = Color(0.45, 0.35, 0.5, 1)
+height = 16.0

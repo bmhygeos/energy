@@ -172,7 +172,7 @@ func _refresh_stocks() -> void:
 	var labels := [_food_label, _wood_label]
 	var days := [GameState.food_days(), GameState.wood_days()]
 	var alerts := [Labor.FOOD_ALERT_DAYS, Labor.WOOD_ALERT_DAYS]
-	var needs := [GameState.food_need(), GameState.population.wood_need(GameDate.season(tick))]
+	var needs := [GameState.food_need(), GameState.wood_need(GameDate.season(tick))]
 	for good in labels.size():
 		var label: Label = labels[good]
 		var d: float = days[good]
@@ -199,7 +199,12 @@ func _refresh_stone() -> void:
 	var iron := Stockpile.Good.IRON
 	if stock.amount[tools] > 0.0 or GameState.tools_need() > 0.0:
 		_stone_label.text += " · Outils %d" % roundi(stock.amount[tools])
-	_stone_label.add_theme_color_override("font_color", WARNING_COLOR if not GameState.production.tools_ok else Color.WHITE)
+	var bourg := GameState.tier.level >= GameState.CLOTHES_TIER
+	if bourg:
+		_stone_label.text += " · Charbon %d · Vêtements %d" % [roundi(stock.amount[Stockpile.Good.COAL]),
+			roundi(stock.amount[Stockpile.Good.CLOTHES])]
+	var short_clothes := bourg and GameState.population.clothes_coverage < 1.0
+	_stone_label.add_theme_color_override("font_color", WARNING_COLOR if not GameState.production.tools_ok or short_clothes else Color.WHITE)
 	var expected := 0.0
 	for def in ZoneDb.DEFS:
 		if def.output == good:
@@ -209,11 +214,27 @@ func _refresh_stone() -> void:
 		roundi(stock.amount[iron]), roundi(stock.capacity[iron]), roundi(stock.amount[tools]), roundi(stock.capacity[tools]),
 		Format.decimal(GameState.tools_need(), 2), GameState.tool_users(),
 		"\nPlus d'outils : scie et charrue sans effet." if not GameState.production.tools_ok else ""]
-	# Charbon et pétrole : dès qu'il y a de quoi les stocker.
-	for other in [Stockpile.Good.COAL, Stockpile.Good.OIL]:
-		if stock.capacity[other] > Stockpile.BASE_CAPACITY[other] or stock.amount[other] > 0.0:
-			_stone_label.tooltip_text += "\n%s : %d / %d" % [Stockpile.GOOD_NAMES[other],
-				roundi(stock.amount[other]), roundi(stock.capacity[other])]
+	if bourg:
+		var season := GameDate.season(GameClock.tick)
+		var coal := Stockpile.Good.COAL
+		var fiber := Stockpile.Good.FIBER
+		var clothes := Stockpile.Good.CLOTHES
+		var fiber_expected := GameState.production.expected_wool_per_day()
+		for def in ZoneDb.DEFS:
+			if def.output == fiber:
+				fiber_expected += GameState.production.expected_per_day(def, season)
+		_stone_label.tooltip_text += "\n\nCharbon : %d / %d (mines de charbon)\nChauffage : %s charbon /j au lieu de %s bois%s\nFibres : %d / %d · prévues %s /j (lin, laine)\nVêtements : %d / %d (ateliers de tissage)\nUsure : %s vêtements /j%s" % [
+			roundi(stock.amount[coal]), roundi(stock.capacity[coal]), Format.decimal(GameState.coal_heat_need(season)),
+			Format.decimal(GameState.coal_heat_need(season) * GameState.COAL_WOOD_EQUIVALENT),
+			"" if GameState.coal_heat_need(season) > 0.0 else " (plus de charbon)",
+			roundi(stock.amount[fiber]), roundi(stock.capacity[fiber]), Format.decimal(fiber_expected),
+			roundi(stock.amount[clothes]), roundi(stock.capacity[clothes]), Format.decimal(GameState.clothes_need()),
+			"\nVêtements manquants : satisfaction réduite." if short_clothes else ""]
+	# Pétrole : dès qu'il y a de quoi le stocker.
+	var oil := Stockpile.Good.OIL
+	if stock.capacity[oil] > Stockpile.BASE_CAPACITY[oil] or stock.amount[oil] > 0.0:
+		_stone_label.tooltip_text += "\n%s : %d / %d" % [Stockpile.GOOD_NAMES[oil],
+			roundi(stock.amount[oil]), roundi(stock.capacity[oil])]
 
 
 ## Puissance de la cité (moyenne glissante) et par habitant ; parts au survol.

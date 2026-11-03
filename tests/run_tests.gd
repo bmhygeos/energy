@@ -40,6 +40,14 @@ func _init() -> void:
 	_test_weather()
 	_test_statistics()
 	_test_milestones()
+	_test_bourg()
+
+
+## Tests qui demandent les autoloads (GameState), prêts après la première
+## image.
+func _initialize() -> void:
+	await process_frame
+	_test_bourg_game()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -646,7 +654,7 @@ func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
 	stock.amount = Stockpile.zeros()
-	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -826,13 +834,13 @@ func _test_inventions() -> void:
 		"charrue sans attelage +10 %%, assolement +15 %%")
 	prod.draft = DraftAnimals.new()
 	prod.draft.harnessed[cell] = true
-	prod.mills = 1
-	_check(is_equal_approx(prod.invention_factor(farm, cell), Production.PLOUGH_HARNESSED_BONUS * Production.ROTATION_BONUS * Production.MILL_BONUS),
+	prod.mill_bonus = BuildingDb.get_def(&"windmill").grain_bonus
+	_check(is_equal_approx(prod.invention_factor(farm, cell), Production.PLOUGH_HARNESSED_BONUS * Production.ROTATION_BONUS * 1.2),
 		"charrue attelée +30 %%, moulin +20 %%")
 	_check(is_equal_approx(prod.invention_factor(quarry, cell), Production.GEARS_BONUS), "engrenage : carrière +15 %%")
 	prod.tools_ok = false
 	_check(is_equal_approx(prod.invention_factor(forestry, cell), 1.0)
-		and is_equal_approx(prod.invention_factor(farm, cell), Production.ROTATION_BONUS * Production.MILL_BONUS),
+		and is_equal_approx(prod.invention_factor(farm, cell), Production.ROTATION_BONUS * 1.2),
 		"sans outils en stock : ni scie ni charrue")
 	# Collier : charge et portée +50 %.
 	var draft := DraftAnimals.new()
@@ -1109,7 +1117,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 12 and &"village" in ids and &"bourg" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 15 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1125,3 +1133,109 @@ func _test_milestones() -> void:
 	day_facts.buildings[0].status = Building.Status.RUNNING
 	_check(standard.check(day_facts, 200).map(func(d: Milestones.Def) -> StringName: return d.id) == [&"water"],
 		"eau pour tous : un puits et tous servis")
+
+
+func _test_bourg() -> void:
+	# Zones du bourg : lin (fibres) et mine de charbon.
+	var flax := ZoneDb.get_def(&"flax")
+	var coal_mine := ZoneDb.get_def(&"coal_mine")
+	_check(flax.tier == 3 and flax.output == Stockpile.Good.FIBER and flax.quality == ZoneDef.Quality.FERTILITY
+		and flax.season_factors[GameDate.WINTER] == 0.0, "lin : fibres des champs, au bourg, rien en hiver")
+	_check(coal_mine.tier == 3 and coal_mine.output == Stockpile.Good.COAL and coal_mine.deposit == WorldMap.Deposit.COAL,
+		"mine de charbon : sur un gisement de charbon, au bourg")
+	_check(Stockpile.GOOD_NAMES.size() == Stockpile.COUNT and Stockpile.ENERGY_MJ.size() == Stockpile.COUNT
+		and Stockpile.BASE_CAPACITY.size() == Stockpile.COUNT and Stockpile.START.size() == Stockpile.COUNT
+		and Stockpile.GOOD_AGREEMENT.size() == Stockpile.COUNT and Statistics.STOCK_KEYS.size() == Stockpile.COUNT
+		and Statistics.PRODUCED_KEYS.size() == Stockpile.COUNT, "tables des marchandises complètes")
+	# Bâtiments du bourg.
+	var weaver := BuildingDb.get_def(&"weaver")
+	var lab := BuildingDb.get_def(&"laboratory")
+	var water_mill := BuildingDb.get_def(&"water_mill")
+	_check(weaver.tier == 3 and weaver.clothes_per_day > 0.0 and weaver.research.is_empty(), "atelier de tissage : au bourg")
+	_check(lab.research == &"scientific_method" and lab.research_multiplier == 5.0 and lab.research_coverage == 400
+		and lab.costs()[Stockpile.Good.TOOLS] > 0.0, "laboratoire : recherche ×5 pour 400, demande des outils")
+	_check(lab.describe_cost().contains("outils"), "coût en outils affiché (%s)" % lab.describe_cost())
+	_check(water_mill.research == &"water_mill" and water_mill.grinds_grain and not water_mill.wind_powered
+		and water_mill.grain_bonus > BuildingDb.get_def(&"windmill").grain_bonus and water_mill.drive_bonus > 0.0
+		and TerrainDef.Type.RIVER in water_mill.adjacent_terrains, "moulin à eau : au bord d'une rivière, moud mieux, entraîne")
+	var mill_pre: Array[StringName] = [&"windmill"]
+	var coke_pre: Array[StringName] = [&"iron_metallurgy"]
+	_check(ResearchDb.get_def(&"water_mill").prerequisites == mill_pre
+		and ResearchDb.get_def(&"coke").prerequisites == coke_pre, "prérequis du bourg")
+	# Moulins : le meilleur compte, sur les céréales seulement ; le moulin à eau entraîne la coupe du bois.
+	var setup := _labor_setup()
+	var prod := Production.new(setup[0], setup[1])
+	var cell := Vector2i(3, 3)
+	prod.mill_bonus = 0.3
+	prod.drive_bonus = 0.2
+	_check(is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"agriculture"), cell), 1.3)
+		and is_equal_approx(prod.invention_factor(flax, cell), 1.0), "moulin : céréales, pas le lin")
+	_check(is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"forestry"), cell), 1.2), "moulin à eau : coupe du bois +20 %%")
+	# Vêtements : satisfaction réduite sans eux.
+	var pop := Population.new()
+	_check(is_equal_approx(pop.clothes_need(), Population.START / Population.CLOTHES_LIFE_DAYS), "un vêtement tous les 100 jours")
+	pop.end_day(1.0, 1.0, 100, 1.0, 1.0, 0.0)
+	_check(is_equal_approx(pop.satisfaction, 1.0 - Population.CLOTHES_WEIGHT), "sans vêtements : satisfaction −15 %%")
+
+
+
+## Partie : chauffage au charbon, tissage, coke, filon de charbon près du village.
+func _test_bourg_game() -> void:
+	var weaver := BuildingDb.get_def(&"weaver")
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var site := StartSite.territory_rect(gs.home)
+	var coal_cells := 0
+	for y in range(site.position.y, site.end.y):
+		for x in range(site.position.x, site.end.x):
+			if gs.world_map.get_deposit(Vector2i(x, y)) == WorldMap.Deposit.COAL:
+				coal_cells += 1
+	_check(coal_cells >= StartSite.MIN_COAL, "filon de charbon près du village (%d tuiles)" % coal_cells)
+	var stock: Stockpile = gs.stockpile
+	var season := GameDate.WINTER
+	_check(gs.coal_heat_need(season) == 0.0 and gs.clothes_need() == 0.0, "au hameau : ni charbon ni vêtements")
+	gs.tier.level = 3
+	stock.amount[Stockpile.Good.COAL] = 50.0
+	var heat: float = gs.population.wood_need(season)
+	_check(is_equal_approx(gs.coal_heat_need(season), heat * gs.COAL_HEAT_SHARE / gs.COAL_WOOD_EQUIVALENT)
+		and is_equal_approx(gs.wood_need(season), heat * (1.0 - gs.COAL_HEAT_SHARE)), "bourg : le charbon chauffe la moitié")
+	stock.amount[Stockpile.Good.WOOD] = 100.0
+	gs._consume(GameDate.WINTER * GameDate.DAYS_PER_SEASON * GameDate.HOURS_PER_DAY)
+	_check(is_equal_approx(stock.amount[Stockpile.Good.WOOD], 100.0 - heat / 2.0 / GameDate.HOURS_PER_DAY)
+		and is_equal_approx(gs._consumed_today[Stockpile.Good.WOOD], gs._needed_today[Stockpile.Good.WOOD]),
+		"chauffage de l'heure : moitié bois, moitié charbon, besoin couvert")
+	stock.amount[Stockpile.Good.FIBER] = 3.0
+	var b := _place_running(gs, weaver)
+	gs._run_weavers()
+	_check(b != null and is_equal_approx(stock.amount[Stockpile.Good.CLOTHES], 3.0) and stock.amount[Stockpile.Good.FIBER] == 0.0,
+		"tissage : fibres → vêtements, dans la limite des fibres")
+	_check(is_equal_approx(gs._wear_clothes(), minf(1.0, 3.0 / gs.clothes_need())), "usure des vêtements")
+	# Coke : la forge brûle du charbon et fabrique 50 % de plus.
+	var forge := _place_running(gs, BuildingDb.get_def(&"forge"))
+	gs.research._done[&"coke"] = true
+	stock.amount[Stockpile.Good.IRON] = 100.0
+	stock.amount[Stockpile.Good.COAL] = 50.0
+	stock.amount[Stockpile.Good.TOOLS] = 0.0
+	var wood_before: float = stock.amount[Stockpile.Good.WOOD]
+	gs._run_forges()
+	var made: float = BuildingDb.get_def(&"forge").tools_per_day * gs.COKE_FORGE_BONUS
+	_check(forge != null and is_equal_approx(stock.amount[Stockpile.Good.TOOLS], made)
+		and is_equal_approx(stock.amount[Stockpile.Good.COAL], 50.0 - made * gs.FORGE_WOOD_PER_TOOL)
+		and stock.amount[Stockpile.Good.WOOD] == wood_before, "coke : charbon au lieu du bois, outils +50 %%")
+	gs.new_game(4242)
+
+
+## Pose [param def] terminé sur la première tuile libre près du village de
+## [param gs] ; null si aucune.
+func _place_running(gs: Node, def: BuildingDef) -> Building:
+	var center: Vector2i = gs.display_cell(gs.home)
+	for r in range(1, 6):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var placement: BuildingRegistry.Placement = gs.buildings.check_placement(def, center + Vector2i(dx, dy))
+				if placement.is_valid():
+					var b: Building = gs.buildings.place(placement)
+					b.build_progress = def.build_hours
+					b.status = Building.Status.RUNNING
+					return b
+	return null

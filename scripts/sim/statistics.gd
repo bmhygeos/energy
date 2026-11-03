@@ -11,23 +11,26 @@ extends RefCounted
 const SERIES: Array[StringName] = [
 	&"population", &"active", &"employed", &"unemployed",
 	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
+	&"fiber_stock", &"clothes_stock",
 	&"food_produced", &"wood_produced", &"stone_produced", &"iron_produced", &"tools_produced",
-	&"coal_produced", &"oil_produced",
+	&"coal_produced", &"oil_produced", &"fiber_produced", &"clothes_produced",
 	&"food_lost", &"wood_lost", &"satisfaction", &"power", &"power_per_capita",
-	&"territory", &"horses", &"water", &"research",
+	&"territory", &"horses", &"water", &"research", &"coal_burned", &"clothes",
 ]
 ## Séries dont la valeur du jour est la moyenne horaire (sinon : la somme).
 const AVERAGED: Array[StringName] = [
 	&"population", &"active", &"employed", &"unemployed",
 	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
+	&"fiber_stock", &"clothes_stock",
 ]
 ## Marchandise (Stockpile.Good) → séries de stock et de production.
 const STOCK_KEYS: Array[StringName] = [
 	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
+	&"fiber_stock", &"clothes_stock",
 ]
 const PRODUCED_KEYS: Array[StringName] = [
 	&"food_produced", &"wood_produced", &"stone_produced", &"iron_produced", &"tools_produced",
-	&"coal_produced", &"oil_produced",
+	&"coal_produced", &"oil_produced", &"fiber_produced", &"clothes_produced",
 ]
 
 ## Nombre de jours clos.

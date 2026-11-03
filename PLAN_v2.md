@@ -214,6 +214,21 @@ puits, au village (ou en annexant vers une rivière ou un lac).
 - **Pêche** : zone sur rivières, lacs et côte, nourriture toute l'année.
 - **Atelier** : recherche ×2 pour 100 habitants.
 
+### Palier 3 : charbon, vêtements, laboratoire, moulin à eau (réalisé en V8, partie 1)
+- **Charbon** : mine sur gisement (filon garanti près du village) ; chauffage
+  (la moitié du bois remplacée, 1 charbon pour 2 bois) ; recherche **Coke** :
+  forges au charbon, outils +50 %.
+- **Vêtements** : 1 par habitant tous les 100 jours (satisfaction −15 % au
+  plus sans eux) ; champ de lin et laine des pâturages → fibres ; atelier de
+  tissage → vêtements.
+- **Laboratoire** (recherche Méthode expérimentale) : ×5 pour 400 habitants,
+  coûte des outils.
+- **Moulin à eau** (recherche, après le moulin à vent ; bord de rivière) :
+  agriculture +30 %, coupe du bois et forges +20 % (simplifié : tout le
+  bourg plutôt que les bâtiments voisins), 8 kW.
+- Reste (partie 2) : routes, marché, machine à vapeur, train et gares,
+  éclaireurs à cheval.
+
 ### Palier 2 : inventions, fer et outils (réalisé en V6, partie 3)
 - **Prospection** : le territoire est prospecté au passage d'un palier ; les
   expéditions prospectent ce qu'elles voient à partir du village. Un gisement
@@ -428,6 +443,7 @@ effectif, vivres).
 | V5 | Exploration | Expéditions (effectif, vivres, trajet, révélation), annexion des tuiles explorées |
 | V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, assolement, métallurgie du fer et forge, outils, engrenage, moulin à vent), mine de fer |
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 (outil `simulate_pacing`, points de recherche mis de côté plafonnés) |
+| V8 (partie 1) | Palier 3, première partie | Charbon (mine, chauffage, coke), vêtements (lin, laine, tissage), laboratoire, moulin à eau — réalisé |
 | V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 

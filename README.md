@@ -249,6 +249,39 @@ météo et interface conservés.
   à 10 jours : sans cela, le hameau finançait d'avance toutes les inventions
   du village, terminées en 4 semaines (désormais ≈ 2 mois et demi).
 
+### V8 (partie 1) : bourg — charbon, vêtements, laboratoire, moulin à eau
+- **Palier Bourg** (400 habitants, 80 % de satisfaction) : le territoire est
+  prospecté, les gisements de **charbon** apparaissent. Chaque carte place un
+  filon de charbon près du village (au moins 2 tuiles entre 4 et 5 tuiles du
+  centre, 8 000 t chacune, ajoutées s'il le faut).
+- **Mine de charbon** : zone sur un gisement de charbon prospecté (2 mineurs,
+  1,5 charbon/j chacun) ; le gisement s'épuise.
+- **Chauffage au charbon** : au bourg, tant qu'il y a du charbon en stock, il
+  chauffe la moitié des maisons (1 charbon remplace 2 bois). Bandeau et panneau
+  Main-d'œuvre : charbon brûlé par jour.
+- **Vêtements** (nouveau besoin) : un vêtement par habitant tous les 100 jours ;
+  sans eux, la satisfaction baisse (jusqu'à −15 %).
+  - **Champ de lin** : zone sur les terres cultivables (2 travailleurs,
+    1,5 fibre/j chacun, du printemps à l'automne ; charrue, assolement et
+    irrigation s'appliquent, pas les moulins).
+  - **Laine** : au bourg, chaque éleveur donne aussi 0,25 fibre/j.
+  - **Atelier de tissage** (40 bois, 30 pierre, 5 fer) : 4 vêtements/j, une
+    fibre chacun.
+  - Fibres (200) et vêtements (150) en stock.
+- **Recherches du bourg** :
+  | Recherche | Prérequis | Points | Effet |
+  |---|---|---|---|
+  | Méthode expérimentale | — | 6 000 | **Laboratoire** (40 bois, 60 pierre, 15 fer, 10 outils) : recherche ×5 pour 400 habitants |
+  | Coke | Métallurgie du fer | 20 000 | Les forges brûlent du charbon au lieu du bois et fabriquent 50 % d'outils en plus |
+  | Moulin à eau | Moulin à vent | 30 000 | **Moulin à eau** (au bord d'une rivière ; 50 bois, 40 pierre, 10 fer) : agriculture +30 % (le meilleur moulin compte), gâchis ÷2, coupe du bois et forges +20 %, 8 kW sans dépendre du vent |
+- Les bâtiments peuvent coûter des outils (laboratoire). Statistiques :
+  charbon, fibres et vêtements, part des vêtements remplacés.
+- **Jalons** : Gueules noires (premier charbon), Bien vêtus (tous les
+  vêtements remplacés), Savants (laboratoire). **Tutoriel** : étape « Vers le
+  bourg ».
+- Reste pour le bourg (partie 2) : routes, marché, machine à vapeur, train,
+  éclaireurs à cheval.
+
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon
   la satisfaction ; une recherche à la fois ; sans recherche en cours, les

@@ -3,8 +3,8 @@ extends RefCounted
 ## Choix du site du village : un territoire de départ de TERRITORY_SIZE ×
 ## TERRITORY_SIZE tuiles aux latitudes tempérées, avec forêt, terres
 ## cultivables, un point d'eau, une colline à pierre près du centre pour les
-## carrières du village et un gisement de fer pour ses mines (garantis par
-## ensure).
+## carrières du village, un gisement de fer pour ses mines et un filon de
+## charbon pour celles du bourg (garantis par ensure).
 
 const TERRITORY_SIZE := 12
 const MIN_FOREST := 10
@@ -25,7 +25,13 @@ const MIN_IRON := 2
 const IRON_MIN_DISTANCE := 3
 const IRON_RADIUS := 5
 const IRON_AMOUNT := 6000.0
-## Terrains où placer le fer, par préférence (forêt et collines avant les
+## Tuiles de charbon (mines du bourg) à COAL_MIN_DISTANCE–COAL_RADIUS tuiles
+## du centre, de COAL_AMOUNT tonnes chacune à défaut.
+const MIN_COAL := 2
+const COAL_MIN_DISTANCE := 4
+const COAL_RADIUS := 5
+const COAL_AMOUNT := 8000.0
+## Terrains où placer le fer et le charbon, par préférence (forêt et collines avant les
 ## terres cultivables).
 const IRON_TERRAINS: Array[int] = [T.FOREST, T.HILL, T.TUNDRA, T.PRAIRIE, T.PLAIN]
 const MIN_BUILDABLE := 100
@@ -86,7 +92,8 @@ static func ensure(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 		map.set_wood(cell, WorldMap.WOOD_PER_FOREST * 0.7)
 		changed.append(cell)
 	changed.append_array(_ensure_stone(map, rect))
-	for c in _ensure_iron(map, rect):
+	for c in _ensure_deposit(map, rect, WorldMap.Deposit.IRON, MIN_IRON, IRON_MIN_DISTANCE, IRON_RADIUS, IRON_AMOUNT) \
+			+ _ensure_deposit(map, rect, WorldMap.Deposit.COAL, MIN_COAL, COAL_MIN_DISTANCE, COAL_RADIUS, COAL_AMOUNT):
 		if c not in changed:
 			changed.append(c)
 	return changed
@@ -120,23 +127,25 @@ static func _ensure_stone(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 	return []
 
 
-## Fer près du centre de [param rect] : si moins de MIN_IRON tuiles de fer
-## dans l'anneau IRON_MIN_DISTANCE–IRON_RADIUS, complète par des tuiles
-## voisines de cet anneau (terrain préféré, puis distance au centre).
-static func _ensure_iron(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
+## Gisement [param kind] près du centre de [param rect] : si moins de
+## [param minimum] tuiles dans l'anneau [param min_distance]–[param radius],
+## complète par des tuiles voisines de cet anneau (terrain préféré, puis
+## distance au centre), de [param amount] tonnes chacune.
+static func _ensure_deposit(map: WorldMap, rect: Rect2i, kind: WorldMap.Deposit, minimum: int, min_distance: int,
+		radius: int, amount: float) -> Array[Vector2i]:
 	var center := rect.position + rect.size / 2
 	var ring: Array[Vector2i] = []
 	var found := 0
-	for dy in range(-IRON_RADIUS, IRON_RADIUS + 1):
-		for dx in range(-IRON_RADIUS, IRON_RADIUS + 1):
+	for dy in range(-radius, radius + 1):
+		for dx in range(-radius, radius + 1):
 			var cell := center + Vector2i(dx, dy)
-			if maxi(absi(dx), absi(dy)) < IRON_MIN_DISTANCE or not rect.has_point(cell):
+			if maxi(absi(dx), absi(dy)) < min_distance or not rect.has_point(cell):
 				continue
-			if map.get_deposit(cell) == WorldMap.Deposit.IRON:
+			if map.get_deposit(cell) == kind:
 				found += 1
 			elif map.get_deposit(cell) == WorldMap.Deposit.NONE and map.get_terrain(cell) in IRON_TERRAINS:
 				ring.append(cell)
-	var missing := MIN_IRON - found
+	var missing := minimum - found
 	if missing <= 0 or ring.is_empty():
 		return []
 	var rank := func(c: Vector2i) -> int:
@@ -155,7 +164,7 @@ static func _ensure_iron(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 		ring.erase(next)
 		placed.append(next)
 	for c in placed:
-		map.set_deposit(c, WorldMap.Deposit.IRON, IRON_AMOUNT)
+		map.set_deposit(c, kind, amount)
 	return placed
 
 

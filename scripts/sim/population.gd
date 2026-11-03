@@ -23,6 +23,10 @@ const FOOD_WEIGHT := 0.7
 const WATER_WEIGHT := 0.3
 ## Outils (scies, charrues) : satisfaction réduite jusqu'à cette part sans eux.
 const TOOLS_WEIGHT := 0.15
+## Vêtements (à partir du bourg) : satisfaction réduite jusqu'à cette part
+## sans eux ; un vêtement par habitant tous les CLOTHES_LIFE_DAYS jours.
+const CLOTHES_WEIGHT := 0.15
+const CLOTHES_LIFE_DAYS := 100.0
 ## Croissance par jour (part de la population) à pleine satisfaction.
 const GROWTH_PER_DAY := 0.006
 ## Sous ce seuil de satisfaction, des habitants partent (jusqu'à
@@ -43,6 +47,7 @@ var food_coverage := 1.0
 var wood_coverage := 1.0
 var water_coverage := 1.0
 var tools_coverage := 1.0
+var clothes_coverage := 1.0
 var _history: Array[float] = []
 ## Fraction d'habitant accumulée (naissances, départs).
 var _change := 0.0
@@ -63,16 +68,24 @@ func wood_need(season: int) -> float:
 	return count * WOOD_PER_DAY * SEASON_WOOD_FACTOR[season]
 
 
-## Clôt la journée avec la couverture des besoins (0–1 ; l'eau, à partir du
-## village) et les logements ; renvoie la variation du nombre d'habitants.
+## Vêtements usés par jour (à partir du bourg).
+func clothes_need() -> float:
+	return count / CLOTHES_LIFE_DAYS
+
+
+## Clôt la journée avec la couverture des besoins (0–1 ; l'eau et les outils
+## à partir du village, les vêtements à partir du bourg) et les logements ;
+## renvoie la variation du nombre d'habitants.
 func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int, p_water_coverage := 1.0,
-		p_tools_coverage := 1.0) -> int:
+		p_tools_coverage := 1.0, p_clothes_coverage := 1.0) -> int:
 	food_coverage = clampf(p_food_coverage, 0.0, 1.0)
 	wood_coverage = clampf(p_wood_coverage, 0.0, 1.0)
 	water_coverage = clampf(p_water_coverage, 0.0, 1.0)
 	tools_coverage = clampf(p_tools_coverage, 0.0, 1.0)
+	clothes_coverage = clampf(p_clothes_coverage, 0.0, 1.0)
 	_history.append((FOOD_WEIGHT * food_coverage + (1.0 - FOOD_WEIGHT) * wood_coverage)
-		* (1.0 - WATER_WEIGHT * (1.0 - water_coverage)) * (1.0 - TOOLS_WEIGHT * (1.0 - tools_coverage)))
+		* (1.0 - WATER_WEIGHT * (1.0 - water_coverage)) * (1.0 - TOOLS_WEIGHT * (1.0 - tools_coverage))
+		* (1.0 - CLOTHES_WEIGHT * (1.0 - clothes_coverage)))
 	if _history.size() > SATISFACTION_DAYS:
 		_history.pop_front()
 	var total := 0.0

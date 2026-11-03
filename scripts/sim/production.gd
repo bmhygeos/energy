@@ -28,8 +28,10 @@ const SAW_BONUS := 1.4
 const PLOUGH_HARNESSED_BONUS := 1.3
 const PLOUGH_BONUS := 1.1
 const ROTATION_BONUS := 1.15
-const MILL_BONUS := 1.2
 const GEARS_BONUS := 1.15
+## Bourg : laine des troupeaux (fibres par éleveur et par jour, en plus de la
+## nourriture).
+const WOOL_PER_WORKER := 0.25
 
 
 class Report:
@@ -56,10 +58,15 @@ var _forest_max: Dictionary[Vector2i, float] = {}
 var _clearcuts: Dictionary[Vector2i, int] = {}
 ## Outils en stock (scies, charrues) : sans eux, leurs bonus disparaissent.
 var tools_ok := true
-## Moulins (à grain) en service.
-var mills := 0
-## Bonus de la coupe du bois des scieries (le meilleur ; 0 : aucune).
+## Bonus du meilleur moulin (à grain) en service sur les champs de céréales
+## (0 : aucun moulin).
+var mill_bonus := 0.0
+## Bonus de la coupe du bois des scieries (le meilleur ; 0 : aucune) et de la
+## force motrice des moulins à eau.
 var sawmill_bonus := 0.0
+var drive_bonus := 0.0
+## Laine des pâturages (à partir du bourg).
+var wool := false
 ## Tuiles irrigables par une rivière ou un lac déjà calculées (l'eau douce ne
 ## bouge pas).
 var _irrigable: Dictionary[Vector2i, bool] = {}
@@ -87,7 +94,8 @@ func _done(id: StringName) -> bool:
 
 ## Bonus des inventions du village pour [param def] sur [param cell] (1 :
 ## aucun) : scie (coupe du bois), charrue, assolement et moulin (champs),
-## engrenage (carrières). Scie et charrue demandent des outils en stock.
+## engrenage (carrières), moulins (céréales seulement), moulin à eau (coupe
+## du bois). Scie et charrue demandent des outils en stock.
 func invention_factor(def: ZoneDef, cell: Vector2i) -> float:
 	var factor := 1.0
 	match def.quality:
@@ -97,12 +105,12 @@ func invention_factor(def: ZoneDef, cell: Vector2i) -> float:
 				factor *= PLOUGH_HARNESSED_BONUS if harnessed else PLOUGH_BONUS
 			if _done(&"crop_rotation"):
 				factor *= ROTATION_BONUS
-			if mills > 0:
-				factor *= MILL_BONUS
+			if def.output == Stockpile.Good.FOOD:
+				factor *= 1.0 + mill_bonus
 		ZoneDef.Quality.WOOD:
 			if _done(&"tools") and tools_ok:
 				factor *= SAW_BONUS
-			factor *= 1.0 + sawmill_bonus
+			factor *= (1.0 + sawmill_bonus) * (1.0 + drive_bonus)
 	if def.output == Stockpile.Good.STONE and _done(&"gears"):
 		factor *= GEARS_BONUS
 	return factor
@@ -152,6 +160,18 @@ func expected_per_day(def: ZoneDef, season: int) -> float:
 	return total
 
 
+## Laine prévue par jour (fibres des troupeaux, à partir du bourg).
+func expected_wool_per_day() -> float:
+	if not wool:
+		return 0.0
+	var total := 0.0
+	for cell: Vector2i in labor.workers_at:
+		var def := zones.zone_at(cell)
+		if def and def.quality == ZoneDef.Quality.PASTURE:
+			total += labor.workers_at[cell] * WOOL_PER_WORKER * proximity(cell)
+	return total
+
+
 ## Production de l'heure [param tick], versée dans [param stock].
 func step_hour(tick: int, stock: Stockpile) -> Report:
 	var report := Report.new()
@@ -169,6 +189,10 @@ func step_hour(tick: int, stock: Stockpile) -> Report:
 			qty = _mine(cell, qty, report)
 		stock.add(def.output, qty)
 		produced_today[def.output] += qty
+		if wool and def.quality == ZoneDef.Quality.PASTURE:
+			var fiber := labor.workers_at[cell] * WOOL_PER_WORKER * proximity(cell) / GameDate.HOURS_PER_DAY
+			stock.add(Stockpile.Good.FIBER, fiber)
+			produced_today[Stockpile.Good.FIBER] += fiber
 	if not report.cleared.is_empty():
 		zones.clear(report.cleared)
 	return report

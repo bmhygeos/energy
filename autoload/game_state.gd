@@ -15,6 +15,19 @@ const TOOLS_HOUSE_WOOD := 0.75
 const GEARS_WATER_BONUS := 1.15
 ## Pompe à eau : puits plus efficaces.
 const PUMP_WATER_BONUS := 1.5
+## Palier à partir duquel les habitants ont besoin de vêtements et se
+## chauffent aussi au charbon (bourg).
+const CLOTHES_TIER := 3
+const COAL_HEAT_TIER := 3
+## Chauffage : part du bois remplaçable par le charbon, et bois remplacé par
+## unité de charbon (290 MJ contre 150 MJ).
+const COAL_HEAT_SHARE := 0.5
+const COAL_WOOD_EQUIVALENT := 2.0
+## Coke : les forges brûlent du charbon (même quantité que le bois) et
+## fabriquent davantage.
+const COKE_FORGE_BONUS := 1.5
+## Atelier de tissage : fibres par vêtement.
+const FIBER_PER_CLOTHES := 1.0
 
 var world_map: WorldMap
 ## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
@@ -45,6 +58,8 @@ var milestones: Milestones
 var housing := 0
 ## Habitants approvisionnés en eau par les puits.
 var water_supply := 0
+## Charbon brûlé pour le chauffage dans la journée en cours.
+var coal_burned_today := 0.0
 ## Besoins et consommation du jour en cours, par marchandise.
 var _needed_today := Stockpile.zeros()
 var _consumed_today := Stockpile.zeros()
@@ -153,7 +168,7 @@ func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Pla
 	for good in costs.size():
 		if placement.is_valid() and not stockpile.has(good, costs[good]):
 			placement.error = "%s insuffisant%s (%d requis)" % [Stockpile.GOOD_NAMES[good],
-				"e" if good == Stockpile.Good.STONE else "", roundi(costs[good])]
+				Stockpile.GOOD_AGREEMENT[good], roundi(costs[good])]
 	if placement.is_valid():
 		for cell in placement.cells:
 			var zone := zones.zone_at(cell)
@@ -245,7 +260,7 @@ func upgrade_error(b: Building) -> String:
 	for good in costs.size():
 		if not stockpile.has(good, costs[good]):
 			return "%s insuffisant%s (%d requis)" % [Stockpile.GOOD_NAMES[good],
-				"e" if good == Stockpile.Good.STONE else "", roundi(costs[good])]
+				Stockpile.GOOD_AGREEMENT[good], roundi(costs[good])]
 	return ""
 
 
@@ -303,21 +318,25 @@ func _refresh_capacities() -> void:
 	if research.is_done(&"water_pump"):
 		water_factor *= PUMP_WATER_BONUS
 	water_supply = roundi(water_supply * water_factor)
-	var mills := 0
+	var mill := 0.0
 	var sawmill := 0.0
+	var drive := 0.0
 	var wells: Array[Vector2i] = []
 	for b in buildings.all():
 		if b.is_complete() and b.def.grinds_grain:
-			mills += 1
+			mill = maxf(mill, b.def.grain_bonus)
 		if b.is_complete():
 			sawmill = maxf(sawmill, b.def.forestry_bonus)
+			drive = maxf(drive, b.def.drive_bonus)
 		if b.is_complete() and b.def.water_supply > 0:
 			for c in b.cells:
 				wells.append(world_map.wrap_cell(c))
 	production.wells = wells
 	production.sawmill_bonus = sawmill
-	production.mills = mills
-	stockpile.spoilage_factor = 0.5 if mills > 0 else 1.0
+	production.mill_bonus = mill
+	production.drive_bonus = drive
+	production.wool = tier.level >= CLOTHES_TIER
+	stockpile.spoilage_factor = 0.5 if mill > 0.0 else 1.0
 	draft.collar = research.is_done(&"harness_collar")
 
 
@@ -426,31 +445,70 @@ func _prospect_territory() -> void:
 	EventBus.tiles_changed.emit(shown)
 
 
-## Forges : fer et bois du jour transformés en outils, dans la limite du stock.
+## Forges : fer et combustible du jour transformés en outils, dans la limite
+## du stock. Avec le coke, elles brûlent du charbon (s'il y en a) et
+## fabriquent davantage ; un moulin à eau entraîne leurs soufflets.
 func _run_forges() -> void:
 	var rate := 0.0
 	for b in buildings.all():
 		if b.is_complete():
 			rate += b.def.tools_per_day
+	rate *= 1.0 + production.drive_bonus
+	var fuel := Stockpile.Good.WOOD
+	if research.is_done(&"coke") and stockpile.amount[Stockpile.Good.COAL] > 0.0:
+		fuel = Stockpile.Good.COAL
+		rate *= COKE_FORGE_BONUS
 	var room := stockpile.capacity[Stockpile.Good.TOOLS] - stockpile.amount[Stockpile.Good.TOOLS]
 	var n := minf(minf(rate, room), minf(stockpile.amount[Stockpile.Good.IRON] / FORGE_IRON_PER_TOOL,
-		stockpile.amount[Stockpile.Good.WOOD] / FORGE_WOOD_PER_TOOL))
+		stockpile.amount[fuel] / FORGE_WOOD_PER_TOOL))
 	if n <= 0.0:
 		return
 	stockpile.take(Stockpile.Good.IRON, n * FORGE_IRON_PER_TOOL)
-	stockpile.take(Stockpile.Good.WOOD, n * FORGE_WOOD_PER_TOOL)
+	stockpile.take(fuel, n * FORGE_WOOD_PER_TOOL)
 	stockpile.add(Stockpile.Good.TOOLS, n)
 	production.produced_today[Stockpile.Good.TOOLS] += n
 
 
+## Ateliers de tissage : fibres du jour transformées en vêtements, dans la
+## limite du stock.
+func _run_weavers() -> void:
+	var rate := 0.0
+	for b in buildings.all():
+		if b.is_complete():
+			rate += b.def.clothes_per_day
+	var room := stockpile.capacity[Stockpile.Good.CLOTHES] - stockpile.amount[Stockpile.Good.CLOTHES]
+	var n := minf(minf(rate, room), stockpile.amount[Stockpile.Good.FIBER] / FIBER_PER_CLOTHES)
+	if n <= 0.0:
+		return
+	stockpile.take(Stockpile.Good.FIBER, n * FIBER_PER_CLOTHES)
+	stockpile.add(Stockpile.Good.CLOTHES, n)
+	production.produced_today[Stockpile.Good.CLOTHES] += n
+
+
+## Vêtements usés par jour (à partir du bourg).
+func clothes_need() -> float:
+	return population.clothes_need() if tier.level >= CLOTHES_TIER else 0.0
+
+
+## Usure du jour : prend les vêtements au stock ; renvoie la part obtenue (1
+## sans besoin).
+func _wear_clothes() -> float:
+	var need := clothes_need()
+	if need <= 0.0:
+		return 1.0
+	return stockpile.take(Stockpile.Good.CLOTHES, need) / need
+
+
 ## Habitants qui usent des outils : bûcherons (scies, recherche Outils) et
-## laboureurs (charrues, recherche Charrue).
+## laboureurs des champs, céréales et lin (charrues, recherche Charrue).
 func tool_users() -> int:
 	var users := 0
 	if research.is_done(&"tools"):
 		users += labor.assigned[ZoneDb.get_def(&"forestry")]
 	if research.is_done(&"plough"):
-		users += labor.assigned[ZoneDb.get_def(&"agriculture")]
+		for def in ZoneDb.DEFS:
+			if def.quality == ZoneDef.Quality.FERTILITY:
+				users += labor.assigned[def]
 	return users
 
 
@@ -471,13 +529,14 @@ func _wear_tools() -> float:
 	return got / need
 
 
-## Puissance mécanique des moulins à vent le jour de [param tick] (selon le vent).
+## Puissance mécanique des moulins le jour de [param tick] (selon le vent
+## pour les moulins à vent).
 func _mill_watts(tick: int) -> float:
 	var watts := 0.0
 	for b in buildings.all():
 		if b.is_complete():
-			watts += b.def.mechanical_watts
-	return watts * weather.wind_at(tick)
+			watts += b.def.mechanical_watts * (weather.wind_at(tick) if b.def.wind_powered else 1.0)
+	return watts
 
 
 ## Somme des qualités des tuiles de pâturage (troupeaux, élevage des chevaux).
@@ -513,7 +572,21 @@ func food_days() -> float:
 
 
 func wood_days() -> float:
-	return stockpile.days_of(Stockpile.Good.WOOD, population.wood_need(GameDate.season(GameClock.tick)))
+	return stockpile.days_of(Stockpile.Good.WOOD, wood_need(GameDate.season(GameClock.tick)))
+
+
+## Charbon brûlé par jour pour le chauffage pendant la saison [param season]
+## (à partir du bourg, tant qu'il y en a en stock) : il remplace jusqu'à
+## COAL_HEAT_SHARE du bois.
+func coal_heat_need(season: int) -> float:
+	if tier.level < COAL_HEAT_TIER or stockpile.amount[Stockpile.Good.COAL] <= 0.0:
+		return 0.0
+	return population.wood_need(season) * COAL_HEAT_SHARE / COAL_WOOD_EQUIVALENT
+
+
+## Bois brûlé par jour pendant la saison [param season], le charbon déduit.
+func wood_need(season: int) -> float:
+	return population.wood_need(season) - coal_heat_need(season) * COAL_WOOD_EQUIVALENT
 
 
 ## Priorités automatiques d'après les stocks. La nourriture doit tenir
@@ -523,9 +596,9 @@ func wood_days() -> float:
 func _update_auto_priorities(tick: int) -> void:
 	var season := GameDate.season(tick)
 	var food_goal := food_need() * maxf(Labor.FOOD_ALERT_DAYS, lean_days(tick))
-	var wood_goal := population.wood_need(GameDate.season(tick)) * Labor.WOOD_ALERT_DAYS
+	var wood_goal := wood_need(GameDate.season(tick)) * Labor.WOOD_ALERT_DAYS
 	if season == GameDate.WINTER - 1:
-		wood_goal = maxf(wood_goal, population.wood_need(GameDate.WINTER) * GameDate.DAYS_PER_SEASON)
+		wood_goal = maxf(wood_goal, wood_need(GameDate.WINTER) * GameDate.DAYS_PER_SEASON)
 	var food_short := stockpile.amount[Stockpile.Good.FOOD] < _reachable(Stockpile.Good.FOOD, food_goal)
 	var wood_short := stockpile.amount[Stockpile.Good.WOOD] < _reachable(Stockpile.Good.WOOD, wood_goal)
 	stockpile.update_full()
@@ -591,13 +664,19 @@ func _on_tick(tick: int) -> void:
 	stats.end_hour()
 
 
-## Consommation de l'heure : besoins du jour répartis sur 24 h.
+## Consommation de l'heure : besoins du jour répartis sur 24 h. Au bourg, le
+## charbon en stock chauffe une partie des maisons à la place du bois.
 func _consume(tick: int) -> void:
-	var needs := [food_need(), population.wood_need(GameDate.season(tick))]
-	for good in needs.size():
-		var want: float = needs[good] / GameDate.HOURS_PER_DAY
-		_needed_today[good] += want
-		_consumed_today[good] += stockpile.take(good, want)
+	var food: float = food_need() / GameDate.HOURS_PER_DAY
+	_needed_today[Stockpile.Good.FOOD] += food
+	_consumed_today[Stockpile.Good.FOOD] += stockpile.take(Stockpile.Good.FOOD, food)
+	var season := GameDate.season(tick)
+	var heat := population.wood_need(season) / GameDate.HOURS_PER_DAY
+	var coal := stockpile.take(Stockpile.Good.COAL, coal_heat_need(season) / GameDate.HOURS_PER_DAY)
+	coal_burned_today += coal
+	_needed_today[Stockpile.Good.WOOD] += heat
+	_consumed_today[Stockpile.Good.WOOD] += coal * COAL_WOOD_EQUIVALENT \
+		+ stockpile.take(Stockpile.Good.WOOD, heat - coal * COAL_WOOD_EQUIVALENT)
 
 
 func _on_day(day: int) -> void:
@@ -612,16 +691,21 @@ func _on_day(day: int) -> void:
 	for good in _needed_today.size():
 		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)
 	_run_forges()
+	_run_weavers()
 	var tools := _wear_tools()
+	var clothes := _wear_clothes()
 	var before := population.count
 	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing,
-		water_coverage(), tools)
+		water_coverage(), tools, clothes)
 	_announce_population(before, change, coverage)
 	if tier.update(population.count, population.satisfaction):
 		exploration.tier = tier.level
 		territory.tier = tier.level
 		_prospect_territory()
+		_refresh_capacities()
 		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
+		if tier.level == CLOTHES_TIER:
+			EventBus.notified.emit("Le bourg a besoin de vêtements : champs de lin, laine des pâturages, atelier de tissage")
 		EventBus.tier_changed.emit()
 	var points := research_per_day()
 	var finished := research.add_points(points)
@@ -644,6 +728,9 @@ func _on_day(day: int) -> void:
 	stats.add(&"horses", draft.horses)
 	stats.add(&"water", water_coverage() * 100.0)
 	stats.add(&"research", points)
+	stats.add(&"coal_burned", coal_burned_today)
+	stats.add(&"clothes", clothes * 100.0)
+	coal_burned_today = 0.0
 	stats.end_day()
 	production.reset_day()
 	stockpile.reset_day()
@@ -678,6 +765,7 @@ func _check_milestones(day: int) -> void:
 	facts.territory = territory.count(Territory.State.TERRITORY)
 	facts.horses = draft.horses
 	facts.water_coverage = water_coverage()
+	facts.clothes_coverage = population.clothes_coverage if tier.level >= CLOTHES_TIER else 0.0
 	facts.research = research
 	for def in milestones.check(facts, day):
 		EventBus.milestone_reached.emit(def)

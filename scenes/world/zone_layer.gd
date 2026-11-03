@@ -34,7 +34,7 @@ func _draw() -> void:
 		var cell := GameState.display_cell(c)
 		var def := zones.zone_at(cell)
 		var d := Iso.diamond(cell)
-		var field := def.quality == ZoneDef.Quality.FERTILITY
+		var field := def.quality == ZoneDef.Quality.FERTILITY and def.output == Stockpile.Good.FOOD
 		if field:
 			draw_colored_polygon(d, _field_color(GameClock.tick) * Color(1, 1, 1, 0.75))
 		else:

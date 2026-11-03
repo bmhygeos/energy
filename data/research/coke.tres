@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"coke"
+display_name = "Coke"
+description = "Le charbon cuit à l'étouffée donne un combustible pur et très chaud."
+tier = 3
+cost = 20000.0
+prerequisites = Array[StringName]([&"iron_metallurgy"])
+effect = "Les forges brûlent du charbon au lieu du bois et fabriquent 50 % d'outils en plus."

@@ -24,11 +24,12 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export_group("Chantier")
 ## Durée du chantier, en heures de jeu (ticks).
 @export var build_hours := 24
-## Bois, pierre et fer pris sur les stocks au lancement du chantier (pour une
-## amélioration : son coût).
+## Bois, pierre, fer et outils pris sur les stocks au lancement du chantier
+## (pour une amélioration : son coût).
 @export var wood_cost := 0
 @export var stone_cost := 0
 @export var iron_cost := 0
+@export var tools_cost := 0
 ## Niveau suivant, construit sur place (grenier → grenier en pierre…).
 @export var upgrade: BuildingDef
 
@@ -47,9 +48,17 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Forge : outils fabriqués par jour (FORGE_IRON_PER_TOOL fer et
 ## FORGE_WOOD_PER_TOOL bois chacun).
 @export var tools_per_day := 0.0
-## Moulin : moud le grain (agriculture, gâchis) ; puissance mécanique moyenne
-## à vent normal (W).
+## Atelier de tissage : vêtements tissés par jour (une fibre chacun).
+@export var clothes_per_day := 0.0
+## Moulin : moud le grain (agriculture : bonus grain_bonus, le meilleur
+## compte ; gâchis) ; puissance mécanique moyenne (W), à vent normal pour un
+## moulin à vent.
 @export var grinds_grain := false
+@export var grain_bonus := 0.2
+@export var wind_powered := true
+## Moulin à eau : entraîne scies et soufflets (coupe du bois et forges, part ;
+## le meilleur compte).
+@export var drive_bonus := 0.0
 ## Scierie : bonus de la coupe du bois (part ; un seul compte).
 @export var forestry_bonus := 0.0
 @export var mechanical_watts := 0.0
@@ -97,6 +106,7 @@ func costs() -> PackedFloat32Array:
 	values[Stockpile.Good.WOOD] = wood_cost
 	values[Stockpile.Good.STONE] = stone_cost
 	values[Stockpile.Good.IRON] = iron_cost
+	values[Stockpile.Good.TOOLS] = tools_cost
 	return values
 
 
@@ -124,8 +134,14 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Fabrique %s outils par jour (fer et bois)" % Format.decimal(tools_per_day))
 	if forestry_bonus > 0.0:
 		lines.append("Coupe du bois +%d %%" % roundi(forestry_bonus * 100.0))
+	if clothes_per_day > 0.0:
+		lines.append("Tisse %s vêtements par jour (une fibre chacun)" % Format.decimal(clothes_per_day))
 	if grinds_grain:
-		lines.append("Moud le grain : agriculture +20 %, gâchis de la nourriture moitié moindre")
+		lines.append("Moud le grain : agriculture +%d %%, gâchis de la nourriture moitié moindre" % roundi(grain_bonus * 100.0))
+	if drive_bonus > 0.0:
+		lines.append("Entraîne scies et soufflets : coupe du bois et forges +%d %%" % roundi(drive_bonus * 100.0))
+	if mechanical_watts > 0.0:
+		lines.append("Puissance mécanique ≈ %s%s" % [PowerMeter.format(mechanical_watts), " selon le vent" if wind_powered else ""])
 	if horse_capacity > 0:
 		lines.append("Loge %d chevaux" % horse_capacity)
 	if water_supply > 0:

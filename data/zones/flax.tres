@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/zone_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"flax"
+display_name = "Champ de lin"
+description = "Lin semé au printemps, arraché l'été : des fibres pour les tisserands (rien en hiver)."
+tier = 3
+allowed_terrains = Array[int]([0, 8])
+on_banks = true
+min_fertility = 0.05
+workers_per_tile = 2
+color = Color(0.45, 0.6, 0.95, 1)
+output = 7
+base_yield = 1.5
+season_factors = PackedFloat32Array(1, 1, 1, 0)

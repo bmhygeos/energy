@@ -2,7 +2,7 @@ class_name Milestones
 extends RefCounted
 ## Jalons facultatifs du bac à sable, vérifiés à chaque fin de journée :
 ## premiers hivers, exploration, paliers, recherche et inventions des paliers
-## 1 et 2 (standard). Pure donnée.
+## 1 et 2, premiers pas du bourg (standard). Pure donnée.
 
 ## Territoire visé par les jalons d'exploration (tuiles ; 144 au départ).
 const EXPLORER_TILES := 300
@@ -36,6 +36,8 @@ class Facts:
 	var territory := 0
 	var horses := 0.0
 	var water_coverage := 1.0
+	## Part des vêtements usés remplacés la veille (0 avant le bourg).
+	var clothes_coverage := 0.0
 	var research: Research
 
 	func has_building(id: StringName) -> bool:
@@ -81,6 +83,13 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.territory >= LARGE_TERRITORY_TILES),
 		Def.new(&"bourg", "Bourg", "Passer au palier Bourg (%d habitants)." % CityTier.POPULATION[2],
 			func(f: Facts) -> bool: return f.tier >= 3),
+		Def.new(&"coal", "Gueules noires", "Extraire le premier charbon (gisement prospecté au bourg).",
+			func(f: Facts) -> bool: return f.stats != null and f.stats.last(&"coal_produced") > 0.0),
+		Def.new(&"clothes", "Bien vêtus", "Au bourg, remplacer tous les vêtements usés (atelier de tissage).",
+			func(f: Facts) -> bool: return (f.tier >= 3 and f.clothes_coverage >= 1.0
+				and f.stats != null and f.stats.last(&"clothes_produced") > 0.0)),
+		Def.new(&"laboratory", "Savants", "Construire un laboratoire (recherche ×5).",
+			func(f: Facts) -> bool: return f.has_building(&"laboratory")),
 	]
 
 

@@ -127,7 +127,11 @@ func _refresh() -> void:
 	_summary.add_theme_color_override("font_color", UNEMPLOYED_COLOR if unemployed > 0 else Color.WHITE)
 	var season := GameDate.season(GameClock.tick)
 	_needs.text = "Besoins : nourriture %s /j  ·  bois %s /j%s" % [Format.decimal(GameState.food_need()),
-		Format.decimal(population.wood_need(season)), {GameDate.SUMMER: " (été)", GameDate.WINTER: " (hiver)"}.get(season, "")]
+		Format.decimal(GameState.wood_need(season)), {GameDate.SUMMER: " (été)", GameDate.WINTER: " (hiver)"}.get(season, "")]
+	if GameState.coal_heat_need(season) > 0.0:
+		_needs.text += "  ·  charbon %s /j (chauffage)" % Format.decimal(GameState.coal_heat_need(season))
+	if GameState.clothes_need() > 0.0:
+		_needs.text += "  ·  vêtements %s /j" % Format.decimal(GameState.clothes_need())
 	var draft := GameState.draft
 	if draft.capacity > 0 or draft.count() > 0:
 		_needs.text += "\nChevaux %d / %d (écuries)  ·  attelés %d  ·  en expédition %d  ·  fourrage %s /j" % [
