@@ -136,6 +136,14 @@ func _refresh() -> void:
 	if draft.capacity > 0 or draft.count() > 0:
 		_needs.text += "\nChevaux %d / %d (écuries)  ·  attelés %d  ·  en expédition %d  ·  fourrage %s /j" % [
 			draft.count(), draft.capacity, draft.working(), draft.away, Format.decimal(draft.fodder_need())]
+	var rails := GameState.rails
+	if not rails.served.is_empty():
+		_needs.text += "\nTrains : %d gare%s desservie%s  ·  charbon %s /j%s" % [rails.served.size(),
+			"s" if rails.served.size() > 1 else "", "s" if rails.served.size() > 1 else "",
+			Format.decimal(rails.coal_need()), "" if rails.running else "  ·  à l'arrêt (plus de charbon)"]
+	if GameState.steam_coal_need() > 0.0:
+		_needs.text += "\nMachines à vapeur : charbon %s /j%s" % [Format.decimal(GameState.steam_coal_need()),
+			"" if GameState.steam_running else "  ·  à l'arrêt"]
 	for def: ZoneDef in _rows:
 		var row := _rows[def]
 		(row[0] as Label).text = str(GameState.zones.tile_count(def))

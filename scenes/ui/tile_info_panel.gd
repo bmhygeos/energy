@@ -62,6 +62,9 @@ func _refresh() -> void:
 			Format.decimal(GameState.production.tile_rate(zone, cell, workers, season)),
 			Stockpile.GOOD_NAMES[zone.output].to_lower(),
 			Format.decimal(GameState.production.tile_rate(zone, cell, 1, season))])
+		var via := GameState.rails.distance_via(cell)
+		if via >= 0 and via < _walk_distance(cell):
+			lines.append("Par le train : à %d tuiles du village (à pied : %d)" % [via, _walk_distance(cell)])
 		if GameState.draft.harnessed.has(map.wrap_cell(cell)):
 			lines.append("Attelage : trajets plus courts (pénalité à partir de %d tuiles)" % GameState.draft.free_distance())
 		var inventions := GameState.production.invention_factor(zone, cell)
@@ -69,6 +72,8 @@ func _refresh() -> void:
 			lines.append("Inventions : +%d %%" % roundi((inventions - 1.0) * 100.0))
 		if GameState.production.irrigation_factor(zone, cell) > 1.0:
 			lines.append("Irriguée : +%d %%" % roundi((Production.IRRIGATION_BONUS - 1.0) * 100.0))
+	if GameState.rails.has_rail(cell):
+		lines.append("Voie ferrée%s" % ("" if GameState.rails.running else " (trains arrêtés : plus de charbon)"))
 	var regrowth := GameState.production.regrowth_days_left(cell)
 	if regrowth >= 0:
 		lines.append("Coupe à blanc : redevient forêt dans %d j (sans bâtiment ni autre zone que la coupe)" % regrowth)
@@ -119,6 +124,23 @@ func _building_lines(b: Building) -> PackedStringArray:
 		lines.append("Amélioration : %s reste en service pendant les travaux" % b.previous_def.display_name)
 	if not b.def.description.is_empty():
 		lines.append(b.def.description)
+	if b.is_complete() and b.def.station:
+		var rails := GameState.rails
+		var length: int = rails.served.get(GameState.world_map.wrap_cell(b.anchor), -1)
+		if rails.is_village_station(b):
+			lines.append("Gare du village : départ des lignes")
+		elif length > 0:
+			lines.append("Desservie : %d tuiles de voie jusqu'au village%s" % [length,
+				"" if rails.running else " (trains arrêtés : plus de charbon)"])
+		else:
+			lines.append("Non desservie : reliez-la par la voie à une gare du village")
+	if b.is_complete() and b.def.coal_per_day > 0.0:
+		lines.append("En marche" if GameState.steam_running else "À l'arrêt : plus de charbon")
 	if b.is_complete() and b.def.upgrade:
 		lines.append("Améliorable en %s (palier %s)" % [b.def.upgrade.display_name, CityTier.NAMES[b.def.upgrade.tier - 1]])
 	return lines
+
+
+## Distance à pied de [param cell] au centre du village.
+func _walk_distance(cell: Vector2i) -> int:
+	return GameState.rails.cheb(cell, GameState.home)

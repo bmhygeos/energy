@@ -2,8 +2,9 @@ extends Node2D
 ## Rendu des tuiles connues de la planète (sols, décors, brume, overlays,
 ## bâtiments), dans le repère de GameState.display_cell, et interactions à la
 ## souris selon l'outil actif : sélection, construction, démolition,
-## peinture et effacement de zones (glisser : rectangle) et choix de la
-## cible d'une expédition (tuiles inconnues comprises).
+## peinture et effacement de zones (glisser : rectangle), pose de voies
+## ferrées (glisser : tracé en L) et choix de la cible d'une expédition
+## (tuiles inconnues comprises).
 
 ## Opacité des décors (arbres, sommets) quand un overlay est affiché.
 const DECOR_DIMMED_ALPHA := 0.35
@@ -19,6 +20,7 @@ var _placement: BuildingRegistry.Placement
 var _drag_start := Vector2i(-1, -1)
 var _drag_end := Vector2i(-1, -1)
 var _zone_plan: ZoneMap.Plan
+var _rail_plan: RailNetwork.Plan
 var _expedition_hover := Vector2i(-1, -1)
 
 @onready var _ground: TileMapLayer = $Ground
@@ -78,6 +80,8 @@ func _process(_delta: float) -> void:
 		_update_placement()
 	elif _is_zone_mode():
 		_update_zone_plan()
+	elif _mode == BuildTool.Mode.RAIL:
+		_update_rail_plan()
 	elif _mode == BuildTool.Mode.EXPEDITION:
 		_update_expedition_preview()
 
@@ -91,13 +95,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			# Deux doigts posés pendant le glisser : déplacement de la vue, pas de zone.
 			_drag_start = Vector2i(-1, -1)
 			_zone_plan = null
+			_rail_plan = null
 			EventBus.zone_plan_previewed.emit(null)
+			EventBus.rail_plan_previewed.emit(null)
 			get_viewport().set_input_as_handled()
 			return
-		_update_zone_plan()
-		if _zone_plan:
-			GameState.apply_zones(_zone_plan)
-		_zone_plan = null
+		if _mode == BuildTool.Mode.RAIL:
+			_update_rail_plan()
+			if _rail_plan:
+				GameState.build_rails(_rail_plan)
+			_rail_plan = null
+		else:
+			_update_zone_plan()
+			if _zone_plan:
+				GameState.apply_zones(_zone_plan)
+			_zone_plan = null
 		_drag_start = Vector2i(-1, -1)
 	elif mb and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
 		_click(_cell_under_mouse())
@@ -123,12 +135,13 @@ func _click(cell: Vector2i) -> void:
 				_placement = null  # force le recalcul de l'aperçu
 		BuildTool.Mode.DEMOLISH:
 			var b := GameState.buildings.building_at(cell)
-			if b and GameState.demolish(cell):
-				EventBus.notified.emit("%s démoli" % b.def.display_name)
+			var rail := cell.x >= 0 and GameState.rails.has_rail(cell)
+			if (b or rail) and GameState.demolish(cell):
+				EventBus.notified.emit("%s démoli" % b.def.display_name if b else "Voie ferrée retirée")
 		BuildTool.Mode.UPGRADE:
 			if cell.x >= 0:
 				GameState.upgrade(cell)
-		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE:
+		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.RAIL:
 			if cell.x >= 0:
 				_drag_start = cell
 				_drag_end = cell
@@ -148,9 +161,11 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 	_placement = null
 	_drag_start = Vector2i(-1, -1)
 	_zone_plan = null
+	_rail_plan = null
 	_expedition_hover = Vector2i(-1, -1)
 	_expeditions.clear_previews()
 	EventBus.zone_plan_previewed.emit(null)
+	EventBus.rail_plan_previewed.emit(null)
 	if _is_drag_mode() or _mode == BuildTool.Mode.EXPEDITION:
 		_set_selected(Vector2i(-1, -1))
 	if _mode == BuildTool.Mode.BUILD:
@@ -182,9 +197,29 @@ func _is_zone_mode() -> bool:
 	return _mode == BuildTool.Mode.ZONE or _mode == BuildTool.Mode.ERASE_ZONE
 
 
-## Outils qui se glissent sur un rectangle.
+## Outils qui se glissent (rectangle de zones, tracé de voie).
 func _is_drag_mode() -> bool:
-	return _is_zone_mode()
+	return _is_zone_mode() or _mode == BuildTool.Mode.RAIL
+
+
+## Recalcule l'aperçu du tracé de voie (glisser en cours, sinon la tuile
+## survolée) ; ne le publie que s'il a changé.
+func _update_rail_plan() -> void:
+	if _hovered.x >= 0:
+		_drag_end = _hovered
+	var start := _drag_start if _drag_start.x >= 0 else _hovered
+	if start.x < 0:
+		if _rail_plan:
+			_rail_plan = null
+			EventBus.rail_plan_previewed.emit(null)
+		return
+	var end := _drag_end if _drag_start.x >= 0 else _hovered
+	var plan := GameState.plan_rails(start, end)
+	if _rail_plan and _rail_plan.cells == plan.cells and _rail_plan.error == plan.error \
+			and _rail_plan.new_cells == plan.new_cells:
+		return
+	_rail_plan = plan
+	EventBus.rail_plan_previewed.emit(plan)
 
 
 ## Trajet prévu vers la tuile survolée (outil Expédition).

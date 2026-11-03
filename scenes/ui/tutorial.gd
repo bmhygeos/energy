@@ -102,7 +102,7 @@ func _make_steps() -> Array[Step]:
 			func() -> bool: return _stats_opened),
 		Step.new("Vers le bourg", "Prochain cap : les inventions du village (forge et outils, charrue, moulin à vent…), puis le [b]bourg[/b] à %d habitants.\n\nLe bourg aura besoin de [b]vêtements[/b] : tracez des [b]Champs de lin[/b] (et gardez des pâturages, qui donnent de la laine), puis construisez un [b]Atelier de tissage[/b]. Le [b]charbon[/b] apparaît près du village : une [b]Mine de charbon[/b] chauffe la moitié des maisons à la place du bois." % CityTier.POPULATION[2],
 			func() -> bool: return _has(&"weaver")),
-		Step.new("À vous de jouer", "Au bourg, la recherche continue : [b]Méthode expérimentale[/b] (laboratoire, recherche ×5), [b]Coke[/b] (forges au charbon), [b]Moulin à eau[/b] (au bord d'une rivière). H rouvre ce tutoriel."),
+		Step.new("À vous de jouer", "Au bourg, la recherche continue : [b]Méthode expérimentale[/b] (laboratoire, recherche ×5), [b]Coke[/b] (forges au charbon), [b]Moulin à eau[/b] (au bord d'une rivière), [b]Machine à vapeur[/b] (mines et scies), puis [b]Locomotive[/b] : posez une [b]Voie ferrée[/b] entre une gare du village et une gare lointaine pour exploiter les terres et les gisements éloignés. Un cheval par explorateur : les expéditions vont plus vite. H rouvre ce tutoriel."),
 	]
 
 

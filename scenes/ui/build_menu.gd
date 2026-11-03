@@ -12,6 +12,7 @@ var _def: BuildingDef
 var _zone_def: ZoneDef
 var _placement: BuildingRegistry.Placement
 var _zone_plan: ZoneMap.Plan
+var _rail_plan: RailNetwork.Plan
 var _hovered := Vector2i(-1, -1)
 var _group := ButtonGroup.new()
 var _build_buttons: Dictionary[BuildingDef, Button] = {}
@@ -20,6 +21,7 @@ var _erase_zone_button: Button
 var _demolish_button: Button
 var _upgrade_button: Button
 var _expedition_button: Button
+var _rail_button: Button
 var _members: SpinBox
 var _days: SpinBox
 var _horses: SpinBox
@@ -47,6 +49,9 @@ func _ready() -> void:
 	EventBus.zone_plan_previewed.connect(func(p: ZoneMap.Plan) -> void:
 		_zone_plan = p
 		_refresh_hint())
+	EventBus.rail_plan_previewed.connect(func(p: RailNetwork.Plan) -> void:
+		_rail_plan = p
+		_refresh_hint())
 	EventBus.tile_hovered.connect(func(_c: Vector2i) -> void:
 		if _mode == BuildTool.Mode.EXPEDITION:
 			_refresh_hint())
@@ -72,6 +77,7 @@ func _build_list() -> void:
 	_erase_zone_button.pressed.connect(func() -> void:
 		_select_tool(_erase_zone_button, BuildTool.Mode.ERASE_ZONE, null))
 	_build_territory()
+	_build_transport()
 	for category in BuildingDef.Category.size():
 		var defs := BuildingDb.DEFS.filter(func(d: BuildingDef) -> bool:
 			return d.category == category and d.player_buildable)
@@ -97,7 +103,7 @@ func _build_list() -> void:
 	EventBus.research_changed.connect(_refresh_tier_locks)
 	EventBus.game_started.connect(func(_s: int) -> void: _refresh_tier_locks())
 	_refresh_tier_locks.call_deferred()
-	_demolish_button.tooltip_text = "Démolit un bâtiment ou annule un chantier."
+	_demolish_button.tooltip_text = "Démolit un bâtiment, annule un chantier ou retire une voie ferrée."
 	_demolish_button.pressed.connect(func() -> void:
 		_select_tool(_demolish_button, BuildTool.Mode.DEMOLISH, null))
 
@@ -117,6 +123,11 @@ func _refresh_tier_locks() -> void:
 			_build_buttons[d].text = "%s   (%s)" % [label, ResearchDb.get_def(d.research).display_name]
 		else:
 			_lock(_build_buttons[d], label, d.tier, level)
+	if _rail_button:
+		var error := GameState.rails_error() if GameState.rails else "?"
+		_rail_button.disabled = not error.is_empty()
+		_rail_button.text = "Voie ferrée   %s" % _rail_cost_text() + ("" if error.is_empty() else "   (%s)" % (
+			CityTier.NAMES[2] if level < 3 else ResearchDb.get_def(&"locomotive").display_name))
 	if _days:
 		_update_days_limit()
 		_horses_row.visible = level >= 2
@@ -126,6 +137,26 @@ func _lock(button: Button, label: String, needed: int, level: int) -> void:
 	var locked := needed > level
 	button.disabled = locked
 	button.text = label + ("   (%s)" % CityTier.NAMES[needed - 1] if locked else "")
+
+
+## Section « Transport » : voies ferrées (bourg, recherche Locomotive).
+func _build_transport() -> void:
+	_add_header("Transport")
+	_rail_button = _tool_button("Voie ferrée   %s" % _rail_cost_text())
+	_rail_button.tooltip_text = "\n".join(PackedStringArray(["Voie ferrée (bourg, recherche Locomotive)",
+		"Glisser pour poser un tracé en L ; %s par tuile, pont sur rivière ×%d ; pas sur l'eau, la montagne ni les zones." % [
+			_rail_cost_text(), roundi(RailNetwork.BRIDGE_FACTOR)],
+		"Une gare touchant la voie et reliée à une gare du village (à %d tuiles du centre ou moins) rapproche" % Labor.FREE_DISTANCE,
+		"les tuiles autour d'elle : distance comptée depuis la gare, plus 1 tuile pour %d tuiles de voie." % RailNetwork.RAIL_TILES_PER_WALK_TILE,
+		"Les convois brûlent du charbon (%s par gare et par jour, plus %s par tuile de voie) ; sans charbon, ils s'arrêtent." % [
+			Format.decimal(RailNetwork.COAL_PER_STATION_PER_DAY), Format.decimal(RailNetwork.COAL_PER_RAIL_TILE_PER_DAY, 2)],
+		"Démolir retire une voie."]))
+	_rail_button.pressed.connect(func() -> void:
+		_select_tool(_rail_button, BuildTool.Mode.RAIL, null))
+
+
+static func _rail_cost_text() -> String:
+	return "%d fer, %d bois" % [roundi(RailNetwork.IRON_PER_TILE), roundi(RailNetwork.WOOD_PER_TILE)]
 
 
 ## Section « Territoire » : expédition (effectif, jours de vivres, état de
@@ -153,7 +184,8 @@ func _build_territory() -> void:
 		row.add_child(pair[1])
 	_list.add_child(row)
 	_horses_row = HBoxContainer.new()
-	_horses = _spin_box(0, 20, 0, "Chevaux de bât : chacun porte %d fois les vivres d'un explorateur" % roundi(DraftAnimals.PACK_FACTOR))
+	_horses = _spin_box(0, 20, 0, "Chevaux de bât : chacun porte %d fois les vivres d'un explorateur.\nAu bourg, un cheval par explorateur : éclaireurs à cheval, %s fois plus rapides." % [
+		roundi(DraftAnimals.PACK_FACTOR), Format.decimal(Exploration.MOUNTED_SPEED)])
 	var horses_label := Label.new()
 	horses_label.text = "Chevaux de bât"
 	horses_label.modulate = Color(1, 1, 1, 0.6)
@@ -291,6 +323,8 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 	_demolish_button.set_pressed_no_signal(_mode == BuildTool.Mode.DEMOLISH)
 	_upgrade_button.set_pressed_no_signal(_mode == BuildTool.Mode.UPGRADE)
 	_expedition_button.set_pressed_no_signal(_mode == BuildTool.Mode.EXPEDITION)
+	_rail_button.set_pressed_no_signal(_mode == BuildTool.Mode.RAIL)
+	_rail_plan = null
 	_refresh_hint()
 
 
@@ -343,8 +377,27 @@ func _refresh_hint() -> void:
 					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
 		BuildTool.Mode.EXPEDITION:
 			text = _expedition_hint()
+		BuildTool.Mode.RAIL:
+			text = "[b]Voie ferrée[/b] — glisser pour poser un tracé en L · Échap : annuler"
+			if _rail_plan:
+				if _rail_plan.is_valid():
+					var n := _rail_plan.new_cells.size()
+					text += "\n[color=%s]%d tuile%s : %s%s[/color]" % [OK_COLOR, n, "s" if n > 1 else "",
+						_cost_text(_rail_plan.costs),
+						" (défrichement de %d tuile%s)" % [_rail_plan.cleared.size(), "s" if _rail_plan.cleared.size() > 1 else ""]
+							if not _rail_plan.cleared.is_empty() else ""]
+				else:
+					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, _rail_plan.error]
 	_hint.text = text
 	_hint_panel.visible = not text.is_empty()
+
+
+static func _cost_text(values: PackedFloat32Array) -> String:
+	var parts := PackedStringArray()
+	for good in values.size():
+		if values[good] > 0.0:
+			parts.append("%d %s" % [roundi(values[good]), Stockpile.GOOD_NAMES[good].to_lower()])
+	return ", ".join(parts)
 
 
 func _expedition_hint() -> String:
@@ -359,8 +412,9 @@ func _expedition_hint() -> String:
 		var path := GameState.exploration.plan_path(home, _hovered)
 		if path.size() < 2:
 			return text + "\n[color=%s]Trajet impossible : de l'eau barre le chemin[/color]" % ERROR_COLOR
-		var trip := GameState.exploration.round_trip_days(home, _hovered)
-		var note := "aller-retour ≈ %s jours" % Format.decimal(trip)
+		var speed := GameState.exploration.speed_for(members, int(_horses.value))
+		var trip := GameState.exploration.round_trip_days(home, _hovered, speed)
+		var note := "aller-retour ≈ %s jours%s" % [Format.decimal(trip), " (à cheval)" if speed > 1.0 else ""]
 		if path[-1] != _hovered:
 			note += " (arrêt devant l'eau)"
 		var color := OK_COLOR if trip <= _days.value else ERROR_COLOR

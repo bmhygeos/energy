@@ -1,6 +1,7 @@
 extends Node2D
 ## Contours au sol : tuile ou bâtiment survolé et sélectionné, emprise du
-## placement en cours, cible de la démolition, rectangle de zones.
+## placement en cours, cible de la démolition, rectangle de zones, tracé de
+## voie ferrée.
 
 const HOVER_COLOR := Color(1, 1, 1, 0.8)
 const SELECT_COLOR := Color("ffd23f")
@@ -12,6 +13,7 @@ var selected := Vector2i(-1, -1)
 var mode := BuildTool.Mode.SELECT
 var placement: BuildingRegistry.Placement
 var zone_plan: ZoneMap.Plan
+var rail_plan: RailNetwork.Plan
 
 
 func _ready() -> void:
@@ -30,6 +32,9 @@ func _ready() -> void:
 	EventBus.zone_plan_previewed.connect(func(p: ZoneMap.Plan) -> void:
 		zone_plan = p
 		queue_redraw())
+	EventBus.rail_plan_previewed.connect(func(p: RailNetwork.Plan) -> void:
+		rail_plan = p
+		queue_redraw())
 	for s: Signal in [EventBus.building_placed, EventBus.building_removed]:
 		s.connect(func(_b: Building) -> void: queue_redraw())
 
@@ -43,6 +48,16 @@ func _draw() -> void:
 					placement.def.size)
 				draw_colored_polygon(d, color * Color(1, 1, 1, 0.3))
 				_outline(d, color, 3.0)
+		BuildTool.Mode.RAIL:
+			if rail_plan:
+				for cell in rail_plan.cells:
+					var color := HOVER_COLOR
+					if not rail_plan.error.is_empty():
+						color = INVALID_COLOR
+					elif cell in rail_plan.new_cells:
+						color = VALID_COLOR
+					draw_colored_polygon(Iso.diamond(cell), color * Color(1, 1, 1, 0.3))
+					_outline(Iso.diamond(cell), color, 1.5)
 		BuildTool.Mode.DEMOLISH:
 			var b := _building_at(hovered)
 			if b:

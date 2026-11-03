@@ -106,12 +106,15 @@ func _play_day(day: int) -> void:
 			_build_near(&"laboratory")
 		if _gs.research.is_done(&"water_mill") and not _has(&"water_mill"):
 			_build_near(&"water_mill", 12)
+		if _gs.research.is_done(&"steam_engine") and not _has(&"steam_engine"):
+			_build_near(&"steam_engine")
 		if stock.amount[Stockpile.Good.COAL] >= 0.9 * stock.capacity[Stockpile.Good.COAL]:
 			_build_near(&"coal_yard")
 	if _gs.exploration.can_launch() and day % 10 == 0 and _gs.food_days() > 30.0:
 		var dir := DIRECTIONS[_expeditions % DIRECTIONS.size()]
 		var reach := 20 + 8 * (_expeditions / DIRECTIONS.size())
-		if _gs.launch_expedition(_center + dir * reach, 3, float(_gs.exploration.max_days())):
+		var horses := 3 if _gs.tier.level >= Exploration.MOUNTED_TIER and _gs.draft.at_home() >= 3 else 0
+		if _gs.launch_expedition(_center + dir * reach, 3, float(_gs.exploration.max_days()), horses):
 			_expeditions += 1
 	if day % 10 == 5:
 		_paint_zones()

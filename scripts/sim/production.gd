@@ -65,6 +65,8 @@ var mill_bonus := 0.0
 ## force motrice des moulins à eau.
 var sawmill_bonus := 0.0
 var drive_bonus := 0.0
+## Carrières et mines : bonus des machines à vapeur alimentées.
+var mine_bonus := 0.0
 ## Laine des pâturages (à partir du bourg).
 var wool := false
 ## Tuiles irrigables par une rivière ou un lac déjà calculées (l'eau douce ne
@@ -113,6 +115,8 @@ func invention_factor(def: ZoneDef, cell: Vector2i) -> float:
 			factor *= (1.0 + sawmill_bonus) * (1.0 + drive_bonus)
 	if def.output == Stockpile.Good.STONE and _done(&"gears"):
 		factor *= GEARS_BONUS
+	if def.output == Stockpile.Good.STONE or def.deposit != 0:
+		factor *= 1.0 + mine_bonus
 	return factor
 
 

@@ -52,6 +52,7 @@ tutoriel.
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment |
 | Tracer une zone | bouton de zone du menu (Agriculture, Élevage, Coupe du bois) puis glisser sur la carte (rectangle ; les tuiles non valides sont ignorées) ; « Effacer les zones » puis glisser pour les retirer |
 | Main-d'œuvre | `M` ou bouton « Travail » du bandeau : places, affectés, production prévue, priorités |
+| Poser une voie ferrée | « Voie ferrée » du menu (bourg, recherche Locomotive), puis glisser sur la carte (tracé en L) ; « Démolir » retire une voie |
 | Explorer | « Expédition » du menu, régler explorateurs et jours de vivres, puis cliquer la destination sur la carte |
 | Recherche | `R` ou bouton « Recherche » du bandeau, puis « Rechercher » |
 | Améliorer | « Améliorer » du menu puis clic sur une maison ou un grenier |
@@ -279,8 +280,30 @@ météo et interface conservés.
 - **Jalons** : Gueules noires (premier charbon), Bien vêtus (tous les
   vêtements remplacés), Savants (laboratoire). **Tutoriel** : étape « Vers le
   bourg ».
-- Reste pour le bourg (partie 2) : routes, marché, machine à vapeur, train,
-  éclaireurs à cheval.
+
+### V8 (partie 2) : bourg — machine à vapeur, train, éclaireurs à cheval
+- **Recherches** :
+  | Recherche | Prérequis | Points | Effet |
+  |---|---|---|---|
+  | Machine à vapeur | Coke | 25 000 | **Machine à vapeur** (30 bois, 40 pierre, 30 fer ; 6 charbon/j) : carrières et mines +25 %, coupe du bois et forges +30 % (le meilleur entraînement compte avec le moulin à eau) ; à l'arrêt sans charbon |
+  | Locomotive | Machine à vapeur | 35 000 | **Voies ferrées** et **gares** |
+- **Voie ferrée** (menu, section Transport) : glisser pour poser un tracé en
+  L ; 1 fer et 1 bois par tuile, pont sur rivière ×5 ; sur le territoire,
+  pas sur l'eau, la montagne, la glace, les bâtiments ni les zones ; les
+  forêts sont défrichées. « Démolir » retire une voie.
+- **Gare** (30 bois, 30 pierre, 10 fer) : une gare qui touche la voie est
+  desservie si la voie la relie à une gare du village (à 6 tuiles du centre ou
+  moins). Les tuiles autour se comptent alors depuis la gare, plus 1 tuile pour
+  3 tuiles de voie (−1 % par tuile de voie) : répartition des travailleurs,
+  rendement et attelage en tiennent compte. Fiche de la tuile : distance par
+  le train.
+- **Convois** : 1 charbon par gare desservie et par jour, plus 0,05 par tuile
+  de voie jusqu'à elle ; sans charbon, les trains s'arrêtent (rails ternis).
+  Panneau Main-d'œuvre : gares desservies, charbon des trains et des machines.
+- **Éclaireurs à cheval** : au bourg, une expédition dont chaque explorateur a
+  son cheval va 1,5 fois plus vite (aperçu de l'aller-retour « à cheval »).
+- **Jalon** Chemin de fer (première gare desservie) ; tutoriel complété.
+- Reste pour le bourg : routes et marché (avec l'économie, section 8 du plan).
 
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon

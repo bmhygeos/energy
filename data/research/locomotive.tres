@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"locomotive"
+display_name = "Locomotive"
+description = "Une machine à vapeur sur roues, qui tire des wagons sur des rails de fer."
+tier = 3
+cost = 35000.0
+prerequisites = Array[StringName]([&"steam_engine"])
+effect = "Débloque les voies ferrées et les gares : les tuiles autour d'une gare reliée au village se travaillent comme si elles étaient proches."

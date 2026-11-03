@@ -41,6 +41,8 @@ func _init() -> void:
 	_test_statistics()
 	_test_milestones()
 	_test_bourg()
+	_test_rails()
+	_test_steam_and_scouts()
 
 
 ## Tests qui demandent les autoloads (GameState), prêts après la première
@@ -1117,7 +1119,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 15 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 16 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1239,3 +1241,80 @@ func _place_running(gs: Node, def: BuildingDef) -> Building:
 					b.status = Building.Status.RUNNING
 					return b
 	return null
+
+
+func _test_rails() -> void:
+	var map := WorldMap.new(Vector2i(64, 64), 0, FlatGenerator.new(Vector2i(64, 64)))
+	var territory := Territory.new(map)
+	var cells: Array[Vector2i] = []
+	for y in 10:
+		for x in 40:
+			cells.append(Vector2i(x, y))
+	territory.annex(cells)
+	var registry := BuildingRegistry.new(map, territory)
+	var zones := ZoneMap.new(map, territory, registry)
+	var center := Vector2i(2, 2)
+	var rails := RailNetwork.new(map, territory, registry, center)
+	rails.zones = zones
+	registry.rails = rails
+	var labor := Labor.new(zones, center)
+	labor.rails = rails
+	var expected: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(3, 1)]
+	_check(RailNetwork.l_path(Vector2i(0, 0), Vector2i(3, 1)) == expected, "tracé en L, l'axe le plus long d'abord")
+	map.set_terrain(Vector2i(10, 2), TerrainDef.Type.RIVER)
+	var plan := rails.plan(Vector2i(3, 2), Vector2i(30, 2))
+	_check(plan.is_valid() and plan.new_cells.size() == 28
+		and is_equal_approx(plan.costs[Stockpile.Good.IRON], 27.0 + RailNetwork.BRIDGE_FACTOR), "28 tuiles, pont plus cher")
+	_check(not rails.plan(Vector2i(3, 2), Vector2i(3, 20)).is_valid(), "hors du territoire : refusé")
+	rails.build(plan)
+	_check(rails.tile_count() == 28 and rails.has_rail(Vector2i(10, 2)), "voie posée")
+	_check(not rails.plan(Vector2i(3, 2), Vector2i(8, 2)).is_valid(), "voie déjà posée")
+	var station := BuildingDb.get_def(&"station")
+	_check(station.station and station.research == &"locomotive" and station.tier == 3, "gare : bourg, recherche Locomotive")
+	_check(not registry.check_placement(station, Vector2i(5, 2)).is_valid(), "pas de bâtiment sur la voie")
+	_check(not zones.check_cell(ZoneDb.get_def(&"agriculture"), Vector2i(5, 2)).is_empty(), "pas de zone sur la voie")
+	var home_station := registry.place(registry.check_placement(station, Vector2i(3, 3)))
+	var far := registry.place(registry.check_placement(station, Vector2i(30, 3)))
+	var lone := registry.place(registry.check_placement(station, Vector2i(30, 8)))
+	var stations: Array[Building] = [home_station, far, lone]
+	rails.refresh(stations)
+	_check(rails.is_village_station(home_station) and rails.served.size() == 1 and rails.served.get(Vector2i(30, 3), 0) == 28,
+		"gare lointaine desservie (28 tuiles de voie), gare isolée non")
+	var cell := Vector2i(30, 5)
+	_check(rails.distance_via(cell) == 2 + ceili(28.0 / RailNetwork.RAIL_TILES_PER_WALK_TILE) and labor.distance(cell) == 12,
+		"distance par le train : 2 tuiles de la gare + 28 / 3 (à pied : 28)")
+	_check(labor.distance(Vector2i(4, 4)) == 2, "près du village, la marche reste plus courte")
+	_check(is_equal_approx(rails.coal_need(), RailNetwork.COAL_PER_STATION_PER_DAY + 28 * RailNetwork.COAL_PER_RAIL_TILE_PER_DAY),
+		"charbon des convois")
+	rails.running = false
+	_check(labor.distance(cell) == 28 and rails.distance_via(cell) == -1, "trains arrêtés : retour à la marche")
+	rails.running = true
+	rails.remove(Vector2i(15, 2))
+	rails.refresh(stations)
+	_check(rails.served.is_empty() and labor.distance(cell) == 28, "voie coupée : gare plus desservie")
+
+
+func _test_steam_and_scouts() -> void:
+	var engine := BuildingDb.get_def(&"steam_engine")
+	_check(engine.research == &"steam_engine" and engine.coal_per_day > 0.0 and engine.mine_bonus > 0.0
+		and engine.drive_bonus > 0.0, "machine à vapeur : charbon, mines et entraînement")
+	var steam_pre: Array[StringName] = [&"coke"]
+	var loco_pre: Array[StringName] = [&"steam_engine"]
+	_check(ResearchDb.get_def(&"steam_engine").prerequisites == steam_pre
+		and ResearchDb.get_def(&"locomotive").prerequisites == loco_pre, "vapeur après le coke, locomotive après la vapeur")
+	var setup := _labor_setup()
+	var prod := Production.new(setup[0], setup[1])
+	prod.mine_bonus = 0.25
+	_check(is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"coal_mine"), Vector2i(3, 3)), 1.25)
+		and is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"quarry"), Vector2i(3, 3)), 1.25)
+		and is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"pasture"), Vector2i(3, 3)), 1.0), "vapeur : mines et carrières")
+	# Éclaireurs à cheval : au bourg, un cheval par explorateur.
+	var exploration := Exploration.new(_flat_map()[1])
+	exploration.tier = 2
+	_check(exploration.speed_for(3, 3) == 1.0, "au village : pas d'éclaireurs à cheval")
+	exploration.tier = 3
+	_check(exploration.speed_for(3, 3) == Exploration.MOUNTED_SPEED and exploration.speed_for(3, 2) == 1.0,
+		"au bourg : à cheval si chacun a le sien")
+	var slow := exploration.round_trip_days(Vector2i(2, 2), Vector2i(20, 2))
+	_check(is_equal_approx(exploration.round_trip_days(Vector2i(2, 2), Vector2i(20, 2), Exploration.MOUNTED_SPEED),
+		slow / Exploration.MOUNTED_SPEED), "à cheval : aller-retour plus court")

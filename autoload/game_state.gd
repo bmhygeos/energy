@@ -39,6 +39,8 @@ var draft: DraftAnimals
 ## Centre du village (abscisse ramenée sur la planète).
 var home: Vector2i
 var buildings: BuildingRegistry
+## Voies ferrées et gares desservies (bourg).
+var rails: RailNetwork
 ## Zones peintes (agriculture, élevage, coupe du bois).
 var zones: ZoneMap
 var population: Population
@@ -58,8 +60,13 @@ var milestones: Milestones
 var housing := 0
 ## Habitants approvisionnés en eau par les puits.
 var water_supply := 0
-## Charbon brûlé pour le chauffage dans la journée en cours.
+## Charbon brûlé dans la journée en cours (chauffage, machines, convois).
 var coal_burned_today := 0.0
+## Machines à vapeur alimentées en charbon (la veille), et leurs bonus.
+var steam_running := false
+var _steam_drive := 0.0
+var _steam_mine := 0.0
+var _water_drive := 0.0
 ## Besoins et consommation du jour en cours, par marchandise.
 var _needed_today := Stockpile.zeros()
 var _consumed_today := Stockpile.zeros()
@@ -86,9 +93,13 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	exploration = Exploration.new(territory)
 	buildings = BuildingRegistry.new(world_map, territory)
 	zones = ZoneMap.new(world_map, territory, buildings)
+	rails = RailNetwork.new(world_map, territory, buildings, home)
+	rails.zones = zones
+	buildings.rails = rails
 	population = Population.new()
 	tier = CityTier.new()
 	labor = Labor.new(zones, home)
+	labor.rails = rails
 	stockpile = Stockpile.new()
 	production = Production.new(zones, labor)
 	research = Research.new()
@@ -284,11 +295,17 @@ func upgrade(cell: Vector2i) -> bool:
 	return true
 
 
-## Démolit le bâtiment présent en [param cell] ; false s'il n'y en a pas.
+## Démolit le bâtiment présent en [param cell], sinon la voie ferrée ; false
+## s'il n'y a ni l'un ni l'autre.
 func demolish(cell: Vector2i) -> bool:
 	var b := buildings.building_at(cell)
 	if b == null:
-		return false
+		if not rails.remove(cell):
+			return false
+		EventBus.rails_changed.emit([cell] as Array[Vector2i])
+		_refresh_rails()
+		_update_labor()
+		return true
 	buildings.remove(b)
 	_refresh_capacities()
 	EventBus.building_removed.emit(b)
@@ -321,23 +338,132 @@ func _refresh_capacities() -> void:
 	var mill := 0.0
 	var sawmill := 0.0
 	var drive := 0.0
+	var steam_drive := 0.0
+	var steam_mine := 0.0
 	var wells: Array[Vector2i] = []
 	for b in buildings.all():
 		if b.is_complete() and b.def.grinds_grain:
 			mill = maxf(mill, b.def.grain_bonus)
 		if b.is_complete():
 			sawmill = maxf(sawmill, b.def.forestry_bonus)
-			drive = maxf(drive, b.def.drive_bonus)
+			if b.def.coal_per_day > 0.0:
+				steam_drive = maxf(steam_drive, b.def.drive_bonus)
+				steam_mine = maxf(steam_mine, b.def.mine_bonus)
+			else:
+				drive = maxf(drive, b.def.drive_bonus)
 		if b.is_complete() and b.def.water_supply > 0:
 			for c in b.cells:
 				wells.append(world_map.wrap_cell(c))
 	production.wells = wells
 	production.sawmill_bonus = sawmill
 	production.mill_bonus = mill
-	production.drive_bonus = drive
+	_water_drive = drive
+	_steam_drive = steam_drive
+	_steam_mine = steam_mine
+	_apply_steam()
+	_refresh_rails()
 	production.wool = tier.level >= CLOTHES_TIER
 	stockpile.spoilage_factor = 0.5 if mill > 0.0 else 1.0
 	draft.collar = research.is_done(&"harness_collar")
+
+
+## Bonus des machines (moulin à eau ; machines à vapeur si alimentées).
+func _apply_steam() -> void:
+	production.drive_bonus = maxf(_water_drive, _steam_drive if steam_running else 0.0)
+	production.mine_bonus = _steam_mine if steam_running else 0.0
+
+
+## Charbon brûlé par jour par les machines à vapeur terminées.
+func steam_coal_need() -> float:
+	var total := 0.0
+	for b in buildings.all():
+		if b.is_complete():
+			total += b.def.coal_per_day
+	return total
+
+
+## Machines à vapeur : brûlent leur charbon du jour s'il y en a assez,
+## sinon elles s'arrêtent (bonus perdus jusqu'au lendemain).
+func _run_steam() -> void:
+	var need := steam_coal_need()
+	var was := steam_running
+	steam_running = need > 0.0 and stockpile.has(Stockpile.Good.COAL, need)
+	if steam_running:
+		coal_burned_today += stockpile.take(Stockpile.Good.COAL, need)
+	elif was and need > 0.0:
+		EventBus.notified.emit("Plus de charbon : les machines à vapeur s'arrêtent")
+	_apply_steam()
+
+
+## Gares desservies d'après les voies et les gares terminées.
+func _refresh_rails() -> void:
+	var stations: Array[Building] = []
+	for b in buildings.all():
+		if b.is_complete() and b.def.station:
+			stations.append(b)
+	var before := rails.served.duplicate()
+	rails.refresh(stations)
+	if rails.served != before:
+		EventBus.rails_changed.emit([] as Array[Vector2i])
+
+
+## Convois : brûlent leur charbon du jour s'il y en a assez, sinon ils
+## s'arrêtent (gares sans effet jusqu'au lendemain).
+func _run_trains() -> void:
+	var need := rails.coal_need()
+	var was := rails.running
+	rails.running = need <= 0.0 or stockpile.has(Stockpile.Good.COAL, need)
+	if need > 0.0 and rails.running:
+		coal_burned_today += stockpile.take(Stockpile.Good.COAL, need)
+	if was and not rails.running:
+		EventBus.notified.emit("Plus de charbon : les trains s'arrêtent")
+	if was != rails.running:
+		EventBus.rails_changed.emit([] as Array[Vector2i])
+
+
+## Ce qui empêche de poser des voies (vide : possible).
+func rails_error() -> String:
+	var station := BuildingDb.get_def(&"station")
+	if tier.level < station.tier:
+		return "Disponible au palier %s" % CityTier.NAMES[station.tier - 1]
+	if not research.is_done(station.research):
+		return "Recherche requise : %s" % ResearchDb.get_def(station.research).display_name
+	return ""
+
+
+## Aperçu d'un tracé de voie entre deux tuiles (repère de la vue) : palier,
+## recherche, règles du réseau et matériaux.
+func plan_rails(from: Vector2i, to: Vector2i) -> RailNetwork.Plan:
+	var p := rails.plan(from, to)
+	var error := rails_error()
+	if not error.is_empty():
+		p.error = error
+	for good in Stockpile.COUNT:
+		if p.is_valid() and not stockpile.has(good, p.costs[good]):
+			p.error = "%s insuffisant%s (%d requis)" % [Stockpile.GOOD_NAMES[good],
+				Stockpile.GOOD_AGREEMENT[good], roundi(p.costs[good])]
+	if not p.is_valid():
+		p.new_cells.clear()
+	return p
+
+
+## Pose les voies de [param p] ; renvoie le nombre de tuiles posées (raison
+## notifiée si aucune).
+func build_rails(p: RailNetwork.Plan) -> int:
+	if not p.is_valid():
+		if not p.error.is_empty():
+			EventBus.notified.emit(p.error)
+		return 0
+	for good in Stockpile.COUNT:
+		stockpile.take(good, p.costs[good])
+	var built := rails.build(p)
+	if not p.cleared.is_empty():
+		EventBus.tiles_changed.emit(p.cleared)
+	EventBus.rails_changed.emit(built)
+	EventBus.stocks_changed.emit()
+	_refresh_rails()
+	_update_labor()
+	return built.size()
 
 
 ## Part des habitants approvisionnés en eau : besoin à partir du village
@@ -374,6 +500,7 @@ func launch_expedition(target: Vector2i, members: int, days: float, horses := 0)
 	stockpile.take(Stockpile.Good.FOOD, food)
 	var e := exploration.launch(display_cell(home), target, members, food)
 	e.horses = horses
+	e.speed = exploration.speed_for(members, horses)
 	draft.away += horses
 	EventBus.notified.emit("Expédition partie : %d explorateur%s%s, %s jours de vivres" % [
 		members, "s" if members > 1 else "", " et %d cheva%s" % [horses, "ux" if horses > 1 else "l"] if horses > 0 else "",
@@ -692,6 +819,8 @@ func _on_day(day: int) -> void:
 		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)
 	_run_forges()
 	_run_weavers()
+	_run_steam()
+	_run_trains()
 	var tools := _wear_tools()
 	var clothes := _wear_clothes()
 	var before := population.count
@@ -765,6 +894,7 @@ func _check_milestones(day: int) -> void:
 	facts.territory = territory.count(Territory.State.TERRITORY)
 	facts.horses = draft.horses
 	facts.water_coverage = water_coverage()
+	facts.served_stations = rails.served.size()
 	facts.clothes_coverage = population.clothes_coverage if tier.level >= CLOTHES_TIER else 0.0
 	facts.research = research
 	for def in milestones.check(facts, day):

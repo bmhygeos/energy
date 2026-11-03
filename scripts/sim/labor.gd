@@ -32,6 +32,8 @@ var zones: ZoneMap
 var map: WorldMap
 ## Centre du village (pour la proximité).
 var center: Vector2i
+## Voies ferrées (null : aucune) : une gare desservie rapproche ses environs.
+var rails: RailNetwork
 ## Priorité par type de zone (0–5 ou AUTO).
 var priorities: Dictionary[ZoneDef, int] = {}
 ## Priorité appliquée en mode automatique, par type de zone.
@@ -199,11 +201,17 @@ func tile_score(def: ZoneDef, cell: Vector2i) -> float:
 	return def.quality_at(map, cell) * distance_factor(distance(cell))
 
 
-## Distance (en tuiles, Tchebychev, longitude bouclée) au centre du village.
+## Distance (en tuiles, Tchebychev, longitude bouclée) au centre du village,
+## ou par le train si c'est plus court.
 func distance(cell: Vector2i) -> int:
 	var w := map.size.x
 	var dx := absi(posmod(cell.x - center.x + w / 2, w) - w / 2)
-	return maxi(dx, absi(cell.y - center.y))
+	var d := maxi(dx, absi(cell.y - center.y))
+	if rails:
+		var via := rails.distance_via(cell)
+		if via >= 0:
+			d = mini(d, via)
+	return d
 
 
 ## Rendement restant après le trajet depuis une distance de [param tiles].

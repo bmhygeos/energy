@@ -14,6 +14,10 @@ const MAX_DAYS: PackedInt32Array = [20, 40, 40, 40, 40]
 const MAX_MEMBERS := 5
 ## Palier à partir duquel les expéditions prospectent ce qu'elles voient.
 const PROSPECT_TIER := 2
+## Éclaireurs à cheval (à partir du bourg) : une expédition où chaque
+## explorateur a son cheval va MOUNTED_SPEED fois plus vite.
+const MOUNTED_TIER := 3
+const MOUNTED_SPEED := 1.5
 ## Rayon de vue (tuiles) autour de l'expédition.
 const SIGHT_RADIUS := 3
 ## Vivres consommés par explorateur et par jour.
@@ -40,6 +44,8 @@ class Expedition:
 	var members := 0
 	## Chevaux de bât (rendus à l'écurie au retour).
 	var horses := 0
+	## Multiplicateur de vitesse (éclaireurs à cheval).
+	var speed := 1.0
 	## Vivres restants.
 	var food := 0.0
 	## Trajet aller, du centre du village (indice 0) vers la cible.
@@ -104,6 +110,12 @@ func max_expeditions() -> int:
 	return MAX_EXPEDITIONS[tier - 1]
 
 
+## Vitesse d'une expédition de [param members] explorateurs avec
+## [param horses] chevaux : à cheval au bourg si chacun a le sien.
+func speed_for(members: int, horses: int) -> float:
+	return MOUNTED_SPEED if tier >= MOUNTED_TIER and members > 0 and horses >= members else 1.0
+
+
 func max_days() -> int:
 	return MAX_DAYS[tier - 1]
 
@@ -127,7 +139,7 @@ func plan_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 func days_back(e: Expedition, index: int) -> float:
 	var days := 0.0
 	for k in range(1, mini(index, e.path.size() - 1) + 1):
-		days += 1.0 / speed_at(e.path[k])
+		days += 1.0 / (speed_at(e.path[k]) * e.speed)
 	return days
 
 
@@ -138,8 +150,9 @@ func food_to_return(e: Expedition) -> float:
 
 ## Durée prévue (jours) de l'aller-retour vers [param target] par le trajet
 ## qui part de [param from].
-func round_trip_days(from: Vector2i, target: Vector2i) -> float:
+func round_trip_days(from: Vector2i, target: Vector2i, speed := 1.0) -> float:
 	var e := Expedition.new()
+	e.speed = speed
 	e.path = plan_path(from, target)
 	return 2.0 * days_back(e, e.path.size() - 1)
 
@@ -165,7 +178,7 @@ func step_hour() -> Report:
 	var report := Report.new()
 	for e in expeditions.duplicate():
 		e.food = maxf(0.0, e.food - e.members * FOOD_PER_MEMBER_PER_DAY / GameDate.HOURS_PER_DAY)
-		var step := speed_at(e.cell()) / GameDate.HOURS_PER_DAY
+		var step: float = speed_at(e.cell()) * e.speed / GameDate.HOURS_PER_DAY
 		if e.returning:
 			e.position = maxf(0.0, e.position - step)
 		else:

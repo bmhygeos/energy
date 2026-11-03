@@ -15,6 +15,8 @@ const DEFS: Array[ResearchDef] = [
 	preload("res://data/research/scientific_method.tres"),
 	preload("res://data/research/coke.tres"),
 	preload("res://data/research/water_mill.tres"),
+	preload("res://data/research/steam_engine.tres"),
+	preload("res://data/research/locomotive.tres"),
 ]
 
 

@@ -226,8 +226,16 @@ puits, au village (ou en annexant vers une rivière ou un lac).
 - **Moulin à eau** (recherche, après le moulin à vent ; bord de rivière) :
   agriculture +30 %, coupe du bois et forges +20 % (simplifié : tout le
   bourg plutôt que les bâtiments voisins), 8 kW.
-- Reste (partie 2) : routes, marché, machine à vapeur, train et gares,
-  éclaireurs à cheval.
+- **Machine à vapeur** (réalisé en V8, partie 2) : 6 charbon/j, carrières et
+  mines +25 %, coupe du bois et forges +30 %.
+- **Train** (partie 2) : voies posées au glisser (fer et bois par tuile),
+  gares ; une gare reliée à une gare du village rapproche ses environs
+  (distance depuis la gare + 1 tuile pour 3 tuiles de voie) ; charbon par gare
+  et par tuile de voie, trains arrêtés sans charbon. Pas encore de convois
+  visibles ni de quantité transportée.
+- **Éclaireurs à cheval** (partie 2) : expéditions ×1,5 en vitesse avec un
+  cheval par explorateur.
+- Reste : routes et marché, avec l'économie (section 8).
 
 ### Palier 2 : inventions, fer et outils (réalisé en V6, partie 3)
 - **Prospection** : le territoire est prospecté au passage d'un palier ; les
@@ -444,6 +452,7 @@ effectif, vivres).
 | V6 | Palier 2 | Pierre, eau, pêche, expéditions améliorées, écurie et hippotraction, points de recherche, atelier et inventions (collier, charrue, assolement, métallurgie du fer et forge, outils, engrenage, moulin à vent), mine de fer |
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 (outil `simulate_pacing`, points de recherche mis de côté plafonnés) |
 | V8 (partie 1) | Palier 3, première partie | Charbon (mine, chauffage, coke), vêtements (lin, laine, tissage), laboratoire, moulin à eau — réalisé |
+| V8 (partie 2) | Palier 3, deuxième partie | Machine à vapeur, voies ferrées et gares, éclaireurs à cheval — réalisé |
 | V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 

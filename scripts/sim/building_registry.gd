@@ -22,6 +22,8 @@ class Placement:
 
 var map: WorldMap
 var territory: Territory
+## Voies ferrées (null : aucune) : pas de bâtiment dessus.
+var rails: RailNetwork
 var _buildings: Dictionary[int, Building] = {}
 ## Identifiant du bâtiment par tuile occupée (ramenée sur la planète).
 var _occupancy: Dictionary[Vector2i, int] = {}
@@ -73,6 +75,8 @@ func _placement_error(p: Placement) -> String:
 		var occupant := building_at(cell)
 		if occupant:
 			return "Emplacement occupé (%s)" % occupant.def.display_name
+		if rails and rails.has_rail(cell):
+			return "Voie ferrée présente"
 		var t := map.get_terrain(cell)
 		var terrain := TerrainDb.get_def(t)
 		if not terrain.buildable:

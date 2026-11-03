@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"steam_engine"
+display_name = "Machine à vapeur"
+description = "La vapeur pousse un piston : une force sans vent ni rivière, tant qu'on la nourrit de charbon."
+tier = 3
+cost = 25000.0
+prerequisites = Array[StringName]([&"coke"])
+effect = "Débloque la machine à vapeur (6 charbon/j) : carrières et mines +25 %, coupe du bois et forges +30 %."

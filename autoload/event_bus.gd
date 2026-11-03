@@ -27,6 +27,11 @@ signal tiles_changed(cells: Array[Vector2i])
 signal zones_changed(cells: Array[Vector2i])
 ## Aperçu de la peinture ou de l'effacement de zones (null : aucun).
 signal zone_plan_previewed(plan: ZoneMap.Plan)
+## Voies ferrées posées ou retirées sur ces tuiles (repère de la vue), ou
+## gares desservies changées (liste vide).
+signal rails_changed(cells: Array[Vector2i])
+## Aperçu d'un tracé de voie (null : aucun).
+signal rail_plan_previewed(plan: RailNetwork.Plan)
 ## Affectation des travailleurs modifiée (Labor).
 signal labor_changed()
 ## Stocks modifiés (production, consommation, construction).

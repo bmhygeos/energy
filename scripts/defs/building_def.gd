@@ -62,6 +62,13 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Scierie : bonus de la coupe du bois (part ; un seul compte).
 @export var forestry_bonus := 0.0
 @export var mechanical_watts := 0.0
+## Machine à vapeur : charbon brûlé par jour ; sans lui, ses bonus
+## (drive_bonus, mine_bonus) disparaissent.
+@export var coal_per_day := 0.0
+## Carrières et mines : bonus (pompes d'exhaure, treuils à vapeur).
+@export var mine_bonus := 0.0
+## Gare : dessert les tuiles autour d'elle si une voie la relie au village.
+@export var station := false
 ## Places pour les chevaux (écurie).
 @export var horse_capacity := 0
 ## Habitants approvisionnés en eau (puits).
@@ -140,6 +147,12 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Moud le grain : agriculture +%d %%, gâchis de la nourriture moitié moindre" % roundi(grain_bonus * 100.0))
 	if drive_bonus > 0.0:
 		lines.append("Entraîne scies et soufflets : coupe du bois et forges +%d %%" % roundi(drive_bonus * 100.0))
+	if mine_bonus > 0.0:
+		lines.append("Carrières et mines +%d %%" % roundi(mine_bonus * 100.0))
+	if coal_per_day > 0.0:
+		lines.append("Brûle %s charbon par jour (sans charbon, à l'arrêt)" % Format.decimal(coal_per_day))
+	if station:
+		lines.append("Gare : reliée par la voie à une gare du village, elle rapproche les tuiles autour d'elle")
 	if mechanical_watts > 0.0:
 		lines.append("Puissance mécanique ≈ %s%s" % [PowerMeter.format(mechanical_watts), " selon le vent" if wind_powered else ""])
 	if horse_capacity > 0:

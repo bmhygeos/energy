@@ -21,6 +21,8 @@ const DEFS: Array[BuildingDef] = [
 	preload("res://data/buildings/weaver.tres"),
 	preload("res://data/buildings/laboratory.tres"),
 	preload("res://data/buildings/water_mill.tres"),
+	preload("res://data/buildings/steam_engine.tres"),
+	preload("res://data/buildings/station.tres"),
 	preload("res://data/buildings/stone_granary.tres"),
 	preload("res://data/buildings/large_granary.tres"),
 	preload("res://data/buildings/warehouse.tres"),

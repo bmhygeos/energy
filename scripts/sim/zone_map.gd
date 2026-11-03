@@ -65,6 +65,8 @@ func check_cell(def: ZoneDef, cell: Vector2i) -> String:
 	var b := buildings.building_at(cell)
 	if b:
 		return "Bâtiment présent (%s)" % b.def.display_name
+	if buildings.rails and buildings.rails.has_rail(cell):
+		return "Voie ferrée présente"
 	if def.deposit != 0 and territory.known_deposit(cell) != def.deposit:
 		return "Pas de gisement de %s prospecté" % WorldMap.DEPOSIT_NAMES[def.deposit].to_lower()
 	return def.terrain_error(map, cell)

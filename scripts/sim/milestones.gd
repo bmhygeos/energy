@@ -38,6 +38,8 @@ class Facts:
 	var water_coverage := 1.0
 	## Part des vêtements usés remplacés la veille (0 avant le bourg).
 	var clothes_coverage := 0.0
+	## Gares desservies par le train.
+	var served_stations := 0
 	var research: Research
 
 	func has_building(id: StringName) -> bool:
@@ -90,6 +92,8 @@ static func standard() -> Array[Def]:
 				and f.stats != null and f.stats.last(&"clothes_produced") > 0.0)),
 		Def.new(&"laboratory", "Savants", "Construire un laboratoire (recherche ×5).",
 			func(f: Facts) -> bool: return f.has_building(&"laboratory")),
+		Def.new(&"railway", "Chemin de fer", "Relier une gare lointaine à une gare du village par la voie ferrée.",
+			func(f: Facts) -> bool: return f.served_stations > 0),
 	]
 
 
