@@ -65,6 +65,9 @@ func _refresh() -> void:
 		var via := GameState.rails.distance_via(cell)
 		if via >= 0 and via < _walk_distance(cell):
 			lines.append("Par le train : à %d tuiles du village (à pied : %d)" % [via, _walk_distance(cell)])
+		var by_road := GameState.roads.distance_via(cell)
+		if by_road >= 0 and by_road < _walk_distance(cell):
+			lines.append("Par la route : à %d tuiles du village (à pied : %d)" % [by_road, _walk_distance(cell)])
 		if GameState.draft.harnessed.has(map.wrap_cell(cell)):
 			lines.append("Attelage : trajets plus courts (pénalité à partir de %d tuiles)" % GameState.draft.free_distance())
 		var inventions := GameState.production.invention_factor(zone, cell)
@@ -74,6 +77,8 @@ func _refresh() -> void:
 			lines.append("Irriguée : +%d %%" % roundi((Production.IRRIGATION_BONUS - 1.0) * 100.0))
 	if GameState.rails.has_rail(cell):
 		lines.append("Voie ferrée%s" % ("" if GameState.rails.running else " (trains arrêtés : plus de charbon)"))
+	if GameState.roads.has_tile(cell):
+		lines.append("Route%s" % ("" if GameState.roads.lengths.has(map.wrap_cell(cell)) else " (pas reliée au village)"))
 	var regrowth := GameState.production.regrowth_days_left(cell)
 	if regrowth >= 0:
 		lines.append("Coupe à blanc : redevient forêt dans %d j (sans bâtiment ni autre zone que la coupe)" % regrowth)

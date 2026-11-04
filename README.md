@@ -52,6 +52,7 @@ pour le tutoriel.
 | Démolir | `X` ou bouton « Démolir », puis clic sur un bâtiment |
 | Tracer une zone | bouton de zone du menu (Agriculture, Élevage, Coupe du bois) puis glisser sur la carte (rectangle ; les tuiles non valides sont ignorées) ; « Effacer les zones » puis glisser pour les retirer |
 | Main-d'œuvre | `M` ou bouton « Travail » du bandeau : places, affectés, production prévue, priorités |
+| Poser une route | « Route » du menu (bourg), puis glisser sur la carte (tracé en L) ; « Démolir » retire une route |
 | Poser une voie ferrée | « Voie ferrée » du menu (bourg, recherche Locomotive), puis glisser sur la carte (tracé en L) ; « Démolir » retire une voie |
 | Explorer | « Expédition » du menu, régler explorateurs et jours de vivres, puis cliquer la destination sur la carte |
 | Recherche | `R` ou bouton « Recherche » du bandeau, puis « Rechercher » |
@@ -307,7 +308,6 @@ météo et interface conservés.
 - **Éclaireurs à cheval** : au bourg, une expédition dont chaque explorateur a
   son cheval va 1,5 fois plus vite (aperçu de l'aller-retour « à cheval »).
 - **Jalon** Chemin de fer (première gare desservie) ; tutoriel complété.
-- Reste pour le bourg : routes et marché (avec l'économie, section 8 du plan).
 
 ### V9 : économie du bourg — trésor, impôts, marché, décrets
 - **Trésor** (à partir du bourg) : bouton « Trésor » du bandeau (pièces) et
@@ -336,6 +336,15 @@ météo et interface conservés.
   chevaux perdus), incendie de forêt (jusqu'à 12 tuiles, qui repoussent comme
   une coupe à blanc), migrants (+5 % d'habitants, dans la limite des
   logements). L'événement en cours remplace la météo dans le bandeau.
+
+### V10 : routes du bourg
+- **Route** (menu, section Transport) : glisser pour poser un tracé en L ;
+  2 pierres par tuile, pont sur rivière ×5 ; mêmes règles de pose que la voie
+  ferrée, qu'elle peut croiser. « Démolir » retire une route.
+- Reliée au village (une de ses tuiles à 6 tuiles du centre ou moins), elle
+  rapproche les tuiles à 2 tuiles ou moins d'elle : 2 tuiles de route valent
+  1 tuile de marche, sans combustible. Fiche de la tuile : distance par la
+  route. Une route non reliée est dessinée plus terne et n'a aucun effet.
 
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon

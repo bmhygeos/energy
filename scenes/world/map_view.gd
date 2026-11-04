@@ -20,7 +20,7 @@ var _placement: BuildingRegistry.Placement
 var _drag_start := Vector2i(-1, -1)
 var _drag_end := Vector2i(-1, -1)
 var _zone_plan: ZoneMap.Plan
-var _rail_plan: RailNetwork.Plan
+var _track_plan: TrackNetwork.Plan
 var _expedition_hover := Vector2i(-1, -1)
 
 @onready var _ground: TileMapLayer = $Ground
@@ -80,8 +80,8 @@ func _process(_delta: float) -> void:
 		_update_placement()
 	elif _is_zone_mode():
 		_update_zone_plan()
-	elif _mode == BuildTool.Mode.RAIL:
-		_update_rail_plan()
+	elif _is_track_mode():
+		_update_track_plan()
 	elif _mode == BuildTool.Mode.EXPEDITION:
 		_update_expedition_preview()
 
@@ -95,16 +95,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			# Deux doigts posés pendant le glisser : déplacement de la vue, pas de zone.
 			_drag_start = Vector2i(-1, -1)
 			_zone_plan = null
-			_rail_plan = null
+			_track_plan = null
 			EventBus.zone_plan_previewed.emit(null)
-			EventBus.rail_plan_previewed.emit(null)
+			EventBus.track_plan_previewed.emit(null)
 			get_viewport().set_input_as_handled()
 			return
-		if _mode == BuildTool.Mode.RAIL:
-			_update_rail_plan()
-			if _rail_plan:
-				GameState.build_rails(_rail_plan)
-			_rail_plan = null
+		if _is_track_mode():
+			_update_track_plan()
+			if _track_plan and _mode == BuildTool.Mode.RAIL:
+				GameState.build_rails(_track_plan)
+			elif _track_plan:
+				GameState.build_roads(_track_plan)
+			_track_plan = null
 		else:
 			_update_zone_plan()
 			if _zone_plan:
@@ -136,12 +138,13 @@ func _click(cell: Vector2i) -> void:
 		BuildTool.Mode.DEMOLISH:
 			var b := GameState.buildings.building_at(cell)
 			var rail := cell.x >= 0 and GameState.rails.has_rail(cell)
-			if (b or rail) and GameState.demolish(cell):
-				EventBus.notified.emit("%s démoli" % b.def.display_name if b else "Voie ferrée retirée")
+			var road := cell.x >= 0 and GameState.roads.has_tile(cell)
+			if (b or rail or road) and GameState.demolish(cell):
+				EventBus.notified.emit("%s démoli" % b.def.display_name if b else "Voie ferrée retirée" if rail else "Route retirée")
 		BuildTool.Mode.UPGRADE:
 			if cell.x >= 0:
 				GameState.upgrade(cell)
-		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.RAIL:
+		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.RAIL, BuildTool.Mode.ROAD:
 			if cell.x >= 0:
 				_drag_start = cell
 				_drag_end = cell
@@ -161,11 +164,11 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 	_placement = null
 	_drag_start = Vector2i(-1, -1)
 	_zone_plan = null
-	_rail_plan = null
+	_track_plan = null
 	_expedition_hover = Vector2i(-1, -1)
 	_expeditions.clear_previews()
 	EventBus.zone_plan_previewed.emit(null)
-	EventBus.rail_plan_previewed.emit(null)
+	EventBus.track_plan_previewed.emit(null)
 	if _is_drag_mode() or _mode == BuildTool.Mode.EXPEDITION:
 		_set_selected(Vector2i(-1, -1))
 	if _mode == BuildTool.Mode.BUILD:
@@ -197,29 +200,33 @@ func _is_zone_mode() -> bool:
 	return _mode == BuildTool.Mode.ZONE or _mode == BuildTool.Mode.ERASE_ZONE
 
 
-## Outils qui se glissent (rectangle de zones, tracé de voie).
+func _is_track_mode() -> bool:
+	return _mode == BuildTool.Mode.RAIL or _mode == BuildTool.Mode.ROAD
+
+
+## Outils qui se glissent (rectangle de zones, tracé de voie ou de route).
 func _is_drag_mode() -> bool:
-	return _is_zone_mode() or _mode == BuildTool.Mode.RAIL
+	return _is_zone_mode() or _is_track_mode()
 
 
 ## Recalcule l'aperçu du tracé de voie (glisser en cours, sinon la tuile
 ## survolée) ; ne le publie que s'il a changé.
-func _update_rail_plan() -> void:
+func _update_track_plan() -> void:
 	if _hovered.x >= 0:
 		_drag_end = _hovered
 	var start := _drag_start if _drag_start.x >= 0 else _hovered
 	if start.x < 0:
-		if _rail_plan:
-			_rail_plan = null
-			EventBus.rail_plan_previewed.emit(null)
+		if _track_plan:
+			_track_plan = null
+			EventBus.track_plan_previewed.emit(null)
 		return
 	var end := _drag_end if _drag_start.x >= 0 else _hovered
-	var plan := GameState.plan_rails(start, end)
-	if _rail_plan and _rail_plan.cells == plan.cells and _rail_plan.error == plan.error \
-			and _rail_plan.new_cells == plan.new_cells:
+	var plan := GameState.plan_rails(start, end) if _mode == BuildTool.Mode.RAIL else GameState.plan_roads(start, end)
+	if _track_plan and _track_plan.cells == plan.cells and _track_plan.error == plan.error \
+			and _track_plan.new_cells == plan.new_cells:
 		return
-	_rail_plan = plan
-	EventBus.rail_plan_previewed.emit(plan)
+	_track_plan = plan
+	EventBus.track_plan_previewed.emit(plan)
 
 
 ## Trajet prévu vers la tuile survolée (outil Expédition).

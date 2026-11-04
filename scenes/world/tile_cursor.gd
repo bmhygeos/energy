@@ -13,7 +13,7 @@ var selected := Vector2i(-1, -1)
 var mode := BuildTool.Mode.SELECT
 var placement: BuildingRegistry.Placement
 var zone_plan: ZoneMap.Plan
-var rail_plan: RailNetwork.Plan
+var track_plan: TrackNetwork.Plan
 
 
 func _ready() -> void:
@@ -32,8 +32,8 @@ func _ready() -> void:
 	EventBus.zone_plan_previewed.connect(func(p: ZoneMap.Plan) -> void:
 		zone_plan = p
 		queue_redraw())
-	EventBus.rail_plan_previewed.connect(func(p: RailNetwork.Plan) -> void:
-		rail_plan = p
+	EventBus.track_plan_previewed.connect(func(p: TrackNetwork.Plan) -> void:
+		track_plan = p
 		queue_redraw())
 	for s: Signal in [EventBus.building_placed, EventBus.building_removed]:
 		s.connect(func(_b: Building) -> void: queue_redraw())
@@ -48,13 +48,13 @@ func _draw() -> void:
 					placement.def.size)
 				draw_colored_polygon(d, color * Color(1, 1, 1, 0.3))
 				_outline(d, color, 3.0)
-		BuildTool.Mode.RAIL:
-			if rail_plan:
-				for cell in rail_plan.cells:
+		BuildTool.Mode.RAIL, BuildTool.Mode.ROAD:
+			if track_plan:
+				for cell in track_plan.cells:
 					var color := HOVER_COLOR
-					if not rail_plan.error.is_empty():
+					if not track_plan.error.is_empty():
 						color = INVALID_COLOR
-					elif cell in rail_plan.new_cells:
+					elif cell in track_plan.new_cells:
 						color = VALID_COLOR
 					draw_colored_polygon(Iso.diamond(cell), color * Color(1, 1, 1, 0.3))
 					_outline(Iso.diamond(cell), color, 1.5)

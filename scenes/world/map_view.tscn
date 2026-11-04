@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scenes/world/zone_layer.gd" id="6_zones"]
 [ext_resource type="Script" path="res://scenes/world/expedition_layer.gd" id="7_expeditions"]
 [ext_resource type="Script" path="res://scenes/world/rail_layer.gd" id="8_rails"]
+[ext_resource type="Script" path="res://scenes/world/road_layer.gd" id="9_roads"]
 
 [node name="MapView" type="Node2D"]
 y_sort_enabled = true
@@ -20,6 +21,10 @@ texture_filter = 4
 [node name="Zones" type="Node2D" parent="."]
 z_index = -9
 script = ExtResource("6_zones")
+
+[node name="Roads" type="Node2D" parent="."]
+z_index = -9
+script = ExtResource("9_roads")
 
 [node name="Rails" type="Node2D" parent="."]
 z_index = -9

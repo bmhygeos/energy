@@ -12,7 +12,7 @@ var _def: BuildingDef
 var _zone_def: ZoneDef
 var _placement: BuildingRegistry.Placement
 var _zone_plan: ZoneMap.Plan
-var _rail_plan: RailNetwork.Plan
+var _track_plan: TrackNetwork.Plan
 var _hovered := Vector2i(-1, -1)
 var _group := ButtonGroup.new()
 var _build_buttons: Dictionary[BuildingDef, Button] = {}
@@ -22,6 +22,7 @@ var _demolish_button: Button
 var _upgrade_button: Button
 var _expedition_button: Button
 var _rail_button: Button
+var _road_button: Button
 var _members: SpinBox
 var _days: SpinBox
 var _horses: SpinBox
@@ -49,8 +50,8 @@ func _ready() -> void:
 	EventBus.zone_plan_previewed.connect(func(p: ZoneMap.Plan) -> void:
 		_zone_plan = p
 		_refresh_hint())
-	EventBus.rail_plan_previewed.connect(func(p: RailNetwork.Plan) -> void:
-		_rail_plan = p
+	EventBus.track_plan_previewed.connect(func(p: TrackNetwork.Plan) -> void:
+		_track_plan = p
 		_refresh_hint())
 	EventBus.tile_hovered.connect(func(_c: Vector2i) -> void:
 		if _mode == BuildTool.Mode.EXPEDITION:
@@ -129,6 +130,8 @@ func _refresh_tier_locks() -> void:
 		_rail_button.disabled = not error.is_empty()
 		_rail_button.text = "Voie ferrée   %s" % _rail_cost_text() + ("" if error.is_empty() else "   (%s)" % (
 			CityTier.NAMES[2] if level < 3 else ResearchDb.get_def(&"locomotive").display_name))
+	if _road_button:
+		_lock(_road_button, "Route   %s" % _road_cost_text(), GameState.ROAD_TIER, level)
 	if _days:
 		_update_days_limit()
 		_horses_row.visible = level >= 2
@@ -140,9 +143,20 @@ func _lock(button: Button, label: String, needed: int, level: int) -> void:
 	button.text = label + ("   (%s)" % CityTier.NAMES[needed - 1] if locked else "")
 
 
-## Section « Transport » : voies ferrées (bourg, recherche Locomotive).
+## Section « Transport » : routes (bourg), voies ferrées (bourg, recherche
+## Locomotive).
 func _build_transport() -> void:
 	_add_header("Transport")
+	_road_button = _tool_button("Route   %s" % _road_cost_text())
+	_road_button.tooltip_text = "\n".join(PackedStringArray(["Route (bourg)",
+		"Glisser pour poser un tracé en L ; %s par tuile, pont sur rivière ×%d ; pas sur l'eau, la montagne ni les zones." % [
+			_road_cost_text(), roundi(TrackNetwork.BRIDGE_FACTOR)],
+		"Reliée au village (une tuile à %d tuiles du centre ou moins), elle rapproche les tuiles à %d tuiles ou moins d'elle :" % [
+			Labor.FREE_DISTANCE, RoadNetwork.REACH],
+		"%d tuiles de route valent 1 tuile de marche. Sans combustible ; elle peut croiser une voie ferrée." % RoadNetwork.TILES_PER_WALK_TILE,
+		"Démolir retire une route."]))
+	_road_button.pressed.connect(func() -> void:
+		_select_tool(_road_button, BuildTool.Mode.ROAD, null))
 	_rail_button = _tool_button("Voie ferrée   %s" % _rail_cost_text())
 	_rail_button.tooltip_text = "\n".join(PackedStringArray(["Voie ferrée (bourg, recherche Locomotive)",
 		"Glisser pour poser un tracé en L ; %s par tuile, pont sur rivière ×%d ; pas sur l'eau, la montagne ni les zones." % [
@@ -154,6 +168,10 @@ func _build_transport() -> void:
 		"Démolir retire une voie."]))
 	_rail_button.pressed.connect(func() -> void:
 		_select_tool(_rail_button, BuildTool.Mode.RAIL, null))
+
+
+static func _road_cost_text() -> String:
+	return "%d pierre" % roundi(RoadNetwork.STONE_PER_TILE)
 
 
 static func _rail_cost_text() -> String:
@@ -331,7 +349,8 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 	_upgrade_button.set_pressed_no_signal(_mode == BuildTool.Mode.UPGRADE)
 	_expedition_button.set_pressed_no_signal(_mode == BuildTool.Mode.EXPEDITION)
 	_rail_button.set_pressed_no_signal(_mode == BuildTool.Mode.RAIL)
-	_rail_plan = null
+	_road_button.set_pressed_no_signal(_mode == BuildTool.Mode.ROAD)
+	_track_plan = null
 	_refresh_hint()
 
 
@@ -385,17 +404,17 @@ func _refresh_hint() -> void:
 					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
 		BuildTool.Mode.EXPEDITION:
 			text = _expedition_hint()
-		BuildTool.Mode.RAIL:
-			text = "[b]Voie ferrée[/b] — glisser pour poser un tracé en L · Échap : annuler"
-			if _rail_plan:
-				if _rail_plan.is_valid():
-					var n := _rail_plan.new_cells.size()
+		BuildTool.Mode.RAIL, BuildTool.Mode.ROAD:
+			text = "[b]%s[/b] — glisser pour poser un tracé en L · Échap : annuler" % ("Voie ferrée" if _mode == BuildTool.Mode.RAIL else "Route")
+			if _track_plan:
+				if _track_plan.is_valid():
+					var n := _track_plan.new_cells.size()
 					text += "\n[color=%s]%d tuile%s : %s%s[/color]" % [OK_COLOR, n, "s" if n > 1 else "",
-						_cost_text(_rail_plan.costs),
-						" (défrichement de %d tuile%s)" % [_rail_plan.cleared.size(), "s" if _rail_plan.cleared.size() > 1 else ""]
-							if not _rail_plan.cleared.is_empty() else ""]
+						_cost_text(_track_plan.costs),
+						" (défrichement de %d tuile%s)" % [_track_plan.cleared.size(), "s" if _track_plan.cleared.size() > 1 else ""]
+							if not _track_plan.cleared.is_empty() else ""]
 				else:
-					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, _rail_plan.error]
+					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, _track_plan.error]
 	_hint.text = text
 	_hint_panel.visible = not text.is_empty()
 

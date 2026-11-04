@@ -43,6 +43,7 @@ func _init() -> void:
 	_test_bourg()
 	_test_rails()
 	_test_steam_and_scouts()
+	_test_roads()
 	_test_treasury()
 	_test_decrees()
 	_test_city_events()
@@ -55,6 +56,7 @@ func _initialize() -> void:
 	_test_bourg_game()
 	_test_economy_game()
 	_test_events_game()
+	_test_roads_game()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -1304,6 +1306,75 @@ func _test_decrees() -> void:
 	p = Population.new()
 	p.end_day(1.0, 1.0, 100, 1.0, 1.0, 1.0, 1.2)
 	_check(p.satisfaction == 1.0, "humeur : satisfaction bornée à 100 %")
+
+
+func _road_world() -> Array:
+	var map := WorldMap.new(Vector2i(256, 128), 1)
+	var territory := Territory.new(map)
+	var cells: Array[Vector2i] = []
+	for y in range(40, 80):
+		for x in range(40, 90):
+			cells.append(Vector2i(x, y))
+			map.set_terrain(Vector2i(x, y), TerrainDef.Type.PLAIN)
+	territory.annex(cells)
+	var registry := BuildingRegistry.new(map, territory)
+	var zones := ZoneMap.new(map, territory, registry)
+	var roads := RoadNetwork.new(map, territory, registry, Vector2i(45, 60))
+	roads.zones = zones
+	registry.roads = roads
+	return [map, roads, zones, Labor.new(zones, Vector2i(45, 60))]
+
+
+func _test_roads() -> void:
+	var world := _road_world()
+	var map: WorldMap = world[0]
+	var roads: RoadNetwork = world[1]
+	var zones: ZoneMap = world[2]
+	var labor: Labor = world[3]
+	labor.roads = roads
+	map.set_terrain(Vector2i(60, 60), TerrainDef.Type.RIVER)
+	var plan := roads.plan(Vector2i(50, 60), Vector2i(85, 60))
+	_check(plan.is_valid() and is_equal_approx(plan.costs[Stockpile.Good.STONE],
+		35 * RoadNetwork.STONE_PER_TILE + RoadNetwork.STONE_PER_TILE * TrackNetwork.BRIDGE_FACTOR), "route : pavés, pont plus cher")
+	roads.build(plan)
+	var far := Vector2i(85, 62)
+	_check(roads.distance_via(far) == -1, "route non calculée : pas d'effet")
+	roads.refresh()
+	_check(roads.lengths.size() == 36 and roads.lengths[Vector2i(85, 60)] == 35, "route reliée au village, longueur comptée depuis la portée du village")
+	_check(roads.distance_via(far) == 17 + 2 and labor.distance(far) == 19, "2 tuiles de route = 1 de marche, 2 tuiles de portée")
+	_check(roads.distance_via(Vector2i(85, 63)) == -1 and labor.distance(Vector2i(85, 63)) == 40, "au-delà de la portée : à pied")
+	_check(not zones.check_cell(ZoneDb.get_def(&"pasture"), Vector2i(70, 60)).is_empty(), "pas de zone sur une route")
+	_check(roads.plan(Vector2i(50, 60), Vector2i(55, 60)).error == "Route déjà posée", "route déjà posée")
+	roads.remove(Vector2i(70, 60))
+	roads.refresh()
+	_check(roads.distance_via(far) == -1 and roads.lengths.size() == 20, "route coupée : le reste n'est plus relié")
+	var loose := _road_world()[1] as RoadNetwork
+	loose.add_cells([Vector2i(70, 60), Vector2i(71, 60)] as Array[Vector2i])
+	loose.refresh()
+	_check(loose.lengths.is_empty() and loose.distance_via(Vector2i(70, 60)) == -1, "route isolée : aucun effet")
+
+
+func _test_roads_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var center: Vector2i = gs.display_cell(gs.home)
+	var from := center + Vector2i(0, 4)
+	_check(gs.plan_roads(from, from + Vector2i(2, 0)).error.contains("palier"), "route : bourg requis")
+	gs.tier.level = 3
+	gs.stockpile.amount[Stockpile.Good.STONE] = 0.0
+	var plan: TrackNetwork.Plan
+	for dy in range(2, 7):
+		from = center + Vector2i(-3, dy)
+		plan = gs.plan_roads(from, from + Vector2i(1, 0))
+		if plan.error.contains("insuffisant"):
+			break
+	_check(plan.error.contains("Pierre insuffisante"), "route : pierre requise (%s)" % plan.error)
+	gs.stockpile.amount[Stockpile.Good.STONE] = 100.0
+	plan = gs.plan_roads(from, from + Vector2i(1, 0))
+	var built: int = gs.build_roads(plan)
+	_check(built == 2 and gs.roads.lengths.size() == 2 and gs.stockpile.amount[Stockpile.Good.STONE] < 100.0, "route posée au bourg")
+	_check(gs.demolish(from) and not gs.roads.has_tile(from), "route démolie")
+	gs.new_game(4242)
 
 
 func _test_city_events() -> void:

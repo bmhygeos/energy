@@ -457,7 +457,8 @@ effectif, vivres).
 | V8 (partie 1) | Palier 3, première partie | Charbon (mine, chauffage, coke), vêtements (lin, laine, tissage), laboratoire, moulin à eau — réalisé |
 | V8 (partie 2) | Palier 3, deuxième partie | Machine à vapeur, voies ferrées et gares, éclaireurs à cheval — réalisé |
 | V9 | Économie du bourg | Trésor, impôts, marché (achat, vente, surplus), décrets (rationnement, corvée, fête), événements — réalisé |
-| V9+ | Paliers 3 à 5 | Routes et logistique, artisanat ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
+| V10 | Routes du bourg | Tracé en L, 2 pierres par tuile, abords rapprochés du village — réalisé |
+| V10+ | Paliers 3 à 5 | Logistique, artisanat ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses

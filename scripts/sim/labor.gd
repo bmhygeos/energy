@@ -34,6 +34,8 @@ var map: WorldMap
 var center: Vector2i
 ## Voies ferrées (null : aucune) : une gare desservie rapproche ses environs.
 var rails: RailNetwork
+## Routes (null : aucune) : une route reliée au village rapproche ses abords.
+var roads: RoadNetwork
 ## Priorité par type de zone (0–5 ou AUTO).
 var priorities: Dictionary[ZoneDef, int] = {}
 ## Priorité appliquée en mode automatique, par type de zone.
@@ -209,6 +211,10 @@ func distance(cell: Vector2i) -> int:
 	var d := maxi(dx, absi(cell.y - center.y))
 	if rails:
 		var via := rails.distance_via(cell)
+		if via >= 0:
+			d = mini(d, via)
+	if roads:
+		var via := roads.distance_via(cell)
 		if via >= 0:
 			d = mini(d, via)
 	return d

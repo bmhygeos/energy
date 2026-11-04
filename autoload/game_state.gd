@@ -32,6 +32,8 @@ const FIBER_PER_CLOTHES := 1.0
 const ECONOMY_TIER := 3
 ## Palier à partir duquel des événements frappent la cité (bourg).
 const EVENTS_TIER := 3
+## Palier à partir duquel la cité pose des routes (bourg).
+const ROAD_TIER := 3
 
 var world_map: WorldMap
 ## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
@@ -45,6 +47,8 @@ var home: Vector2i
 var buildings: BuildingRegistry
 ## Voies ferrées et gares desservies (bourg).
 var rails: RailNetwork
+## Routes (bourg).
+var roads: RoadNetwork
 ## Zones peintes (agriculture, élevage, coupe du bois).
 var zones: ZoneMap
 var population: Population
@@ -105,10 +109,14 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	rails = RailNetwork.new(world_map, territory, buildings, home)
 	rails.zones = zones
 	buildings.rails = rails
+	roads = RoadNetwork.new(world_map, territory, buildings, home)
+	roads.zones = zones
+	buildings.roads = roads
 	population = Population.new()
 	tier = CityTier.new()
 	labor = Labor.new(zones, home)
 	labor.rails = rails
+	labor.roads = roads
 	stockpile = Stockpile.new()
 	production = Production.new(zones, labor)
 	research = Research.new()
@@ -337,15 +345,19 @@ func upgrade(cell: Vector2i) -> bool:
 	return true
 
 
-## Démolit le bâtiment présent en [param cell], sinon la voie ferrée ; false
-## s'il n'y a ni l'un ni l'autre.
+## Démolit le bâtiment présent en [param cell], sinon la voie ferrée, sinon la
+## route ; false s'il n'y a rien.
 func demolish(cell: Vector2i) -> bool:
 	var b := buildings.building_at(cell)
 	if b == null:
-		if not rails.remove(cell):
+		if rails.remove(cell):
+			EventBus.rails_changed.emit([cell] as Array[Vector2i])
+			_refresh_rails()
+		elif roads.remove(cell):
+			roads.refresh()
+			EventBus.roads_changed.emit([cell] as Array[Vector2i])
+		else:
 			return false
-		EventBus.rails_changed.emit([cell] as Array[Vector2i])
-		_refresh_rails()
 		_update_labor()
 		return true
 	buildings.remove(b)
@@ -478,11 +490,25 @@ func rails_error() -> String:
 	return ""
 
 
+## Ce qui empêche de poser des routes (vide : possible).
+func roads_error() -> String:
+	if tier.level < ROAD_TIER:
+		return "Disponible au palier %s" % CityTier.NAMES[ROAD_TIER - 1]
+	return ""
+
+
 ## Aperçu d'un tracé de voie entre deux tuiles (repère de la vue) : palier,
 ## recherche, règles du réseau et matériaux.
-func plan_rails(from: Vector2i, to: Vector2i) -> RailNetwork.Plan:
-	var p := rails.plan(from, to)
-	var error := rails_error()
+func plan_rails(from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
+	return _plan_track(rails, rails_error(), from, to)
+
+
+func plan_roads(from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
+	return _plan_track(roads, roads_error(), from, to)
+
+
+func _plan_track(network: TrackNetwork, error: String, from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
+	var p := network.plan(from, to)
 	if not error.is_empty():
 		p.error = error
 	for good in Stockpile.COUNT:
@@ -496,21 +522,42 @@ func plan_rails(from: Vector2i, to: Vector2i) -> RailNetwork.Plan:
 
 ## Pose les voies de [param p] ; renvoie le nombre de tuiles posées (raison
 ## notifiée si aucune).
-func build_rails(p: RailNetwork.Plan) -> int:
-	if not p.is_valid():
-		if not p.error.is_empty():
-			EventBus.notified.emit(p.error)
+func build_rails(p: TrackNetwork.Plan) -> int:
+	var built := _lay_track(rails, p)
+	if built.is_empty():
 		return 0
-	for good in Stockpile.COUNT:
-		stockpile.take(good, p.costs[good])
-	var built := rails.build(p)
-	if not p.cleared.is_empty():
-		EventBus.tiles_changed.emit(p.cleared)
 	EventBus.rails_changed.emit(built)
-	EventBus.stocks_changed.emit()
 	_refresh_rails()
 	_update_labor()
 	return built.size()
+
+
+## Pose les routes de [param p] ; renvoie le nombre de tuiles posées (raison
+## notifiée si aucune).
+func build_roads(p: TrackNetwork.Plan) -> int:
+	var built := _lay_track(roads, p)
+	if built.is_empty():
+		return 0
+	roads.refresh()
+	EventBus.roads_changed.emit(built)
+	_update_labor()
+	return built.size()
+
+
+## Paie et pose le tracé [param p] sur [param network] ; renvoie les tuiles
+## posées (raison notifiée si aucune).
+func _lay_track(network: TrackNetwork, p: TrackNetwork.Plan) -> Array[Vector2i]:
+	if not p.is_valid():
+		if not p.error.is_empty():
+			EventBus.notified.emit(p.error)
+		return []
+	for good in Stockpile.COUNT:
+		stockpile.take(good, p.costs[good])
+	var built := network.build(p)
+	if not p.cleared.is_empty():
+		EventBus.tiles_changed.emit(p.cleared)
+	EventBus.stocks_changed.emit()
+	return built
 
 
 ## Part des habitants approvisionnés en eau : besoin à partir du village

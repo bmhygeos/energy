@@ -30,8 +30,10 @@ signal zone_plan_previewed(plan: ZoneMap.Plan)
 ## Voies ferrées posées ou retirées sur ces tuiles (repère de la vue), ou
 ## gares desservies changées (liste vide).
 signal rails_changed(cells: Array[Vector2i])
+## Routes posées ou retirées.
+signal roads_changed(cells: Array[Vector2i])
 ## Aperçu d'un tracé de voie (null : aucun).
-signal rail_plan_previewed(plan: RailNetwork.Plan)
+signal track_plan_previewed(plan: TrackNetwork.Plan)
 ## Affectation des travailleurs modifiée (Labor).
 signal labor_changed()
 ## Stocks modifiés (production, consommation, construction).
