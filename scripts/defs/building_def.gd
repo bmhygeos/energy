@@ -79,6 +79,12 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var trade_per_day := 0.0
 ## Gare : dessert les tuiles autour d'elle si une voie la relie au village.
 @export var station := false
+## Port de pêche : les zones de pêche vont jusqu'à ce nombre de tuiles du
+## rivage (le plus grand compte).
+@export var fishing_reach := 0
+## Port : pêche sur toutes les eaux découvertes, expéditions sur l'eau et
+## transport entre ports.
+@export var harbor := false
 ## Places pour les chevaux (écurie).
 @export var horse_capacity := 0
 ## Habitants approvisionnés en eau (puits).
@@ -167,6 +173,12 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Commerce : achète et vend %d marchandises par jour" % roundi(trade_per_day))
 	if station:
 		lines.append("Gare : reliée par la voie à une gare du village, elle rapproche les tuiles autour d'elle")
+	if fishing_reach > 0:
+		lines.append("Pêche jusqu'à %d tuiles du rivage" % fishing_reach)
+	if harbor:
+		lines.append("Pêche sur toutes les eaux découvertes")
+		lines.append("Expéditions sur l'eau, mer comprise (%s tuiles par jour)" % Format.decimal(Exploration.SHIP_TILES_PER_DAY))
+		lines.append("Transport : relié par l'eau à un autre port, il rapproche les tuiles autour de lui")
 	if mechanical_watts > 0.0:
 		lines.append("Puissance mécanique ≈ %s%s" % [PowerMeter.format(mechanical_watts), " selon le vent" if wind_powered else ""])
 	if horse_capacity > 0:

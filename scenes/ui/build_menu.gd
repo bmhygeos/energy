@@ -186,7 +186,7 @@ func _build_territory() -> void:
 	_expedition_button.tooltip_text = "\n".join(PackedStringArray(["Expédition",
 		"Des habitants actifs quittent le travail et partent explorer avec des vivres pris au grenier.",
 		"Ils marchent en ligne droite vers la tuile choisie (lent en forêt, en colline et aux gués ;",
-		"lacs et mer infranchissables), annexent au territoire les tuiles autour d'eux puis reviennent.",
+		"lacs et mer infranchissables sans port), annexent au territoire les tuiles autour d'eux puis reviennent.",
 		"Au plus %d explorateurs ; expéditions simultanées et jours de vivres : %d et %d au hameau, %d et %d à partir du village." % [
 			Exploration.MAX_MEMBERS, Exploration.MAX_EXPEDITIONS[0], Exploration.MAX_DAYS[0],
 			Exploration.MAX_EXPEDITIONS[1], Exploration.MAX_DAYS[1]]]))

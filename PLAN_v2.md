@@ -211,7 +211,9 @@ puits, au village (ou en annexant vers une rivière ou un lac).
   plus.
 - **Eau** : chaque puits sert un nombre d'habitants (30) ; sans eau, la
   satisfaction baisse (jusqu'à −30 %) et la croissance s'arrête.
-- **Pêche** : zone sur rivières, lacs et côte, nourriture toute l'année.
+- **Pêche** : zone sur rivières, lacs et côte, à une tuile du rivage, nourriture
+  toute l'année. **Port de pêche** au bourg (portée 4 tuiles), **port** à la ville
+  (toutes les eaux découvertes, expéditions sur l'eau, transport entre ports).
 - **Atelier** : recherche ×2 pour 100 habitants.
 
 ### Palier 3 : charbon, vêtements, laboratoire, moulin à eau (réalisé en V8, partie 1)
@@ -459,6 +461,7 @@ effectif, vivres).
 | V9 | Économie du bourg | Trésor, impôts, marché (achat, vente, surplus), décrets (rationnement, corvée, fête), événements — réalisé |
 | V10 | Routes du bourg | Tracé en L, 2 pierres par tuile, abords rapprochés du village — réalisé |
 | V11 (partie 1) | Palier 4, première partie | Pétrole (puits, raffinerie, carburant), éclairage, université et son entretien — réalisé |
+| V11 (ports) | Pêche et ports | Portée de la pêche, port de pêche, port, navires des expéditions, transport entre ports — réalisé |
 | V11+ | Paliers 4 à 5 | Logistique, artisanat ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 

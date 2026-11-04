@@ -36,6 +36,8 @@ var center: Vector2i
 var rails: RailNetwork
 ## Routes (null : aucune) : une route reliée au village rapproche ses abords.
 var roads: RoadNetwork
+## Ports (transport par l'eau).
+var ports: PortNetwork
 ## Priorité par type de zone (0–5 ou AUTO).
 var priorities: Dictionary[ZoneDef, int] = {}
 ## Priorité appliquée en mode automatique, par type de zone.
@@ -203,9 +205,20 @@ func tile_score(def: ZoneDef, cell: Vector2i) -> float:
 	return def.quality_at(map, cell) * distance_factor(distance(cell))
 
 
-## Distance (en tuiles, Tchebychev, longitude bouclée) au centre du village,
-## ou par le train si c'est plus court.
+## Distance au village de [param cell], par le chemin le plus court : à pied,
+## par le train, par la route ou par les ports.
 func distance(cell: Vector2i) -> int:
+	var d := land_distance(cell)
+	if ports:
+		var via := ports.distance_via(cell)
+		if via >= 0:
+			d = mini(d, via)
+	return d
+
+
+## Distance (en tuiles, Tchebychev, longitude bouclée) au centre du village,
+## ou par le train ou la route si c'est plus court.
+func land_distance(cell: Vector2i) -> int:
 	var w := map.size.x
 	var dx := absi(posmod(cell.x - center.x + w / 2, w) - w / 2)
 	var d := maxi(dx, absi(cell.y - center.y))

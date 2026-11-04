@@ -18,6 +18,9 @@ const PROSPECT_TIER := 2
 ## explorateur a son cheval va MOUNTED_SPEED fois plus vite.
 const MOUNTED_TIER := 3
 const MOUNTED_SPEED := 1.5
+## Avec un port : tuiles parcourues par jour sur toute l'eau, mer comprise
+## (les chevaux restent à quai).
+const SHIP_TILES_PER_DAY := 6.0
 ## Rayon de vue (tuiles) autour de l'expédition.
 const SIGHT_RADIUS := 3
 ## Vivres consommés par explorateur et par jour.
@@ -46,6 +49,8 @@ class Expedition:
 	var horses := 0
 	## Multiplicateur de vitesse (éclaireurs à cheval).
 	var speed := 1.0
+	## Partie avec des navires (un port existait au départ).
+	var sailing := false
 	## Vivres restants.
 	var food := 0.0
 	## Trajet aller, du centre du village (indice 0) vers la cible.
@@ -83,6 +88,8 @@ var territory: Territory
 var expeditions: Array[Expedition] = []
 ## Palier de la ville (limites des expéditions).
 var tier := 1
+## Un port terminé fournit des navires aux expéditions.
+var ships := false
 
 
 func _init(p_territory: Territory) -> void:
@@ -92,7 +99,17 @@ func _init(p_territory: Territory) -> void:
 
 ## Vitesse (tuiles par jour) sur [param cell] ; 0 si infranchissable.
 func speed_at(cell: Vector2i) -> float:
+	if ships and map.is_water(cell):
+		return SHIP_TILES_PER_DAY
 	return TILES_PER_DAY.get(map.get_terrain(cell) as TerrainDef.Type, 0.0)
+
+
+## Vitesse de [param e] sur [param cell] : ses navires restent les siens même
+## si le port disparaît en route.
+func _pace(e: Expedition, cell: Vector2i) -> float:
+	if e.sailing and map.is_water(cell):
+		return SHIP_TILES_PER_DAY
+	return TILES_PER_DAY.get(map.get_terrain(cell) as TerrainDef.Type, 0.0) * e.speed
 
 
 func members_out() -> int:
@@ -139,7 +156,7 @@ func plan_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 func days_back(e: Expedition, index: int) -> float:
 	var days := 0.0
 	for k in range(1, mini(index, e.path.size() - 1) + 1):
-		days += 1.0 / (speed_at(e.path[k]) * e.speed)
+		days += 1.0 / _pace(e, e.path[k])
 	return days
 
 
@@ -153,6 +170,7 @@ func food_to_return(e: Expedition) -> float:
 func round_trip_days(from: Vector2i, target: Vector2i, speed := 1.0) -> float:
 	var e := Expedition.new()
 	e.speed = speed
+	e.sailing = ships
 	e.path = plan_path(from, target)
 	return 2.0 * days_back(e, e.path.size() - 1)
 
@@ -166,6 +184,7 @@ func launch(from: Vector2i, target: Vector2i, members: int, food: float) -> Expe
 	var e := Expedition.new()
 	e.members = members
 	e.food = food
+	e.sailing = ships
 	e.path = path
 	e.target = target
 	expeditions.append(e)
@@ -178,7 +197,7 @@ func step_hour() -> Report:
 	var report := Report.new()
 	for e in expeditions.duplicate():
 		e.food = maxf(0.0, e.food - e.members * FOOD_PER_MEMBER_PER_DAY / GameDate.HOURS_PER_DAY)
-		var step: float = speed_at(e.cell()) * e.speed / GameDate.HOURS_PER_DAY
+		var step: float = _pace(e, e.cell()) / GameDate.HOURS_PER_DAY
 		if e.returning:
 			e.position = maxf(0.0, e.position - step)
 		else:

@@ -53,6 +53,8 @@ var buildings: BuildingRegistry
 var rails: RailNetwork
 ## Routes (bourg).
 var roads: RoadNetwork
+## Ports : liaisons par l'eau.
+var ports: PortNetwork
 ## Zones peintes (agriculture, élevage, coupe du bois).
 var zones: ZoneMap
 var population: Population
@@ -123,6 +125,8 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	labor = Labor.new(zones, home)
 	labor.rails = rails
 	labor.roads = roads
+	ports = PortNetwork.new(world_map, territory)
+	labor.ports = ports
 	stockpile = Stockpile.new()
 	production = Production.new(zones, labor)
 	research = Research.new()
@@ -422,6 +426,7 @@ func _refresh_capacities() -> void:
 	_steam_mine = steam_mine
 	_apply_steam()
 	_refresh_rails()
+	_refresh_ports()
 	production.wool = tier.level >= CLOTHES_TIER
 	stockpile.spoilage_factor = 0.5 if mill > 0.0 else 1.0
 	var trade := 0.0
@@ -458,6 +463,22 @@ func _run_steam() -> void:
 	elif was and need > 0.0:
 		EventBus.notified.emit("Plus de charbon : les machines à vapeur s'arrêtent")
 	_apply_steam()
+
+
+## Portée de la pêche, navires des expéditions et liaisons entre les ports
+## terminés.
+func _refresh_ports() -> void:
+	var harbors: Array[Building] = []
+	var reach := ZoneMap.SHORE_REACH
+	for b in buildings.all():
+		var def := b.effective_def()
+		if def:
+			reach = maxi(reach, def.fishing_reach)
+			if def.harbor:
+				harbors.append(b)
+	zones.water_reach = reach if harbors.is_empty() else ZoneMap.ALL_WATERS
+	exploration.ships = not harbors.is_empty()
+	ports.refresh(harbors, labor.land_distance)
 
 
 ## Gares desservies d'après les voies et les gares terminées.
@@ -657,6 +678,7 @@ func _step_expeditions() -> void:
 		EventBus.notified.emit("L'expédition est rentrée : %d tuile%s découverte%s" % [
 			e.revealed, "s" if e.revealed > 1 else "", "s" if e.revealed > 1 else ""])
 	if not report.returned.is_empty():
+		_refresh_ports()
 		_update_labor()
 	EventBus.expeditions_changed.emit()
 

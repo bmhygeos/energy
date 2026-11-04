@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+[ext_resource type="Resource" path="res://data/buildings/port.tres" id="2_up"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"fishing_port"
+display_name = "Port de pêche"
+description = "Un quai et des barques pontées : les pêcheurs s'éloignent du rivage."
+category = 2
+tier = 3
+build_hours = 96
+wood_cost = 60
+stone_cost = 30
+iron_cost = 5
+upgrade = ExtResource("2_up")
+build_at_tier = true
+fishing_reach = 4
+adjacent_terrains = Array[int]([4, 5, 6])
+color = Color(0.6, 0.5, 0.38, 1)
+roof_color = Color(0.25, 0.38, 0.5, 1)
+height = 18.0

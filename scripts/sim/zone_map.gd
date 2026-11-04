@@ -17,9 +17,16 @@ class Plan:
 	var refused := 0
 
 
+## Zones limitées au rivage : distance par défaut, et valeur de water_reach
+## qui ouvre toutes les eaux découvertes (port).
+const SHORE_REACH := 1
+const ALL_WATERS := -1
+
 var map: WorldMap
 var territory: Territory
 var buildings: BuildingRegistry
+## Tuiles du rivage où vont les zones limitées (ALL_WATERS : partout).
+var water_reach := SHORE_REACH
 var _zones: Dictionary[Vector2i, ZoneDef] = {}
 
 
@@ -60,7 +67,7 @@ func places(def: ZoneDef) -> int:
 
 ## Motif qui empêche la zone [param def] sur [param cell] (vide : valide).
 func check_cell(def: ZoneDef, cell: Vector2i) -> String:
-	if not map.has_cell(cell) or not territory.is_territory(cell):
+	if not map.has_cell(cell) or not _in_range(def, cell):
 		return "Hors du territoire"
 	var b := buildings.building_at(cell)
 	if b:
@@ -71,7 +78,30 @@ func check_cell(def: ZoneDef, cell: Vector2i) -> String:
 		return "Route présente"
 	if def.deposit != 0 and territory.known_deposit(cell) != def.deposit:
 		return "Pas de gisement de %s prospecté" % WorldMap.DEPOSIT_NAMES[def.deposit].to_lower()
-	return def.terrain_error(map, cell)
+	var error := def.terrain_error(map, cell)
+	if error.is_empty() and def.shore_limited and not near_shore(cell):
+		return "Trop loin du rivage (%d tuile%s au plus)" % [water_reach, "s" if water_reach > 1 else ""]
+	return error
+
+
+## La tuile [param cell] est-elle à portée de la zone [param def] ? Avec un
+## port, les eaux découvertes hors du territoire le sont aussi.
+func _in_range(def: ZoneDef, cell: Vector2i) -> bool:
+	if territory.is_territory(cell):
+		return true
+	return def.shore_limited and water_reach == ALL_WATERS and territory.is_known(cell)
+
+
+## L'eau de [param cell] est-elle à water_reach tuiles d'une terre ou moins ?
+func near_shore(cell: Vector2i) -> bool:
+	if water_reach == ALL_WATERS:
+		return true
+	for dy in range(-water_reach, water_reach + 1):
+		for dx in range(-water_reach, water_reach + 1):
+			var n := cell + Vector2i(dx, dy)
+			if map.has_cell(n) and not map.is_water(n):
+				return true
+	return false
 
 
 ## Aperçu de la peinture de [param def] (null : effacement) sur les tuiles

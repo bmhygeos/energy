@@ -155,8 +155,8 @@ météo et interface conservés.
   carte place une colline à pierre près du village : au moins 4 tuiles de
   colline à 4 tuiles du centre au plus (bloc de 2×2 ajouté s'il le faut,
   laissé libre par les bâtiments de départ).
-- **Pêche** : zone sur rivières, lacs et mer, 4 nourriture/j par pêcheur
-  (×0,6 l'hiver).
+- **Pêche** : zone sur rivières, lacs et mer, à une tuile du rivage au plus,
+  4 nourriture/j par pêcheur (×0,6 l'hiver).
 - **Eau** : besoin à partir du village ; chaque **puits** (5 bois, 15 pierre)
   sert 30 habitants. Sans eau, la satisfaction baisse jusqu'à −30 % et la
   population ne grandit plus. Bandeau : « Eau x % ».
@@ -358,6 +358,22 @@ météo et interface conservés.
   jour ; sans lui, satisfaction réduite jusqu'à −10 %.
 - **Jalons** Ville et Alma mater. Bandeau : charbon, vêtements et carburant
   au survol, affichés seulement s'ils manquent.
+
+### Ports : pêche au large, navires et transport par l'eau
+
+- **Pêche** : au village, à une tuile du rivage au plus.
+- **Port de pêche** (bourg, à côté d'une rivière, d'un lac ou de la mer ; 60
+  bois, 30 pierre, 5 fer) : la pêche va jusqu'à 4 tuiles du rivage.
+- **Port** (ville ; amélioration du port de pêche, ou construit directement ;
+  120 bois, 120 pierre, 60 fer, 20 outils de plus) : pêche sur toutes les eaux
+  découvertes, même hors du territoire.
+- **Navires** : avec un port, les expéditions traversent rivières, lacs et mer
+  à 6 tuiles par jour (les chevaux restent à quai).
+- **Transport** : les ports reliés par des eaux découvertes échangent leurs
+  marchandises. Le plus proche du village sert de tête de ligne ; 4 tuiles
+  d'eau valent une tuile de marche, pour les tuiles autour des autres ports
+  comme pour les eaux de pêche. Les liaisons se recalculent au retour des
+  expéditions.
 
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon

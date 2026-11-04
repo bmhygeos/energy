@@ -15,6 +15,8 @@ enum Quality { FERTILITY, PASTURE, WOOD, UNIFORM }
 @export var allowed_terrains: Array[TerrainDef.Type] = []
 ## Accepte aussi toute tuile constructible au bord de l'eau (berges).
 @export var on_banks := false
+## Limitée aux eaux proches du rivage (ZoneMap.water_reach).
+@export var shore_limited := false
 ## Fertilité minimale de la tuile (0 : aucune).
 @export_range(0.0, 1.0) var min_fertility := 0.0
 ## Palier de la ville à partir duquel la zone se peint (1 : hameau).

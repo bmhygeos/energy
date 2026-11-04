@@ -68,6 +68,9 @@ func _refresh() -> void:
 		var by_road := GameState.roads.distance_via(cell)
 		if by_road >= 0 and by_road < _walk_distance(cell):
 			lines.append("Par la route : à %d tuiles du village (à pied : %d)" % [by_road, _walk_distance(cell)])
+		var by_sea := GameState.ports.distance_via(cell)
+		if by_sea >= 0 and by_sea < _walk_distance(cell):
+			lines.append("Par bateau : à %d tuiles du village (à pied : %d)" % [by_sea, _walk_distance(cell)])
 		if GameState.draft.harnessed.has(map.wrap_cell(cell)):
 			lines.append("Attelage : trajets plus courts (pénalité à partir de %d tuiles)" % GameState.draft.free_distance())
 		var inventions := GameState.production.invention_factor(zone, cell)
@@ -139,6 +142,12 @@ func _building_lines(b: Building) -> PackedStringArray:
 				"" if rails.running else " (trains arrêtés : plus de charbon)"])
 		else:
 			lines.append("Non desservie : reliez-la par la voie à une gare du village")
+	if b.is_complete() and b.def.harbor:
+		var ports := GameState.ports
+		if ports.is_linked(b.anchor):
+			lines.append("Relié par l'eau : %d tuiles jusqu'à la tête de ligne" % ports.linked[GameState.world_map.wrap_cell(b.anchor)])
+		else:
+			lines.append("Tête de ligne : les ports reliés par l'eau découverte passent par lui")
 	if b.is_complete() and b.def.coal_per_day > 0.0:
 		lines.append("En marche" if GameState.steam_running else "À l'arrêt : plus de charbon")
 	if b.is_complete() and b.def.upgrade:

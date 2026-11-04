@@ -59,8 +59,124 @@ func _initialize() -> void:
 	_test_roads_game()
 	_test_city_game()
 	_test_camera_bounds()
+	_test_fishing_reach()
+	_test_ships()
+	_test_port_links()
+	_test_ports_game()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Carte plate : mer pour x < 20 et y < 40 ; territoire x < 30 et y < 20.
+func _sea_map() -> Array:
+	var flat := _flat_map()
+	var map: WorldMap = flat[0]
+	var territory: Territory = flat[1]
+	for y in 40:
+		for x in 20:
+			map.set_terrain(Vector2i(x, y), TerrainDef.Type.SEA)
+	var cells: Array[Vector2i] = []
+	for y in 20:
+		for x in 30:
+			cells.append(Vector2i(x, y))
+	territory.annex(cells)
+	return flat
+
+
+func _test_fishing_reach() -> void:
+	var flat := _sea_map()
+	var map: WorldMap = flat[0]
+	var territory: Territory = flat[1]
+	var zones := ZoneMap.new(map, territory, BuildingRegistry.new(map, territory))
+	var fishing := ZoneDb.get_def(&"fishing")
+	var far := Vector2i(5, 30)
+	territory.explore([far] as Array[Vector2i])
+	_check(zones.check_cell(fishing, Vector2i(19, 5)).is_empty() and "rivage" in zones.check_cell(fishing, Vector2i(18, 5)),
+		"village : pêche à une tuile du rivage")
+	zones.water_reach = BuildingDb.get_def(&"fishing_port").fishing_reach
+	_check(zones.check_cell(fishing, Vector2i(16, 5)).is_empty() and "rivage" in zones.check_cell(fishing, Vector2i(15, 5))
+		and "territoire" in zones.check_cell(fishing, far), "port de pêche : portée allongée, dans le territoire")
+	zones.water_reach = ZoneMap.ALL_WATERS
+	_check(zones.check_cell(fishing, Vector2i(10, 5)).is_empty() and zones.check_cell(fishing, far).is_empty()
+		and "territoire" in zones.check_cell(fishing, Vector2i(5, 35)), "port : toutes les eaux découvertes, pas les autres")
+	_check("territoire" in zones.check_cell(ZoneDb.get_def(&"agriculture"), Vector2i(40, 40)), "les autres zones restent dans le territoire")
+
+
+func _test_ships() -> void:
+	var territory: Territory = _sea_map()[1]
+	var e := Exploration.new(territory)
+	var from := Vector2i(25, 5)
+	var target := Vector2i(5, 5)
+	_check(e.plan_path(from, target).back() == Vector2i(20, 5), "sans port : arrêt devant la mer")
+	e.ships = true
+	_check(e.plan_path(from, target).back() == target and e.speed_at(target) > Exploration.TILES_PER_DAY[TerrainDef.Type.PLAIN],
+		"avec un port : la mer se traverse, plus vite qu'à pied")
+	_check(is_equal_approx(e.round_trip_days(from, target, 1.5), e.round_trip_days(from, Vector2i(20, 5), 1.5)
+		+ 2.0 * 15.0 / Exploration.SHIP_TILES_PER_DAY), "les chevaux restent à quai")
+	var trip := e.launch(from, target, 2, 100.0)
+	e.ships = false
+	for h in 24 * 3:
+		e.step_hour()
+	_check(trip.sailing and trip.position > 5.0 and e.days_back(trip, trip.path.size() - 1) > 0.0,
+		"port perdu en route : les navires continuent")
+
+
+func _test_port_links() -> void:
+	var flat := _sea_map()
+	var map: WorldMap = flat[0]
+	var territory: Territory = flat[1]
+	var cells: Array[Vector2i] = []
+	for y in 12:
+		for x in range(30, 50):
+			cells.append(Vector2i(x, y))
+	territory.annex(cells)
+	for y in range(5, 8):
+		for x in range(40, 43):
+			map.set_terrain(Vector2i(x, y), TerrainDef.Type.LAKE)
+	var registry := BuildingRegistry.new(map, territory)
+	var port := BuildingDb.get_def(&"port")
+	_check(not registry.check_placement(port, Vector2i(25, 5)).is_valid(), "port : au bord de l'eau seulement")
+	var center := Vector2i(26, 5)
+	var ports: Array[Building] = []
+	for anchor: Vector2i in [Vector2i(20, 5), Vector2i(20, 19), Vector2i(43, 6)]:
+		ports.append(registry.place(registry.check_placement(port, anchor)))
+	var network := PortNetwork.new(map, territory)
+	var walk := func(cell: Vector2i) -> int: return network.cheb(cell, center)
+	network.refresh(ports, walk)
+	var length: int = network.linked.get(Vector2i(20, 19), 0)
+	_check(network.is_linked(Vector2i(20, 19)) and not network.is_linked(Vector2i(20, 5)) and not network.is_linked(Vector2i(43, 6)),
+		"ports reliés par la mer, pas le lac séparé")
+	_check(network.distances[Vector2i(20, 19)] == 6 + ceili(length / 4.0) and network.distance_via(Vector2i(22, 19)) == 6 + ceili(length / 4.0) + 2,
+		"le trajet par l'eau rapproche les tuiles du port (%d tuiles d'eau)" % length)
+	_check(network.distance_via(Vector2i(4, 5)) == 6 + 4, "les bateaux rapprochent les eaux de pêche")
+
+
+func _test_ports_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	gs.tier.level = 3
+	var center: Vector2i = gs.display_cell(gs.home)
+	gs.world_map.set_terrain(center + Vector2i(5, 5), TerrainDef.Type.LAKE)
+	var fishing_port := BuildingDb.get_def(&"fishing_port")
+	var port := BuildingDb.get_def(&"port")
+	_check(fishing_port.tier == 3 and fishing_port.upgrade == port and port.tier == 4 and gs.build_level(fishing_port) == fishing_port,
+		"bourg : port de pêche, améliorable en port")
+	_check(gs.zones.water_reach == ZoneMap.SHORE_REACH, "sans port : une tuile du rivage")
+	var b := _place_running(gs, fishing_port)
+	gs._refresh_capacities()
+	_check(b != null and gs.zones.water_reach == fishing_port.fishing_reach and not gs.exploration.ships, "port de pêche : portée allongée")
+	gs.tier.level = 4
+	_check(gs.build_level(fishing_port) == port, "ville : le port se construit directement")
+	for good in Stockpile.COUNT:
+		gs.stockpile.capacity[good] = 1000.0
+		gs.stockpile.amount[good] = 1000.0
+	_check(gs.upgrade(b.anchor), "port de pêche amélioré")
+	gs._refresh_capacities()
+	_check(gs.zones.water_reach == fishing_port.fishing_reach and not gs.exploration.ships, "pendant les travaux : toujours un port de pêche")
+	b.build_progress = port.build_hours
+	gs._refresh_capacities()
+	_check(gs.zones.water_reach == ZoneMap.ALL_WATERS and gs.exploration.ships and gs.ports.distances.size() == 1, "port : eaux ouvertes, navires")
+	gs.new_game(4242)
 
 
 ## La caméra suit la carte connue quand les expéditions l'agrandissent.

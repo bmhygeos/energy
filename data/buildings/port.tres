@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"port"
+display_name = "Port"
+description = "Quais et grands navires : la flotte pêche sur toutes les eaux découvertes, emmène les explorateurs et relie les ports entre eux."
+category = 2
+player_buildable = false
+tier = 4
+build_hours = 168
+wood_cost = 120
+stone_cost = 120
+iron_cost = 60
+tools_cost = 20
+harbor = true
+adjacent_terrains = Array[int]([4, 5, 6])
+color = Color(0.62, 0.6, 0.56, 1)
+roof_color = Color(0.2, 0.32, 0.45, 1)
+height = 26.0
