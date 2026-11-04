@@ -237,10 +237,10 @@ func _refresh_stone() -> void:
 	if stock.amount[tools] > 0.0 or GameState.tools_need() > 0.0:
 		_stone_label.text += " · Outils %d" % roundi(stock.amount[tools])
 	var bourg := GameState.tier.level >= GameState.CLOTHES_TIER
-	if bourg:
-		_stone_label.text += " · Charbon %d · Vêtements %d" % [roundi(stock.amount[Stockpile.Good.COAL]),
-			roundi(stock.amount[Stockpile.Good.CLOTHES])]
+	# Bandeau limité : charbon, vêtements et carburant au survol, sauf s'ils manquent.
 	var short_clothes := bourg and GameState.population.clothes_coverage < 1.0
+	if short_clothes:
+		_stone_label.text += " · Vêtements %d" % roundi(stock.amount[Stockpile.Good.CLOTHES])
 	_stone_label.add_theme_color_override("font_color", WARNING_COLOR if not GameState.production.tools_ok or short_clothes else Color.WHITE)
 	var expected := 0.0
 	for def in ZoneDb.DEFS:
@@ -272,6 +272,16 @@ func _refresh_stone() -> void:
 	if stock.capacity[oil] > Stockpile.BASE_CAPACITY[oil] or stock.amount[oil] > 0.0:
 		_stone_label.tooltip_text += "\n%s : %d / %d" % [Stockpile.GOOD_NAMES[oil],
 			roundi(stock.amount[oil]), roundi(stock.capacity[oil])]
+	# Ville : carburant des lampes.
+	if GameState.tier.level >= GameState.LIGHT_TIER:
+		var fuel := Stockpile.Good.FUEL
+		var dark := GameState.population.light_coverage < 1.0
+		if dark:
+			_stone_label.text += " · Carburant %d" % roundi(stock.amount[fuel])
+			_stone_label.add_theme_color_override("font_color", WARNING_COLOR)
+		_stone_label.tooltip_text += "\nCarburant : %d / %d (raffineries)\nÉclairage : %s /j%s" % [
+			roundi(stock.amount[fuel]), roundi(stock.capacity[fuel]), Format.decimal(GameState.light_need()),
+			"\nÉclairage manquant : satisfaction réduite." if dark else ""]
 
 
 ## Bouton du trésor (à partir du bourg) : pièces ; impôts et commerce

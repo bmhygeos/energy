@@ -221,6 +221,9 @@ func _refresh() -> void:
 	var pop := GameState.population
 	_treasury.text = "Trésor : %d pièces  ·  hier : impôts +%s, commerce %s" % [floori(treasury.money),
 		Format.decimal(stats.last(&"taxes")), _signed(stats.last(&"trade"))]
+	if GameState.upkeep_need() > 0.0:
+		_treasury.text += "  ·  entretien −%s /j%s" % [Format.decimal(GameState.upkeep_need()),
+			"" if GameState.upkeep_paid else " (impayé)"]
 	for level in _tax_buttons.size():
 		_tax_buttons[level].set_pressed_no_signal(level == treasury.tax_level)
 	_tax_summary.text = "Taux %s : ≈ %s pièces par jour pour %d habitants (moins si la satisfaction baisse)%s" % [

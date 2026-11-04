@@ -132,6 +132,8 @@ func _refresh() -> void:
 		_needs.text += "  ·  charbon %s /j (chauffage)" % Format.decimal(GameState.coal_heat_need(season))
 	if GameState.clothes_need() > 0.0:
 		_needs.text += "  ·  vêtements %s /j" % Format.decimal(GameState.clothes_need())
+	if GameState.light_need() > 0.0:
+		_needs.text += "  ·  carburant %s /j (éclairage)" % Format.decimal(GameState.light_need())
 	var draft := GameState.draft
 	if draft.capacity > 0 or draft.count() > 0:
 		_needs.text += "\nChevaux %d / %d (écuries)  ·  attelés %d  ·  en expédition %d  ·  fourrage %s /j" % [

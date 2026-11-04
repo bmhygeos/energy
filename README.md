@@ -346,6 +346,19 @@ météo et interface conservés.
   1 tuile de marche, sans combustible. Fiche de la tuile : distance par la
   route. Une route non reliée est dessinée plus terne et n'a aucun effet.
 
+### V11 (partie 1) : ville — pétrole, éclairage, université
+- **Puits de pétrole** (zone sur un gisement prospecté ; 4 tuiles garanties à
+  4–6 tuiles du centre) : sans **réservoir**, le pétrole est perdu.
+- **Recherches** :
+  | Recherche | Prérequis | Points | Effet |
+  |---|---|---|---|
+  | Raffinage du pétrole | Méthode expérimentale | 45 000 | **Raffinerie** (60 pierre, 60 fer, 10 outils) : 10 carburant par jour, un pétrole chacun |
+  | Enseignement supérieur | Méthode expérimentale | 50 000 | **Université** (80 bois, 150 pierre, 30 fer, 20 outils) : recherche ×10 pour 1 000 habitants, entretien de 30 pièces par jour ; impayée, elle s'arrête |
+- **Éclairage** (à partir de la ville) : 0,01 carburant par habitant et par
+  jour ; sans lui, satisfaction réduite jusqu'à −10 %.
+- **Jalons** Ville et Alma mater. Bandeau : charbon, vêtements et carburant
+  au survol, affichés seulement s'ils manquent.
+
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon
   la satisfaction ; une recherche à la fois ; sans recherche en cours, les

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"university"
+display_name = "Université"
+description = "Amphithéâtres et bibliothèques : la ville forme ses savants."
+category = 2
+tier = 4
+research = &"university"
+size = Vector2i(2, 2)
+build_hours = 168
+wood_cost = 80
+stone_cost = 150
+iron_cost = 30
+tools_cost = 20
+research_multiplier = 10.0
+research_coverage = 1000
+upkeep_per_day = 30.0
+color = Color(0.85, 0.8, 0.7, 1)
+roof_color = Color(0.3, 0.32, 0.45, 1)
+height = 28.0

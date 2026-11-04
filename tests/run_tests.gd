@@ -57,6 +57,7 @@ func _initialize() -> void:
 	_test_economy_game()
 	_test_events_game()
 	_test_roads_game()
+	_test_city_game()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -256,9 +257,10 @@ func _test_start_site() -> void:
 	var changed := StartSite.ensure(flat, rect)
 	var counts := StartSite._counts(rect, func(c: Vector2i) -> int: return flat.get_terrain(c))
 	var hills := changed.filter(func(c: Vector2i) -> bool: return flat.get_terrain(c) == TerrainDef.Type.HILL)
-	_check(changed.size() == StartSite.MIN_FOREST + StartSite.STONE_BLOCK * StartSite.STONE_BLOCK + 1 and counts.water == 1
+	var oil_tiles := changed.filter(func(c: Vector2i) -> bool: return flat.get_deposit(c) == WorldMap.Deposit.OIL)
+	_check(oil_tiles.size() == StartSite.MIN_OIL and counts.water == 1
 		and counts.forest == StartSite.MIN_FOREST and counts.stone == StartSite.MIN_STONE,
-		"plaine nue : forêt, lac et collines ajoutés %s" % counts)
+		"plaine nue : forêt, lac, collines et pétrole ajoutés %s" % counts)
 	_check(hills.size() == 4 and hills.all(func(c: Vector2i) -> bool:
 		return maxi(absi(c.x - 20), absi(c.y - 20)) <= StartSite.STONE_RADIUS and maxi(absi(c.x - 20), absi(c.y - 20)) >= 3),
 		"colline à pierre à 3–4 tuiles du centre %s" % [hills])
@@ -663,7 +665,7 @@ func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
 	stock.amount = Stockpile.zeros()
-	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -1126,7 +1128,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 18 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 20 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1374,6 +1376,41 @@ func _test_roads_game() -> void:
 	var built: int = gs.build_roads(plan)
 	_check(built == 2 and gs.roads.lengths.size() == 2 and gs.stockpile.amount[Stockpile.Good.STONE] < 100.0, "route posée au bourg")
 	_check(gs.demolish(from) and not gs.roads.has_tile(from), "route démolie")
+	gs.new_game(4242)
+
+
+func _test_city_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var site := StartSite.territory_rect(gs.home)
+	var oil_cells := 0
+	for y in range(site.position.y, site.end.y):
+		for x in range(site.position.x, site.end.x):
+			if gs.world_map.get_deposit(Vector2i(x, y)) == WorldMap.Deposit.OIL:
+				oil_cells += 1
+	_check(oil_cells >= StartSite.MIN_OIL, "pétrole près du village (%d tuiles)" % oil_cells)
+	_check(gs.light_need() == 0.0 and gs._burn_light() == 1.0, "avant la ville : pas d'éclairage")
+	gs.tier.level = 4
+	gs.population.count = 1000
+	var stock: Stockpile = gs.stockpile
+	stock.capacity[Stockpile.Good.OIL] = 1000.0
+	stock.amount[Stockpile.Good.OIL] = 4.0
+	var refinery := _place_running(gs, BuildingDb.get_def(&"refinery"))
+	gs._run_refineries()
+	_check(refinery != null and is_equal_approx(stock.amount[Stockpile.Good.FUEL], 4.0) and stock.amount[Stockpile.Good.OIL] == 0.0,
+		"raffinerie : pétrole → carburant, dans la limite du pétrole")
+	_check(is_equal_approx(gs.light_need(), 10.0) and is_equal_approx(gs._burn_light(), 0.4), "éclairage : part couverte")
+	var p := Population.new()
+	p.end_day(1.0, 1.0, 100, 1.0, 1.0, 1.0, 1.0, 0.0)
+	_check(is_equal_approx(p.satisfaction, 1.0 - Population.LIGHT_WEIGHT), "sans éclairage : satisfaction réduite")
+	var uni := _place_running(gs, BuildingDb.get_def(&"university"))
+	var points: float = gs.research_per_day()
+	gs.treasury.money = 100.0
+	gs._pay_upkeep()
+	_check(uni != null and gs.upkeep_paid and gs.treasury.money == 70.0 and points > 5000.0, "université : entretien payé, recherche ×10")
+	gs.treasury.money = 10.0
+	gs._pay_upkeep()
+	_check(not gs.upkeep_paid and gs.treasury.money == 10.0 and gs.research_per_day() < points, "entretien impayé : université à l'arrêt")
 	gs.new_game(4242)
 
 

@@ -32,6 +32,10 @@ const FIBER_PER_CLOTHES := 1.0
 const ECONOMY_TIER := 3
 ## Palier à partir duquel des événements frappent la cité (bourg).
 const EVENTS_TIER := 3
+## Palier à partir duquel les habitants s'éclairent au carburant (ville).
+const LIGHT_TIER := 4
+## Raffinerie : pétrole par unité de carburant.
+const OIL_PER_FUEL := 1.0
 ## Palier à partir duquel la cité pose des routes (bourg).
 const ROAD_TIER := 3
 
@@ -77,6 +81,8 @@ var water_supply := 0
 var coal_burned_today := 0.0
 ## Machines à vapeur alimentées en charbon (la veille), et leurs bonus.
 var steam_running := false
+## Entretien payé la veille (sinon, universités à l'arrêt).
+var upkeep_paid := true
 var _steam_drive := 0.0
 var _steam_mine := 0.0
 var _water_drive := 0.0
@@ -706,6 +712,55 @@ func _run_weavers() -> void:
 	production.produced_today[Stockpile.Good.CLOTHES] += n
 
 
+## Raffineries : pétrole du jour transformé en carburant, dans la limite du
+## stock.
+func _run_refineries() -> void:
+	var rate := 0.0
+	for b in buildings.all():
+		if b.is_complete():
+			rate += b.def.fuel_per_day
+	var room := stockpile.capacity[Stockpile.Good.FUEL] - stockpile.amount[Stockpile.Good.FUEL]
+	var n := minf(minf(rate, room), stockpile.amount[Stockpile.Good.OIL] / OIL_PER_FUEL)
+	if n <= 0.0:
+		return
+	stockpile.take(Stockpile.Good.OIL, n * OIL_PER_FUEL)
+	stockpile.add(Stockpile.Good.FUEL, n)
+	production.produced_today[Stockpile.Good.FUEL] += n
+
+
+## Carburant des lampes par jour (à partir de la ville).
+func light_need() -> float:
+	return population.light_need() if tier.level >= LIGHT_TIER else 0.0
+
+
+## Éclairage du jour : prend le carburant au stock ; renvoie la part obtenue
+## (1 sans besoin).
+func _burn_light() -> float:
+	var need := light_need()
+	if need <= 0.0:
+		return 1.0
+	return stockpile.take(Stockpile.Good.FUEL, need) / need
+
+
+## Entretien par jour des bâtiments terminés (pièces).
+func upkeep_need() -> float:
+	var total := 0.0
+	for b in buildings.all():
+		if b.is_complete():
+			total += b.def.upkeep_per_day
+	return total
+
+
+## Paie l'entretien du jour ; sans pièces, les bâtiments concernés s'arrêtent
+## jusqu'au prochain paiement.
+func _pay_upkeep() -> void:
+	var need := upkeep_need()
+	var was := upkeep_paid
+	upkeep_paid = need <= 0.0 or treasury.pay_upkeep(need)
+	if was and not upkeep_paid:
+		EventBus.notified.emit("Trésor vide : l'université ferme ses portes faute d'entretien")
+
+
 ## Vêtements usés par jour (à partir du bourg).
 func clothes_need() -> float:
 	return population.clothes_need() if tier.level >= CLOTHES_TIER else 0.0
@@ -773,7 +828,7 @@ func _pasture_quality() -> float:
 func research_per_day() -> float:
 	var boosts: Array[Vector2] = []
 	for b in buildings.all():
-		if b.is_complete() and b.def.research_coverage > 0:
+		if b.is_complete() and b.def.research_coverage > 0 and (upkeep_paid or b.def.upkeep_per_day <= 0.0):
 			boosts.append(Vector2(b.def.research_multiplier, b.def.research_coverage))
 	return Research.points_per_day(population.count, population.satisfaction, boosts)
 
@@ -946,6 +1001,7 @@ func _run_economy() -> void:
 		return
 	treasury.collect_taxes(population.count, population.satisfaction)
 	treasury.sell_surplus(stockpile)
+	_pay_upkeep()
 
 
 func set_tax_level(level: int) -> void:
@@ -1092,14 +1148,16 @@ func _on_day(day: int) -> void:
 		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)
 	_run_forges()
 	_run_weavers()
+	_run_refineries()
 	_run_steam()
 	_run_trains()
 	var tools := _wear_tools()
 	var clothes := _wear_clothes()
+	var light := _burn_light()
 	_run_economy()
 	var before := population.count
 	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing,
-		water_coverage(), tools, clothes, mood())
+		water_coverage(), tools, clothes, mood(), light)
 	decrees.end_day()
 	_run_events(GameDate.season(day_tick))
 	_announce_population(before, change, coverage)
@@ -1111,6 +1169,8 @@ func _on_day(day: int) -> void:
 		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
 		if tier.level == CLOTHES_TIER:
 			EventBus.notified.emit("Le bourg a besoin de vêtements : champs de lin, laine des pâturages, atelier de tissage")
+		if tier.level == LIGHT_TIER:
+			EventBus.notified.emit("La ville veut s'éclairer : puits de pétrole, réservoir et raffinerie (recherche Raffinage du pétrole)")
 		if tier.level == ECONOMY_TIER:
 			EventBus.notified.emit("Le bourg lève l'impôt : trésor, marché et décrets dans le panneau Économie (E)")
 		EventBus.tier_changed.emit()
@@ -1137,6 +1197,7 @@ func _on_day(day: int) -> void:
 	stats.add(&"research", points)
 	stats.add(&"coal_burned", coal_burned_today)
 	stats.add(&"clothes", clothes * 100.0)
+	stats.add(&"light", light * 100.0)
 	stats.add(&"money", treasury.money)
 	stats.add(&"taxes", treasury.taxes_today)
 	stats.add(&"trade", treasury.sales_today - treasury.purchases_today)

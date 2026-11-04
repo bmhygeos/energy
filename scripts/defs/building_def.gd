@@ -48,11 +48,16 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var tools_capacity := 0.0
 @export var coal_capacity := 0.0
 @export var oil_capacity := 0.0
+@export var fuel_capacity := 0.0
 ## Forge : outils fabriqués par jour (FORGE_IRON_PER_TOOL fer et
 ## FORGE_WOOD_PER_TOOL bois chacun).
 @export var tools_per_day := 0.0
 ## Atelier de tissage : vêtements tissés par jour (une fibre chacun).
 @export var clothes_per_day := 0.0
+## Raffinerie : carburant raffiné par jour (un pétrole chacun).
+@export var fuel_per_day := 0.0
+## Entretien en pièces par jour ; impayé, ses effets de recherche cessent.
+@export var upkeep_per_day := 0.0
 ## Moulin : moud le grain (agriculture : bonus grain_bonus, le meilleur
 ## compte ; gâchis) ; puissance mécanique moyenne (W), à vent normal pour un
 ## moulin à vent.
@@ -148,6 +153,8 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Coupe du bois +%d %%" % roundi(forestry_bonus * 100.0))
 	if clothes_per_day > 0.0:
 		lines.append("Tisse %s vêtements par jour (une fibre chacun)" % Format.decimal(clothes_per_day))
+	if fuel_per_day > 0.0:
+		lines.append("Raffine %s carburant par jour (un pétrole chacun)" % Format.decimal(fuel_per_day))
 	if grinds_grain:
 		lines.append("Moud le grain : agriculture +%d %%, gâchis de la nourriture moitié moindre" % roundi(grain_bonus * 100.0))
 	if drive_bonus > 0.0:
@@ -168,6 +175,8 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Eau pour %d habitants ; irrigue les champs voisins (recherche Irrigation)" % water_supply)
 	if research_coverage > 0:
 		lines.append("Recherche ×%s pour %d habitants" % [Format.decimal(research_multiplier), research_coverage])
+	if upkeep_per_day > 0.0:
+		lines.append("Entretien : %d pièces par jour (impayé, à l'arrêt)" % roundi(upkeep_per_day))
 	return lines
 
 
@@ -207,4 +216,6 @@ func capacity_of(good: int) -> float:
 			return coal_capacity
 		Stockpile.Good.OIL:
 			return oil_capacity
+		Stockpile.Good.FUEL:
+			return fuel_capacity
 	return 0.0

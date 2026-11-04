@@ -10,7 +10,7 @@ const FOOD_COLOR := Color("e3b448")
 const WOOD_COLOR := Color("a0703c")
 ## Couleur de chaque marchandise (Stockpile.Good).
 const GOOD_COLORS: Array[Color] = [FOOD_COLOR, WOOD_COLOR, Color("9aa3ad"), Color("5f7f9e"), Color("d9774b"),
-	Color("5a5a64"), Color("2f6f6a"), Color("7393e6"), Color("c46fb0")]
+	Color("5a5a64"), Color("2f6f6a"), Color("7393e6"), Color("c46fb0"), Color("d4c34a")]
 const PENDING_COLOR := Color("8b8f99")
 
 var _range := 1
@@ -185,6 +185,8 @@ func _refresh() -> void:
 		satisfaction.append(Chart.Series.new("Habitants servis en eau", stats.values(&"water"), Color("4aa3df")))
 	if GameState.tier.level >= GameState.CLOTHES_TIER:
 		satisfaction.append(Chart.Series.new("Vêtements remplacés", stats.values(&"clothes"), GOOD_COLORS[Stockpile.Good.CLOTHES]))
+	if GameState.tier.level >= GameState.LIGHT_TIER:
+		satisfaction.append(Chart.Series.new("Éclairage", stats.values(&"light"), GOOD_COLORS[Stockpile.Good.FUEL]))
 	_show(&"satisfaction", satisfaction, first)
 	# Pierre, fer et outils n'apparaissent qu'une fois produits.
 	var stocks := []

@@ -66,11 +66,13 @@ text = "Bois 0"
 
 [node name="StoneLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 0)
 visible = false
-custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 1
 text = "Pierre 0"
+clip_text = true
 
 [node name="WaterLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true

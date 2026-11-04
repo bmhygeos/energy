@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"university"
+display_name = "Enseignement supérieur"
+description = "Chaires, bibliothèques et amphithéâtres : le savoir s'enseigne et se transmet."
+tier = 4
+cost = 50000.0
+prerequisites = Array[StringName]([&"scientific_method"])
+effect = "Université : recherche ×10 pour 1 000 habitants, contre un entretien en pièces."

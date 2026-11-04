@@ -16,7 +16,7 @@ const TAX_MIN_SATISFACTION_FACTOR := 0.5
 const DEFAULT_TAX := 1
 ## Prix de vente d'une unité, en pièces (Stockpile.Good) ; à l'achat,
 ## BUY_MARKUP fois plus.
-const PRICES: PackedFloat32Array = [1.0, 1.0, 2.0, 4.0, 8.0, 3.0, 6.0, 1.0, 5.0]
+const PRICES: PackedFloat32Array = [1.0, 1.0, 2.0, 4.0, 8.0, 3.0, 6.0, 1.0, 5.0, 10.0]
 const BUY_MARKUP := 1.5
 ## Surplus vendus automatiquement : ce qui dépasse cette part de la capacité.
 const AUTO_SELL_RATIO := 0.75
@@ -34,6 +34,8 @@ var auto_sell: Array[bool] = []
 var taxes_today := 0.0
 var sales_today := 0.0
 var purchases_today := 0.0
+## Entretien des bâtiments payé aujourd'hui.
+var upkeep_today := 0.0
 
 
 func _init() -> void:
@@ -61,6 +63,16 @@ func collect_taxes(count: int, satisfaction: float) -> float:
 	money += amount
 	taxes_today += amount
 	return amount
+
+
+## Paie [param amount] d'entretien ; false si le trésor ne suffit pas (rien
+## n'est payé).
+func pay_upkeep(amount: float) -> bool:
+	if money < amount:
+		return false
+	money -= amount
+	upkeep_today += amount
+	return true
 
 
 ## Facteur de satisfaction du taux d'imposition.
@@ -116,3 +128,4 @@ func reset_day() -> void:
 	taxes_today = 0.0
 	sales_today = 0.0
 	purchases_today = 0.0
+	upkeep_today = 0.0

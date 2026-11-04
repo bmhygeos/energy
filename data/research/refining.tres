@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"refining"
+display_name = "Raffinage du pétrole"
+description = "Distillé, le pétrole brut se sépare en huiles lampantes et en carburants."
+tier = 4
+cost = 45000.0
+prerequisites = Array[StringName]([&"scientific_method"])
+effect = "Raffinerie : le pétrole devient du carburant, qui éclaire la ville."

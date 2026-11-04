@@ -31,6 +31,12 @@ const MIN_COAL := 2
 const COAL_MIN_DISTANCE := 4
 const COAL_RADIUS := 5
 const COAL_AMOUNT := 8000.0
+## Tuiles de pétrole (puits de la ville) à OIL_MIN_DISTANCE–OIL_RADIUS tuiles
+## du centre, de OIL_AMOUNT tonnes chacune à défaut.
+const MIN_OIL := 4
+const OIL_MIN_DISTANCE := 4
+const OIL_RADIUS := 6
+const OIL_AMOUNT := 10000.0
 ## Terrains où placer le fer et le charbon, par préférence (forêt et collines avant les
 ## terres cultivables).
 const IRON_TERRAINS: Array[int] = [T.FOREST, T.HILL, T.TUNDRA, T.PRAIRIE, T.PLAIN]
@@ -93,7 +99,8 @@ static func ensure(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 		changed.append(cell)
 	changed.append_array(_ensure_stone(map, rect))
 	for c in _ensure_deposit(map, rect, WorldMap.Deposit.IRON, MIN_IRON, IRON_MIN_DISTANCE, IRON_RADIUS, IRON_AMOUNT) \
-			+ _ensure_deposit(map, rect, WorldMap.Deposit.COAL, MIN_COAL, COAL_MIN_DISTANCE, COAL_RADIUS, COAL_AMOUNT):
+			+ _ensure_deposit(map, rect, WorldMap.Deposit.COAL, MIN_COAL, COAL_MIN_DISTANCE, COAL_RADIUS, COAL_AMOUNT) \
+			+ _ensure_deposit(map, rect, WorldMap.Deposit.OIL, MIN_OIL, OIL_MIN_DISTANCE, OIL_RADIUS, OIL_AMOUNT):
 		if c not in changed:
 			changed.append(c)
 	return changed
