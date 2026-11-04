@@ -1,14 +1,20 @@
 extends CanvasLayer
 ## Panneau « Recherche » (R) : points produits par jour, recherche en cours
 ## et recherches du palier actuel (coût, avancement, effet), à lancer d'un
-## clic.
+## clic. Titre et bouton de fermeture restent visibles : la liste défile quand
+## le panneau atteint la hauteur de la fenêtre.
 
 const MUTED_COLOR := Color(1, 1, 1, 0.6)
 const DONE_COLOR := Color("7ee787")
+## Marges du panneau : sous le bandeau et au bas de la fenêtre.
+const TOP_MARGIN := 56.0
+const BOTTOM_MARGIN := 12.0
 
 var _panel: PanelContainer
 var _summary: Label
 var _list: VBoxContainer
+var _scroll: ScrollContainer
+var _content: VBoxContainer
 
 
 func _ready() -> void:
@@ -17,6 +23,7 @@ func _ready() -> void:
 	EventBus.research_changed.connect(_refresh)
 	EventBus.population_changed.connect(_refresh)
 	EventBus.game_started.connect(func(_s: int) -> void: _refresh())
+	get_viewport().size_changed.connect(_fit)
 	_refresh()
 
 
@@ -32,7 +39,13 @@ func toggle() -> void:
 
 
 func _build() -> void:
+	# Devant le calque d'information, qu'il recouvre une fois la liste longue.
+	layer = 2
 	_panel = PanelContainer.new()
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.1, 0.11, 0.13, 0.98)
+	bg.set_corner_radius_all(6)
+	_panel.add_theme_stylebox_override("panel", bg)
 	_panel.anchor_left = 1.0
 	_panel.anchor_right = 1.0
 	_panel.anchor_top = 1.0
@@ -65,15 +78,24 @@ func _build() -> void:
 	_summary = Label.new()
 	_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_summary)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(_scroll)
+	_content = VBoxContainer.new()
+	_content.add_theme_constant_override("separation", 10)
+	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_content)
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 10)
-	box.add_child(_list)
+	_content.add_child(_list)
 	var note := Label.new()
 	note.text = "%s point par habitant et par jour, de %d %% à 100 %% selon la satisfaction.\nUne recherche à la fois ; sans recherche, les points sont mis de côté." % [
 		Format.decimal(Research.POINTS_PER_INHABITANT), roundi(Research.MIN_SATISFACTION_FACTOR * 100.0)]
 	note.modulate = MUTED_COLOR
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.add_theme_font_size_override("font_size", 13)
-	box.add_child(note)
+	_content.add_child(note)
 
 
 func _refresh() -> void:
@@ -89,6 +111,7 @@ func _refresh() -> void:
 		text += "  ·  %s points mis de côté" % Format.decimal(research.bank, 0)
 	_summary.text = text
 	for child in _list.get_children():
+		_list.remove_child(child)
 		child.queue_free()
 	var shown := 0
 	for def in ResearchDb.DEFS:
@@ -101,6 +124,22 @@ func _refresh() -> void:
 		none.text = "Aucune recherche à ce palier."
 		none.modulate = MUTED_COLOR
 		_list.add_child(none)
+	_fit.call_deferred()
+
+
+## Ajuste le panneau à son contenu, sans dépasser la fenêtre : au-delà, la
+## liste défile.
+func _fit() -> void:
+	if not _panel.visible:
+		return
+	# Les textes repliés ne donnent leur hauteur qu'une fois mis en page.
+	await get_tree().process_frame
+	_scroll.custom_minimum_size.y = 0.0
+	var frame := _panel.get_combined_minimum_size().y - _scroll.get_combined_minimum_size().y
+	var room := get_viewport().get_visible_rect().size.y - TOP_MARGIN - BOTTOM_MARGIN - frame
+	var height := minf(_content.get_combined_minimum_size().y, room)
+	_scroll.custom_minimum_size.y = height
+	_panel.offset_top = _panel.offset_bottom - frame - height
 
 
 func _row(def: ResearchDef) -> Control:
