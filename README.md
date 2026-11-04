@@ -330,6 +330,12 @@ météo et interface conservés.
   **jalons** Jour de marché et Trésor (1 000 pièces).
 - **Bandeau** compacté : graine, nouvelle carte et aide dans le menu
   « Partie ».
+- **Événements** (à partir du bourg, au moins 60 jours d'écart, reproductibles
+  avec la graine) : hiver rude (chauffage +50 %, 20 jours), sécheresse en été
+  (champs −50 %, 20 jours), épizootie (pâturages −50 %, 15 jours, 20 % des
+  chevaux perdus), incendie de forêt (jusqu'à 12 tuiles, qui repoussent comme
+  une coupe à blanc), migrants (+5 % d'habitants, dans la limite des
+  logements). L'événement en cours remplace la météo dans le bandeau.
 
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon

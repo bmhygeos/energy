@@ -30,6 +30,8 @@ const COKE_FORGE_BONUS := 1.5
 const FIBER_PER_CLOTHES := 1.0
 ## Palier à partir duquel la cité lève l'impôt et prend des décrets (bourg).
 const ECONOMY_TIER := 3
+## Palier à partir duquel des événements frappent la cité (bourg).
+const EVENTS_TIER := 3
 
 var world_map: WorldMap
 ## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
@@ -58,6 +60,8 @@ var weather: Weather
 ## Pièces, impôts et commerce ; décrets du gouverneur (bourg).
 var treasury: Treasury
 var decrees: Decrees
+## Événements en cours (hiver rude, sécheresse…).
+var events: CityEvents
 ## Historique journalier (graphiques) et jalons du bac à sable.
 var stats: Statistics
 var milestones: Milestones
@@ -115,6 +119,8 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	weather = Weather.new(seed_value)
 	treasury = Treasury.new()
 	decrees = Decrees.new()
+	events = CityEvents.new(seed_value)
+	production.events = events
 	stats = Statistics.new()
 	milestones = Milestones.new()
 	milestones.defs = Milestones.standard()
@@ -749,12 +755,17 @@ func wood_days() -> float:
 func coal_heat_need(season: int) -> float:
 	if tier.level < COAL_HEAT_TIER or stockpile.amount[Stockpile.Good.COAL] <= 0.0:
 		return 0.0
-	return population.wood_need(season) * COAL_HEAT_SHARE / COAL_WOOD_EQUIVALENT
+	return heat_need(season) * COAL_HEAT_SHARE / COAL_WOOD_EQUIVALENT
 
 
 ## Bois brûlé par jour pendant la saison [param season], le charbon déduit.
 func wood_need(season: int) -> float:
-	return population.wood_need(season) - coal_heat_need(season) * COAL_WOOD_EQUIVALENT
+	return heat_need(season) - coal_heat_need(season) * COAL_WOOD_EQUIVALENT
+
+
+## Chauffage du jour pendant [param season], en bois (hiver rude compris).
+func heat_need(season: int) -> float:
+	return population.wood_need(season) * events.heat_factor()
 
 
 ## Priorités automatiques d'après les stocks. La nourriture doit tenir
@@ -799,6 +810,65 @@ func lean_days(tick: int) -> float:
 		if farm.season_factors[s] <= 0.0:
 			lean += GameDate.DAYS_PER_SEASON
 	return lean
+
+
+## Événements du jour (à partir du bourg) : fin de ceux en cours, tirage
+## d'un nouveau et effets immédiats.
+func _run_events(season: int) -> void:
+	for kind in events.end_day():
+		EventBus.notified.emit("Fin de l'événement : %s" % CityEvents.NAMES[kind])
+	if tier.level < EVENTS_TIER:
+		return
+	var kind := events.roll(season)
+	if kind >= 0:
+		apply_event(kind)
+
+
+## Effets immédiats et annonce de l'événement [param kind].
+func apply_event(kind: int) -> void:
+	var text := CityEvents.START_TEXTS[kind]
+	match kind:
+		CityEvents.Kind.EPIZOOTIC:
+			draft.horses *= 1.0 - CityEvents.EPIZOOTIC_HORSES_LOST
+		CityEvents.Kind.FOREST_FIRE:
+			text += " : %d tuiles brûlées" % _burn_forest()
+		CityEvents.Kind.MIGRANTS:
+			var arrivals := mini(ceili(population.count * CityEvents.MIGRANTS_SHARE), maxi(0, housing - population.count))
+			if arrivals == 0:
+				text += ", mais ne trouvent aucun logement et repartent"
+			else:
+				population.count += arrivals
+				text += " : %d nouveaux habitants" % arrivals
+				_update_labor()
+	EventBus.notified.emit(text)
+
+
+## Feu parti d'une forêt du territoire, qui gagne les forêts voisines ;
+## renvoie le nombre de tuiles brûlées.
+func _burn_forest() -> int:
+	var forests: Array[Vector2i] = []
+	for cell in territory.territory_cells():
+		if world_map.get_terrain(cell) == TerrainDef.Type.FOREST:
+			forests.append(cell)
+	if forests.is_empty():
+		return 0
+	var front: Array[Vector2i] = [forests[events.rng.randi_range(0, forests.size() - 1)]]
+	var burnt: Array[Vector2i] = []
+	while not front.is_empty() and burnt.size() < CityEvents.FIRE_TILES:
+		var cell: Vector2i = front.pop_front()
+		if world_map.get_terrain(cell) != TerrainDef.Type.FOREST or not territory.is_territory(cell):
+			continue
+		production.burn(cell)
+		burnt.append(cell)
+		for o in WorldMap.NEIGHBORS_4:
+			front.append(world_map.wrap_cell(cell + o))
+	var shown: Array[Vector2i] = []
+	for cell in burnt:
+		shown.append(display_cell(cell))
+	EventBus.tiles_changed.emit(shown)
+	EventBus.zones_changed.emit(shown)
+	_update_labor()
+	return burnt.size()
 
 
 ## Ce qui empêche l'impôt et les décrets (vide : possible).
@@ -954,7 +1024,7 @@ func _consume(tick: int) -> void:
 	_needed_today[Stockpile.Good.FOOD] += food
 	_consumed_today[Stockpile.Good.FOOD] += stockpile.take(Stockpile.Good.FOOD, food)
 	var season := GameDate.season(tick)
-	var heat := population.wood_need(season) / GameDate.HOURS_PER_DAY
+	var heat := heat_need(season) / GameDate.HOURS_PER_DAY
 	var coal := stockpile.take(Stockpile.Good.COAL, coal_heat_need(season) / GameDate.HOURS_PER_DAY)
 	coal_burned_today += coal
 	_needed_today[Stockpile.Good.WOOD] += heat
@@ -984,6 +1054,7 @@ func _on_day(day: int) -> void:
 	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing,
 		water_coverage(), tools, clothes, mood())
 	decrees.end_day()
+	_run_events(GameDate.season(day_tick))
 	_announce_population(before, change, coverage)
 	if tier.update(population.count, population.satisfaction):
 		exploration.tier = tier.level

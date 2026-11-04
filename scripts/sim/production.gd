@@ -49,6 +49,8 @@ var buildings: BuildingRegistry
 var research: Research
 ## Chevaux attelés (distance des tuiles desservies) ; null : aucun.
 var draft: DraftAnimals
+## Événements en cours (sécheresse, épizootie) ; null : aucun.
+var events: CityEvents
 ## Production du jour en cours, par marchandise (Stockpile.Good).
 var produced_today := Stockpile.zeros()
 ## Valeur naturelle des fertilités entamées, bois maximal des forêts entamées
@@ -87,7 +89,12 @@ func _init(p_zones: ZoneMap, p_labor: Labor) -> void:
 ## zone [param def] pendant la saison [param season].
 func tile_rate(def: ZoneDef, cell: Vector2i, workers: int, season: int) -> float:
 	return workers * def.base_yield * def.quality_at(map, cell) * def.season_factors[season] \
-		* proximity(cell) * irrigation_factor(def, cell) * invention_factor(def, cell)
+		* proximity(cell) * irrigation_factor(def, cell) * invention_factor(def, cell) * event_factor(def)
+
+
+## Facteur des événements en cours pour la zone [param def].
+func event_factor(def: ZoneDef) -> float:
+	return events.zone_factor(def) if events else 1.0
 
 
 func _done(id: StringName) -> bool:
@@ -172,7 +179,7 @@ func expected_wool_per_day() -> float:
 	for cell: Vector2i in labor.workers_at:
 		var def := zones.zone_at(cell)
 		if def and def.quality == ZoneDef.Quality.PASTURE:
-			total += labor.workers_at[cell] * WOOL_PER_WORKER * proximity(cell)
+			total += labor.workers_at[cell] * WOOL_PER_WORKER * proximity(cell) * event_factor(def)
 	return total
 
 
@@ -194,7 +201,7 @@ func step_hour(tick: int, stock: Stockpile) -> Report:
 		stock.add(def.output, qty)
 		produced_today[def.output] += qty
 		if wool and def.quality == ZoneDef.Quality.PASTURE:
-			var fiber := labor.workers_at[cell] * WOOL_PER_WORKER * proximity(cell) / GameDate.HOURS_PER_DAY
+			var fiber := labor.workers_at[cell] * WOOL_PER_WORKER * proximity(cell) * event_factor(def) / GameDate.HOURS_PER_DAY
 			stock.add(Stockpile.Good.FIBER, fiber)
 			produced_today[Stockpile.Good.FIBER] += fiber
 	if not report.cleared.is_empty():
@@ -226,6 +233,15 @@ func _cut(cell: Vector2i, qty: float, report: Report) -> float:
 		_clearcuts[cell] = 0
 		report.clearcut.append(cell)
 	return got
+
+
+## Incendie : la forêt de [param cell] brûle et repoussera comme une coupe à
+## blanc.
+func burn(cell: Vector2i) -> void:
+	map.set_terrain(cell, TerrainDef.Type.PLAIN)
+	map.set_wood(cell, 0.0)
+	_forest_max.erase(cell)
+	_clearcuts[cell] = 0
 
 
 ## Fin de la journée [param day_tick] (tick du jour clos) : usure et repos

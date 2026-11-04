@@ -143,9 +143,17 @@ func _on_tick(tick: int) -> void:
 	if weather == null:
 		return
 	_weather_label.text = weather.sky(tick)
+	_weather_label.remove_theme_color_override("font_color")
 	_weather_label.tooltip_text = "Météo : %s\nVent : %d %% de la normale\nNébulosité : %d %%\nLumière du jour : %d %%" % [
 		weather.describe(tick), roundi(weather.wind_at(tick) * 100.0),
 		roundi(weather.cloud_at(tick) * 100.0), roundi(Weather.daylight_at(tick) * 100.0)]
+	# Événement en cours : à la place du ciel, détail au survol.
+	var events := GameState.events
+	for kind: CityEvents.Kind in events.active:
+		_weather_label.text = CityEvents.NAMES[kind]
+		_weather_label.add_theme_color_override("font_color", WARNING_COLOR)
+		_weather_label.tooltip_text += "\n\n%s : encore %d jours\n%s" % [CityEvents.NAMES[kind], events.active[kind],
+			CityEvents.START_TEXTS[kind]]
 
 
 ## Habitants / logements (rouge s'il y a des chômeurs) ; détail au survol.

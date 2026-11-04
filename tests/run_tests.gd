@@ -45,6 +45,7 @@ func _init() -> void:
 	_test_steam_and_scouts()
 	_test_treasury()
 	_test_decrees()
+	_test_city_events()
 
 
 ## Tests qui demandent les autoloads (GameState), prêts après la première
@@ -53,6 +54,7 @@ func _initialize() -> void:
 	await process_frame
 	_test_bourg_game()
 	_test_economy_game()
+	_test_events_game()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -1302,6 +1304,76 @@ func _test_decrees() -> void:
 	p = Population.new()
 	p.end_day(1.0, 1.0, 100, 1.0, 1.0, 1.0, 1.2)
 	_check(p.satisfaction == 1.0, "humeur : satisfaction bornée à 100 %")
+
+
+func _test_city_events() -> void:
+	var e := CityEvents.new(7)
+	var farm := ZoneDb.get_def(&"agriculture")
+	var pasture := ZoneDb.get_def(&"pasture")
+	_check(e.heat_factor() == 1.0 and e.zone_factor(farm) == 1.0, "sans événement : aucun effet")
+	var early := 0
+	for k in CityEvents.MIN_GAP_DAYS - 1:
+		if e.roll(GameDate.WINTER) >= 0:
+			early += 1
+	_check(early == 0, "écart minimal entre deux événements")
+	var seen: Array[int] = []
+	var drawn := 0
+	for k in 20000:
+		var kind := e.roll(1)
+		if kind >= 0:
+			drawn += 1
+			if kind not in seen:
+				seen.append(kind)
+			e.active.clear()
+	_check(drawn > 20 and CityEvents.Kind.HARD_WINTER not in seen and CityEvents.Kind.DROUGHT in seen
+		and seen.size() == 4, "été : pas d'hiver rude (%s)" % [seen])
+	e.active.clear()
+	e.active[CityEvents.Kind.DROUGHT] = 2
+	e.active[CityEvents.Kind.HARD_WINTER] = 1
+	_check(e.zone_factor(farm) == CityEvents.DROUGHT_FACTOR and e.zone_factor(pasture) == 1.0
+		and e.heat_factor() == CityEvents.HARD_WINTER_HEAT, "sécheresse et hiver rude")
+	var ended := e.end_day()
+	_check(ended.size() == 1 and ended[0] == CityEvents.Kind.HARD_WINTER and e.is_active(CityEvents.Kind.DROUGHT), "fin d'un événement")
+	var a := CityEvents.new(5)
+	var b := CityEvents.new(5)
+	var same := true
+	for k in 2000:
+		same = same and a.roll(k / 30 % 4) == b.roll(k / 30 % 4)
+	_check(same, "événements reproductibles avec la graine")
+
+
+func _test_events_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	gs.events._gap = 0
+	gs.events.rng.seed = 3
+	for k in 400:
+		gs._run_events(1)
+	_check(gs.events.active.is_empty(), "hameau : pas d'événement")
+	gs.tier.level = 3
+	var heat: float = gs.population.wood_need(GameDate.WINTER)
+	gs.events.active[CityEvents.Kind.HARD_WINTER] = 5
+	_check(is_equal_approx(gs.wood_need(GameDate.WINTER), heat * CityEvents.HARD_WINTER_HEAT), "hiver rude : plus de bois")
+	gs.events.active.clear()
+	gs.draft.horses = 10.0
+	gs.apply_event(CityEvents.Kind.EPIZOOTIC)
+	_check(is_equal_approx(gs.draft.horses, 8.0), "épizootie : chevaux perdus")
+	var forests := func() -> int:
+		var n := 0
+		for c: Vector2i in gs.territory.territory_cells():
+			if gs.world_map.get_terrain(c) == TerrainDef.Type.FOREST:
+				n += 1
+		return n
+	var before: int = forests.call()
+	var burnt: int = gs._burn_forest()
+	_check(burnt > 0 and burnt <= CityEvents.FIRE_TILES and forests.call() == before - burnt, "incendie : %d tuiles" % burnt)
+	gs.population.count = 100
+	gs.housing = 102
+	gs.apply_event(CityEvents.Kind.MIGRANTS)
+	_check(gs.population.count == 102, "migrants : dans la limite des logements")
+	gs.apply_event(CityEvents.Kind.MIGRANTS)
+	_check(gs.population.count == 102, "migrants : sans logement, personne ne reste")
+	gs.new_game(4242)
 
 
 func _test_economy_game() -> void:
