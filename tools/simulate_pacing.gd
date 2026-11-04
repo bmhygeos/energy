@@ -3,12 +3,13 @@ extends SceneTree
 ## simple (zones sur tout le territoire, maisons et greniers quand il en faut,
 ## une expédition à la fois, recherches dans l'ordre, puits, atelier et
 ## carrière au village ; lin, mine de charbon, atelier de tissage,
-## laboratoire et moulin à eau au bourg) et affiche l'évolution mois par mois, puis les jours
+## laboratoire et moulin à eau au bourg ; réservoir, puits de pétrole,
+## raffinerie et université à la ville) et affiche l'évolution mois par mois, puis les jours
 ## où chaque palier et chaque jalon sont atteints.
 ## Lancer : godot --headless -s res://tools/simulate_pacing.gd -- [graine] [années]
 
 const ZONE_ORDER: Array[StringName] = [&"pasture", &"agriculture", &"forestry", &"quarry", &"fishing", &"iron_mine",
-	&"coal_mine"]
+	&"coal_mine", &"oil_well"]
 ## Bourg : carré de lin (demi-côté) au sud-est du village.
 const FLAX_RADIUS := 2
 const FLAX_OFFSET := Vector2i(10, 10)
@@ -17,6 +18,12 @@ const ZONE_RADIUS := 24
 ## Demi-côté du carré central laissé sans zone pour les bâtiments (agrandi
 ## avec la population).
 const BUILD_RADIUS := 4
+## Plafond de ce carré : au-delà, il effacerait les champs (les zones sont
+## retirées dans ce carré) et affamerait la ville.
+const MAX_BUILD_RADIUS := 12
+## Les maisons restent dans ce carré : le pourtour garde de la place pour les
+## puits et les ateliers (ensuite, elles s'améliorent sur place).
+const HOUSE_RADIUS := 9
 ## Logements libres en dessous desquels une maison est construite.
 const HOUSING_MARGIN := 3
 const DIRECTIONS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1),
@@ -82,8 +89,8 @@ func _play_day(day: int) -> void:
 				break
 	if day == 0:
 		_build_near(&"woodshed")
-	if _gs.housing - _gs.population.count <= HOUSING_MARGIN:
-		_build_near(&"house")
+	if _gs.housing - _gs.population.count <= HOUSING_MARGIN and not _build_near(&"house", 0, HOUSE_RADIUS):
+		_upgrade_house()
 	var stock: Stockpile = _gs.stockpile
 	if stock.amount[Stockpile.Good.FOOD] >= 0.9 * stock.capacity[Stockpile.Good.FOOD] \
 			and stock.capacity[Stockpile.Good.FOOD] < _gs.food_need() * GameDate.DAYS_PER_SEASON * 2:
@@ -110,6 +117,13 @@ func _play_day(day: int) -> void:
 			_build_near(&"steam_engine")
 		if stock.amount[Stockpile.Good.COAL] >= 0.9 * stock.capacity[Stockpile.Good.COAL]:
 			_build_near(&"coal_yard")
+	if _gs.tier.level >= 4:
+		if not _has(&"oil_tank"):
+			_build_near(&"oil_tank")
+		if _gs.research.is_done(&"refining") and _count(&"refinery") * BuildingDb.get_def(&"refinery").fuel_per_day < _gs.light_need():
+			_build_near(&"refinery")
+		if _gs.research.is_done(&"university") and not _has(&"university") and _gs.treasury.money > 1000.0:
+			_build_near(&"university")
 	if _gs.exploration.can_launch() and day % 10 == 0 and _gs.food_days() > 30.0:
 		var dir := DIRECTIONS[_expeditions % DIRECTIONS.size()]
 		var reach := 20 + 8 * (_expeditions / DIRECTIONS.size())
@@ -123,8 +137,10 @@ func _play_day(day: int) -> void:
 ## Zones sur tout le territoire proche, dans ZONE_ORDER (les suivantes
 ## repeignent les tuiles valides des précédentes), sauf au centre.
 func _paint_zones() -> void:
-	var from := _center - Vector2i.ONE * ZONE_RADIUS
-	var to := _center + Vector2i.ONE * ZONE_RADIUS
+	# Une grande ville va chercher plus loin le bois qu'elle a épuisé.
+	var radius := maxi(ZONE_RADIUS, _gs.population.count / 30)
+	var from := _center - Vector2i.ONE * radius
+	var to := _center + Vector2i.ONE * radius
 	for id in ZONE_ORDER:
 		var def := ZoneDb.get_def(id)
 		if def.tier > _gs.tier.level:
@@ -138,21 +154,26 @@ func _paint_zones() -> void:
 	# Le charbon du bourg est près du centre : la mine y reste.
 	if _gs.tier.level >= 3:
 		_gs.apply_zones(_gs.plan_zones(ZoneDb.get_def(&"coal_mine"), _center - Vector2i.ONE * r, _center + Vector2i.ONE * r))
+	# Le pétrole de la ville aussi.
+	if _gs.tier.level >= 4:
+		_gs.apply_zones(_gs.plan_zones(ZoneDb.get_def(&"oil_well"), _center - Vector2i.ONE * r, _center + Vector2i.ONE * r))
+	if _gs.tier.level >= 3:
 		var flax := _center + FLAX_OFFSET
 		_gs.apply_zones(_gs.plan_zones(ZoneDb.get_def(&"flax"), flax - Vector2i.ONE * FLAX_RADIUS, flax + Vector2i.ONE * FLAX_RADIUS))
 
 
 func _build_radius() -> int:
-	return BUILD_RADIUS + _gs.population.count / 40
+	return mini(BUILD_RADIUS + _gs.population.count / 40, MAX_BUILD_RADIUS)
 
 
 ## Construit [param id] au plus près du centre (jusqu'à [param radius] tuiles,
-## par défaut le rayon des bâtiments) ; renvoie true si posé.
-func _build_near(id: StringName, radius := 0) -> bool:
+## par défaut le rayon des bâtiments, au plus [param limit]) ; renvoie true si
+## posé.
+func _build_near(id: StringName, radius := 0, limit := 1000) -> bool:
 	var def := BuildingDb.get_def(id)
 	if def.tier > _gs.tier.level:
 		return false
-	for r in range(1, maxi(radius, _build_radius()) + 1):
+	for r in range(1, mini(maxi(radius, _build_radius()), limit) + 1):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				if maxi(absi(dx), absi(dy)) != r:
@@ -163,6 +184,14 @@ func _build_near(id: StringName, radius := 0) -> bool:
 						and not placement.cells.any(Callable(_gs, &"_reserved_at_start")):
 					return _gs.build(def, _center + Vector2i(dx, dy)) != null
 	return false
+
+
+## Plus de place : améliore une maison (la moins élevée d'abord).
+func _upgrade_house() -> void:
+	for b: Building in _gs.buildings.all():
+		if b.def.category == BuildingDef.Category.HOUSING and _gs.upgrade_error(b).is_empty():
+			_gs.upgrade(b.anchor)
+			return
 
 
 func _count(id: StringName) -> int:
