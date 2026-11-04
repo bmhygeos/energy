@@ -22,6 +22,7 @@ var gesture_used := false
 
 func _ready() -> void:
 	EventBus.game_started.connect(func(_seed: int) -> void: reset_view())
+	EventBus.territory_changed.connect(refresh_bounds)
 	EventBus.tool_changed.connect(func(mode: int, _def: Resource) -> void:
 		_select_mode = mode == BuildTool.Mode.SELECT)
 	reset_view()

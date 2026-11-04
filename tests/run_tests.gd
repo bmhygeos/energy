@@ -58,8 +58,25 @@ func _initialize() -> void:
 	_test_events_game()
 	_test_roads_game()
 	_test_city_game()
+	_test_camera_bounds()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## La caméra suit la carte connue quand les expéditions l'agrandissent.
+func _test_camera_bounds() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var camera: Camera2D = load("res://scenes/world/camera_controller.gd").new()
+	root.add_child(camera)
+	var before: Rect2 = camera._bounds
+	var far := Vector2i(gs.home.x + 40, gs.home.y)
+	gs.territory.explore([gs.world_map.wrap_cell(far)] as Array[Vector2i])
+	root.get_node("EventBus").territory_changed.emit()
+	var tile := Iso.map_to_world(Vector2(gs.display_cell(gs.world_map.wrap_cell(far))))
+	_check(not before.has_point(tile) and camera._bounds.has_point(tile), "caméra : bornes agrandies par l'exploration")
+	camera.free()
+	gs.new_game(4242)
 
 
 func _check(condition: bool, label: String) -> void:
