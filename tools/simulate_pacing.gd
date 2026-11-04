@@ -20,10 +20,14 @@ const ZONE_RADIUS := 24
 const BUILD_RADIUS := 4
 ## Plafond de ce carré : au-delà, il effacerait les champs (les zones sont
 ## retirées dans ce carré) et affamerait la ville.
-const MAX_BUILD_RADIUS := 12
+const MAX_BUILD_RADIUS := 14
 ## Les maisons restent dans ce carré : le pourtour garde de la place pour les
 ## puits et les ateliers (ensuite, elles s'améliorent sur place).
 const HOUSE_RADIUS := 9
+## Marchés visés (volume échangé par jour).
+const TRADE_GOAL := 600.0
+## Jours de réserve sous lesquels une marchandise est achetée.
+const BUY_BELOW_DAYS := 10.0
 ## Logements libres en dessous desquels une maison est construite.
 const HOUSING_MARGIN := 3
 const DIRECTIONS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1),
@@ -89,10 +93,14 @@ func _play_day(day: int) -> void:
 				break
 	if day == 0:
 		_build_near(&"woodshed")
-	if _gs.housing - _gs.population.count <= HOUSING_MARGIN and not _build_near(&"house", 0, HOUSE_RADIUS):
-		_upgrade_house()
+	if _gs.housing - _gs.population.count <= HOUSING_MARGIN and not _build_near(&"house", 0, HOUSE_RADIUS) \
+			and not _upgrade_house():
+		_build_near(&"house")
 	var stock: Stockpile = _gs.stockpile
-	if stock.amount[Stockpile.Good.FOOD] >= 0.9 * stock.capacity[Stockpile.Good.FOOD] \
+	# Au bourg, sous le seuil de vente automatique : sinon, les greniers ne
+	# grandiraient plus.
+	var full_food := 0.7 if _gs.tier.level >= 3 else 0.9
+	if stock.amount[Stockpile.Good.FOOD] >= full_food * stock.capacity[Stockpile.Good.FOOD] \
 			and stock.capacity[Stockpile.Good.FOOD] < _gs.food_need() * GameDate.DAYS_PER_SEASON * 2:
 		_build_near(&"granary")
 	if stock.amount[Stockpile.Good.WOOD] >= 0.9 * stock.capacity[Stockpile.Good.WOOD]:
@@ -104,7 +112,8 @@ func _play_day(day: int) -> void:
 			_build_near(&"workshop")
 		if not _has(&"stable"):
 			_build_near(&"stable")
-		if _gs.research.is_done(&"iron_metallurgy") and not _has(&"forge"):
+		if _gs.research.is_done(&"iron_metallurgy") \
+				and _count(&"forge") * BuildingDb.get_def(&"forge").tools_per_day < maxf(1.0, _gs.tools_need()):
 			_build_near(&"forge")
 	if _gs.tier.level >= 3:
 		if _count(&"weaver") * BuildingDb.get_def(&"weaver").clothes_per_day < _gs.clothes_need():
@@ -117,13 +126,19 @@ func _play_day(day: int) -> void:
 			_build_near(&"steam_engine")
 		if stock.amount[Stockpile.Good.COAL] >= 0.9 * stock.capacity[Stockpile.Good.COAL]:
 			_build_near(&"coal_yard")
+		if _gs.treasury.trade_capacity + _building_markets() * BuildingDb.get_def(&"market").trade_per_day < TRADE_GOAL:
+			_build_near(&"market")
+		# Impôt normal et surplus de nourriture vendus : de quoi payer les achats.
+		_gs.set_tax_level(2)
+		_gs.set_auto_sell(Stockpile.Good.FOOD, true)
+		_buy_shortages()
 	if _gs.tier.level >= 4:
 		if not _has(&"oil_tank"):
 			_build_near(&"oil_tank")
 		if _gs.research.is_done(&"refining") and _count(&"refinery") * BuildingDb.get_def(&"refinery").fuel_per_day < _gs.light_need():
 			_build_near(&"refinery")
 		if _gs.research.is_done(&"university") and not _has(&"university") and _gs.treasury.money > 1000.0:
-			_build_near(&"university")
+			_build_clearing(&"university")
 	if _gs.exploration.can_launch() and day % 10 == 0 and _gs.food_days() > 30.0:
 		var dir := DIRECTIONS[_expeditions % DIRECTIONS.size()]
 		var reach := 20 + 8 * (_expeditions / DIRECTIONS.size())
@@ -148,9 +163,10 @@ func _paint_zones() -> void:
 		_gs.apply_zones(_gs.plan_zones(def, from, to))
 	var r := _build_radius()
 	_gs.apply_zones(_gs.plan_zones(null, _center - Vector2i.ONE * r, _center + Vector2i.ONE * r))
-	# La colline à pierre du village est au centre : la carrière y reste.
+	# La colline à pierre et le fer du village sont au centre : carrière et mine y restent.
 	if _gs.tier.level >= 2:
 		_gs.apply_zones(_gs.plan_zones(ZoneDb.get_def(&"quarry"), _center - Vector2i.ONE * r, _center + Vector2i.ONE * r))
+		_gs.apply_zones(_gs.plan_zones(ZoneDb.get_def(&"iron_mine"), _center - Vector2i.ONE * r, _center + Vector2i.ONE * r))
 	# Le charbon du bourg est près du centre : la mine y reste.
 	if _gs.tier.level >= 3:
 		_gs.apply_zones(_gs.plan_zones(ZoneDb.get_def(&"coal_mine"), _center - Vector2i.ONE * r, _center + Vector2i.ONE * r))
@@ -159,7 +175,8 @@ func _paint_zones() -> void:
 		_gs.apply_zones(_gs.plan_zones(ZoneDb.get_def(&"oil_well"), _center - Vector2i.ONE * r, _center + Vector2i.ONE * r))
 	if _gs.tier.level >= 3:
 		var flax := _center + FLAX_OFFSET
-		_gs.apply_zones(_gs.plan_zones(ZoneDb.get_def(&"flax"), flax - Vector2i.ONE * FLAX_RADIUS, flax + Vector2i.ONE * FLAX_RADIUS))
+		var flax_radius: int = FLAX_RADIUS + _gs.population.count / 400
+		_gs.apply_zones(_gs.plan_zones(ZoneDb.get_def(&"flax"), flax - Vector2i.ONE * flax_radius, flax + Vector2i.ONE * flax_radius))
 
 
 func _build_radius() -> int:
@@ -186,12 +203,49 @@ func _build_near(id: StringName, radius := 0, limit := 1000) -> bool:
 	return false
 
 
-## Plus de place : améliore une maison (la moins élevée d'abord).
-func _upgrade_house() -> void:
+## Construit [param id] au plus près du centre en effaçant les zones de son
+## emprise ; renvoie true si posé.
+func _build_clearing(id: StringName) -> bool:
+	var def := BuildingDb.get_def(id)
+	for r in range(1, ZONE_RADIUS):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var anchor: Vector2i = _center + Vector2i(dx, dy)
+				var placement: BuildingRegistry.Placement = _gs.buildings.check_placement(def, anchor)
+				if placement.is_valid() and placement.cleared.is_empty() \
+						and not placement.cells.any(Callable(_gs, &"_reserved_at_start")):
+					_gs.apply_zones(_gs.plan_zones(null, placement.cells[0], placement.cells[-1]))
+					return _gs.build(def, anchor) != null
+	return false
+
+
+## Marchés en chantier.
+func _building_markets() -> int:
+	return _gs.buildings.all().filter(func(b: Building) -> bool: return b.def.id == &"market" and not b.is_complete()).size()
+
+
+## Achète au marché ce qui manque : vivres et chauffage d'abord, puis le reste.
+func _buy_shortages() -> void:
+	if _gs.trade_error() != "":
+		return
+	var stock: Stockpile = _gs.stockpile
+	var season := GameDate.season(_clock.tick)
+	var needs := {Stockpile.Good.FOOD: _gs.food_need(), Stockpile.Good.WOOD: _gs.wood_need(season), Stockpile.Good.CLOTHES: _gs.clothes_need(),
+		Stockpile.Good.TOOLS: _gs.tools_need(), Stockpile.Good.FUEL: _gs.light_need()}
+	for good: int in needs:
+		var missing: float = needs[good] * BUY_BELOW_DAYS - stock.amount[good]
+		if missing > 0.0:
+			_gs.treasury.buy(stock, good, missing)
+
+
+## Plus de place : améliore une maison ; false si aucune ne peut l'être.
+func _upgrade_house() -> bool:
 	for b: Building in _gs.buildings.all():
 		if b.def.category == BuildingDef.Category.HOUSING and _gs.upgrade_error(b).is_empty():
-			_gs.upgrade(b.anchor)
-			return
+			return _gs.upgrade(b.anchor)
+	return false
 
 
 func _count(id: StringName) -> int:
