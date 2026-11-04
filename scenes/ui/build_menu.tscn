@@ -6,26 +6,40 @@
 script = ExtResource("1_menu")
 
 [node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 9
+anchor_bottom = 1.0
 offset_left = 12.0
 offset_top = 56.0
-offset_right = 252.0
-offset_bottom = 56.0
+offset_right = 268.0
+offset_bottom = -12.0
+grow_vertical = 2
 
 [node name="Margin" type="MarginContainer" parent="Panel"]
 layout_mode = 2
 theme_override_constants/margin_left = 10
 theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
+theme_override_constants/margin_right = 4
 theme_override_constants/margin_bottom = 10
 
-[node name="List" type="VBoxContainer" parent="Panel/Margin"]
-unique_name_in_owner = true
+[node name="Column" type="VBoxContainer" parent="Panel/Margin"]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="Panel/Margin/List"]
+[node name="Title" type="Label" parent="Panel/Margin/Column"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Construction"
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="List" type="VBoxContainer" parent="Panel/Margin/Column/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="HintPanel" type="PanelContainer" parent="."]
 anchors_preset = 7

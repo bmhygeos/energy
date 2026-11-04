@@ -1186,6 +1186,24 @@ func _test_bourg_game() -> void:
 	var weaver := BuildingDb.get_def(&"weaver")
 	var gs: Node = root.get_node("GameState")
 	gs.new_game(4242)
+	# Greniers construits au niveau du palier, coût des améliorations ajouté.
+	var granary := BuildingDb.get_def(&"granary")
+	_check(gs.build_level(granary) == granary and gs.build_costs(granary) == granary.costs(), "hameau : grenier")
+	gs.tier.level = 3
+	var costs: PackedFloat32Array = gs.build_costs(granary)
+	_check(gs.build_level(granary).id == &"large_granary" and costs[Stockpile.Good.WOOD] == 90.0
+		and costs[Stockpile.Good.STONE] == 70.0 and costs[Stockpile.Good.IRON] == 10.0,
+		"bourg : grand grenier (90 bois, 70 pierre, 10 fer)")
+	_check(gs.build_level(BuildingDb.get_def(&"house")).id == &"house", "maison : niveau de base")
+	for good in Stockpile.COUNT:
+		gs.stockpile.amount[good] = 0.0
+	var placement: BuildingRegistry.Placement
+	for dx in range(-5, 6):
+		placement = gs.check_placement(granary, gs.display_cell(gs.home) + Vector2i(dx, 3))
+		if placement.error.contains("insuffisant"):
+			break
+	_check(placement.def.id == &"large_granary" and placement.error.contains("insuffisant"), "placement au niveau du palier, matériaux vérifiés (%s)" % placement.error)
+	gs.tier.level = 1
 	var site := StartSite.territory_rect(gs.home)
 	var coal_cells := 0
 	for y in range(site.position.y, site.end.y):

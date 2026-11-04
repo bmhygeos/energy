@@ -167,15 +167,44 @@ static func random_seed() -> int:
 	return randi_range(100_000, 999_999)
 
 
-## Placement de [param def] en [param anchor] : palier atteint, règles du
-## registre, pas sur une zone (à effacer d'abord) et assez de matériaux.
+## Niveau construit pour [param def] : un bâtiment qui se construit au niveau
+## du palier (grenier) monte sa chaîne d'améliorations tant que le palier et
+## les recherches le permettent ; les autres restent tels quels.
+func build_level(def: BuildingDef) -> BuildingDef:
+	var level := def
+	if not def.build_at_tier or tier == null:
+		return level
+	while level.upgrade and level.upgrade.tier <= tier.level \
+			and (not level.upgrade.research or research.is_done(level.upgrade.research)):
+		level = level.upgrade
+	return level
+
+
+## Coût de construction de [param def] : celui du niveau de base, plus celui
+## des améliorations sautées pour arriver au niveau du palier (build_level).
+func build_costs(def: BuildingDef) -> PackedFloat32Array:
+	var total := costs_of(def)
+	var level := def
+	var target := build_level(def)
+	while level != target:
+		level = level.upgrade
+		var step := costs_of(level)
+		for good in Stockpile.COUNT:
+			total[good] += step[good]
+	return total
+
+
+## Placement de [param def] (à son niveau construit, build_level) en
+## [param anchor] : palier atteint, règles du registre, pas sur une zone (à
+## effacer d'abord) et assez de matériaux.
 func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Placement:
+	var costs := build_costs(def)
+	def = build_level(def)
 	var placement := buildings.check_placement(def, anchor)
 	if placement.is_valid() and def.tier > tier.level:
 		placement.error = "Disponible au palier %s" % CityTier.NAMES[def.tier - 1]
 	if placement.is_valid() and def.research and not research.is_done(def.research):
 		placement.error = "Recherche requise : %s" % ResearchDb.get_def(def.research).display_name
-	var costs := costs_of(def)
 	for good in costs.size():
 		if placement.is_valid() and not stockpile.has(good, costs[good]):
 			placement.error = "%s insuffisant%s (%d requis)" % [Stockpile.GOOD_NAMES[good],
@@ -243,7 +272,7 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 	if not placement.is_valid():
 		EventBus.notified.emit(placement.error)
 		return null
-	var costs := costs_of(def)
+	var costs := build_costs(def)
 	for good in costs.size():
 		stockpile.take(good, costs[good])
 	var b := buildings.place(placement)

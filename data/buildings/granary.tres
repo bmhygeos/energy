@@ -13,6 +13,7 @@ size = Vector2i(2, 1)
 build_hours = 36
 wood_cost = 40
 upgrade = ExtResource("2_up")
+build_at_tier = true
 food_capacity = 600.0
 color = Color(0.725, 0.635, 0.494, 1)
 roof_color = Color(0.486, 0.373, 0.271, 1)

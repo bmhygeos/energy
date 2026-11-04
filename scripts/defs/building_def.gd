@@ -32,6 +32,9 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var tools_cost := 0
 ## Niveau suivant, construit sur place (grenier → grenier en pierre…).
 @export var upgrade: BuildingDef
+## Se construit directement au niveau du palier atteint (greniers) : coût de
+## base plus celui des améliorations sautées.
+@export var build_at_tier := false
 
 @export_group("Effets")
 ## Habitants logés (maisons).

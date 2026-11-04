@@ -213,7 +213,10 @@ météo et interface conservés.
 - Menu : bâtiments grisés tant que leur recherche manque ; fiche de la tuile :
   bonus des inventions.
 - **Greniers améliorables**, un niveau par palier (outil « Améliorer » du
-  menu, puis clic sur le grenier ; il reste en service pendant les travaux) :
+  menu, puis clic sur le grenier ; il reste en service pendant les travaux).
+  Un nouveau grenier se construit directement au niveau du palier atteint
+  (grand grenier au bourg…), pour le coût du grenier plus celui des
+  améliorations sautées :
   | Niveau | Palier | Capacité | Coût de l'amélioration |
   |---|---|---|---|
   | Grenier | Hameau | 600 | (construction : 40 bois) |

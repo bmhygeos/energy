@@ -57,6 +57,10 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Molette et gestes du pavé tactile au-dessus de l'interface (liste des
+	# constructions en butée, panneaux) : pas de zoom ni de défilement de la carte.
+	if _is_wheel_or_gesture(event) and get_viewport().gui_get_hovered_control() != null:
+		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		match mb.button_index:
@@ -110,6 +114,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	else:
 		return
 	get_viewport().set_input_as_handled()
+
+
+static func _is_wheel_or_gesture(event: InputEvent) -> bool:
+	var mb := event as InputEventMouseButton
+	if mb:
+		return mb.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN,
+			MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]
+	return event is InputEventMagnifyGesture or event is InputEventPanGesture
 
 
 ## Multiplie le zoom par [param factor] en gardant fixe le point du monde

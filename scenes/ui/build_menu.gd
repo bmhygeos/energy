@@ -116,7 +116,8 @@ func _refresh_tier_locks() -> void:
 	for d: ZoneDef in _zone_buttons:
 		_lock(_zone_buttons[d], d.display_name, d.tier, level)
 	for d: BuildingDef in _build_buttons:
-		var label := "%s   %s" % [d.display_name, d.describe_cost(GameState.costs_of(d))]
+		var built := GameState.build_level(d)
+		var label := "%s   %s" % [built.display_name, d.describe_cost(GameState.build_costs(d))]
 		var missing := d.research and not GameState.research.is_done(d.research)
 		if missing and d.tier <= level:
 			_build_buttons[d].disabled = true
@@ -292,6 +293,12 @@ func _tooltip(def: BuildingDef) -> String:
 	var lines := PackedStringArray([def.display_name, def.description, ""])
 	lines.append("Taille : %d×%d" % [def.size.x, def.size.y])
 	lines.append("Coût : %s" % def.describe_cost())
+	if def.build_at_tier:
+		lines.append("Se construit au niveau du palier atteint (coût des améliorations ajouté) :")
+		var level := def.upgrade
+		while level:
+			lines.append("  %s : %s" % [CityTier.NAMES[level.tier - 1], level.display_name])
+			level = level.upgrade
 	if def.tier > 1:
 		lines.append("Palier : %s" % CityTier.NAMES[def.tier - 1])
 	if def.research:
@@ -332,8 +339,9 @@ func _refresh_hint() -> void:
 	var text := ""
 	match _mode:
 		BuildTool.Mode.BUILD:
-			text = "[b]%s[/b] — %s · chantier %s" % [_def.display_name, _def.describe_cost(GameState.costs_of(_def)),
-				Format.duration_hours(_def.build_hours)]
+			var level := GameState.build_level(_def)
+			text = "[b]%s[/b] — %s · chantier %s" % [level.display_name, _def.describe_cost(GameState.build_costs(_def)),
+				Format.duration_hours(level.build_hours)]
 			if _placement == null:
 				text += "\nPlacez le bâtiment sur la carte · Échap : annuler"
 			elif _placement.is_valid():
