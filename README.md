@@ -188,7 +188,7 @@ météo et interface conservés.
 - **Mine de fer** : zone sur un gisement de fer prospecté (2 mineurs, 1 fer/j
   chacun) ; le gisement s'épuise, puis la tuile perd sa zone. Chaque carte
   place un filon de fer près du village : au moins 2 tuiles de fer entre 3 et
-  5 tuiles du centre (6 000 t chacune, ajoutées s'il le faut, laissées libres
+  5 tuiles du centre (30 000 t chacune, ajoutées s'il le faut, laissées libres
   par les bâtiments de départ), visibles dès le passage au village.
 - **Forge** (recherche Métallurgie du fer) : 2 outils/j, 1 fer et 0,5 bois
   chacun. Fer (200) et outils (100) au bandeau avec la pierre.
@@ -259,7 +259,7 @@ météo et interface conservés.
 - **Palier Bourg** (400 habitants, 80 % de satisfaction) : le territoire est
   prospecté, les gisements de **charbon** apparaissent. Chaque carte place un
   filon de charbon près du village (au moins 2 tuiles entre 4 et 5 tuiles du
-  centre, 8 000 t chacune, ajoutées s'il le faut).
+  centre, 40 000 t chacune, ajoutées s'il le faut).
 - **Mine de charbon** : zone sur un gisement de charbon prospecté (2 mineurs,
   1,5 charbon/j chacun) ; le gisement s'épuise.
 - **Chauffage au charbon** : au bourg, tant qu'il y a du charbon en stock, il
@@ -278,7 +278,7 @@ météo et interface conservés.
   | Recherche | Prérequis | Points | Effet |
   |---|---|---|---|
   | Méthode expérimentale | — | 6 000 | **Laboratoire** (40 bois, 60 pierre, 15 fer, 10 outils) : recherche ×5 pour 400 habitants |
-  | Coke | Métallurgie du fer | 20 000 | Les forges brûlent du charbon au lieu du bois et fabriquent 50 % d'outils en plus |
+  | Coke | Métallurgie du fer | 20 000 | Les forges brûlent du charbon au lieu du bois (deux fois moins) et fabriquent 50 % d'outils en plus |
   | Moulin à eau | Moulin à vent | 30 000 | **Moulin à eau** (au bord d'une rivière ; 50 bois, 40 pierre, 10 fer) : agriculture +30 % (le meilleur moulin compte), gâchis ÷2, coupe du bois et forges +20 %, 8 kW sans dépendre du vent |
 - Les bâtiments peuvent coûter des outils (laboratoire). Statistiques :
   charbon, fibres et vêtements, part des vêtements remplacés.

@@ -23,8 +23,8 @@ const COAL_HEAT_TIER := 3
 ## unité de charbon (290 MJ contre 150 MJ).
 const COAL_HEAT_SHARE := 0.5
 const COAL_WOOD_EQUIVALENT := 2.0
-## Coke : les forges brûlent du charbon (même quantité que le bois) et
-## fabriquent davantage.
+## Coke : les forges brûlent du charbon (COAL_WOOD_EQUIVALENT fois moins que
+## de bois) et fabriquent davantage.
 const COKE_FORGE_BONUS := 1.5
 ## Atelier de tissage : fibres par vêtement.
 const FIBER_PER_CLOTHES := 1.0
@@ -682,16 +682,18 @@ func _run_forges() -> void:
 			rate += b.def.tools_per_day
 	rate *= 1.0 + production.drive_bonus
 	var fuel := Stockpile.Good.WOOD
+	var fuel_per_tool := FORGE_WOOD_PER_TOOL
 	if research.is_done(&"coke") and stockpile.amount[Stockpile.Good.COAL] > 0.0:
 		fuel = Stockpile.Good.COAL
+		fuel_per_tool /= COAL_WOOD_EQUIVALENT
 		rate *= COKE_FORGE_BONUS
 	var room := stockpile.capacity[Stockpile.Good.TOOLS] - stockpile.amount[Stockpile.Good.TOOLS]
 	var n := minf(minf(rate, room), minf(stockpile.amount[Stockpile.Good.IRON] / FORGE_IRON_PER_TOOL,
-		stockpile.amount[fuel] / FORGE_WOOD_PER_TOOL))
+		stockpile.amount[fuel] / fuel_per_tool))
 	if n <= 0.0:
 		return
 	stockpile.take(Stockpile.Good.IRON, n * FORGE_IRON_PER_TOOL)
-	stockpile.take(fuel, n * FORGE_WOOD_PER_TOOL)
+	stockpile.take(fuel, n * fuel_per_tool)
 	stockpile.add(Stockpile.Good.TOOLS, n)
 	production.produced_today[Stockpile.Good.TOOLS] += n
 

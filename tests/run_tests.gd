@@ -1249,8 +1249,8 @@ func _test_bourg_game() -> void:
 	gs._run_forges()
 	var made: float = BuildingDb.get_def(&"forge").tools_per_day * gs.COKE_FORGE_BONUS
 	_check(forge != null and is_equal_approx(stock.amount[Stockpile.Good.TOOLS], made)
-		and is_equal_approx(stock.amount[Stockpile.Good.COAL], 50.0 - made * gs.FORGE_WOOD_PER_TOOL)
-		and stock.amount[Stockpile.Good.WOOD] == wood_before, "coke : charbon au lieu du bois, outils +50 %%")
+		and is_equal_approx(stock.amount[Stockpile.Good.COAL], 50.0 - made * gs.FORGE_WOOD_PER_TOOL / gs.COAL_WOOD_EQUIVALENT)
+		and stock.amount[Stockpile.Good.WOOD] == wood_before, "coke : deux fois moins de charbon que de bois, outils +50 %%")
 	gs.new_game(4242)
 
 

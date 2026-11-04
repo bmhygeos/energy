@@ -24,13 +24,13 @@ const STONE_BLOCK := 2
 const MIN_IRON := 2
 const IRON_MIN_DISTANCE := 3
 const IRON_RADIUS := 5
-const IRON_AMOUNT := 6000.0
+const IRON_AMOUNT := 30000.0
 ## Tuiles de charbon (mines du bourg) à COAL_MIN_DISTANCE–COAL_RADIUS tuiles
 ## du centre, de COAL_AMOUNT tonnes chacune à défaut.
 const MIN_COAL := 2
 const COAL_MIN_DISTANCE := 4
 const COAL_RADIUS := 5
-const COAL_AMOUNT := 8000.0
+const COAL_AMOUNT := 40000.0
 ## Tuiles de pétrole (puits de la ville) à OIL_MIN_DISTANCE–OIL_RADIUS tuiles
 ## du centre, de OIL_AMOUNT tonnes chacune à défaut.
 const MIN_OIL := 4
