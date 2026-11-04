@@ -38,6 +38,7 @@ var _overlay_buttons: Array[Button] = []
 @onready var _stone_label: Label = %StoneLabel
 @onready var _water_label: Label = %WaterLabel
 @onready var _power_label: Label = %PowerLabel
+@onready var _money_button: Button = %EconomyButton
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
 @onready var _legend_gradient: TextureRect = %LegendGradient
@@ -60,17 +61,14 @@ func _ready() -> void:
 	%StatsButton.pressed.connect(func() -> void: get_node("../StatsWindow").toggle())
 	%LaborButton.pressed.connect(func() -> void: get_node("../LaborPanel").toggle())
 	%ResearchButton.pressed.connect(func() -> void: get_node("../ResearchPanel").toggle())
-	# Aide : le tutoriel se rouvre aussi sans clavier (tablette).
-	var help := Button.new()
-	help.text = "Aide"
-	help.tooltip_text = "Afficher ou masquer le tutoriel (H)"
-	help.focus_mode = Control.FOCUS_NONE
-	help.pressed.connect(func() -> void: get_node("../Tutorial").toggle())
-	%StatsButton.add_sibling(help)
+	%EconomyButton.pressed.connect(func() -> void: get_node("../EconomyPanel").toggle())
+	_build_game_menu()
 	EventBus.labor_changed.connect(_refresh_population)
 	EventBus.population_changed.connect(_refresh_population)
 	EventBus.stocks_changed.connect(_refresh_stocks)
 	EventBus.tier_changed.connect(_refresh_population)
+	EventBus.economy_changed.connect(_refresh_money)
+	EventBus.tier_changed.connect(_refresh_money)
 	_on_tick(GameClock.tick)
 	_on_speed_changed(GameClock.speed)
 	_on_game_started(Rng.seed_value)
@@ -81,6 +79,37 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("overlay_cycle"):
 		EventBus.overlay_changed.emit((_overlay_mode + 1) % OverlayLayer.Mode.size())
 		get_viewport().set_input_as_handled()
+
+
+## Menu « Partie » : graine, nouvelle carte et aide (le tutoriel se rouvre
+## aussi sans clavier, sur tablette), hors du bandeau pour lui laisser la place.
+func _build_game_menu() -> void:
+	var menu := Button.new()
+	menu.text = "Partie ▾"
+	menu.tooltip_text = "Nouvelle carte, graine, aide"
+	menu.focus_mode = Control.FOCUS_NONE
+	%Speed.add_sibling(menu)
+	%Speed.get_parent().move_child(menu, %Speed.get_index())
+	var popup := PopupPanel.new()
+	add_child(popup)
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	popup.add_child(box)
+	for node: Control in [_seed_edit, %GenerateButton, %RandomButton]:
+		node.reparent(box)
+	var help := Button.new()
+	help.text = "Aide"
+	help.tooltip_text = "Afficher ou masquer le tutoriel (H)"
+	help.focus_mode = Control.FOCUS_NONE
+	help.pressed.connect(func() -> void:
+		popup.hide()
+		get_node("../Tutorial").toggle())
+	box.add_child(help)
+	%GenerateButton.pressed.connect(popup.hide)
+	%RandomButton.pressed.connect(popup.hide)
+	menu.pressed.connect(func() -> void:
+		var at := menu.get_global_rect()
+		popup.popup(Rect2i(Vector2i(at.end.x - box.get_combined_minimum_size().x - 8, at.end.y + 4), Vector2i.ZERO)))
 
 
 func _build_overlay_buttons() -> void:
@@ -107,7 +136,7 @@ func _on_generate_pressed() -> void:
 
 
 func _on_tick(tick: int) -> void:
-	_date_label.text = GameDate.format(tick)
+	_date_label.text = _short_date(tick)
 	if GameDate.hour_of_day(tick) == 0 or _date_label.tooltip_text.is_empty():
 		_date_label.tooltip_text = _date_tooltip(tick)
 	var weather := GameState.weather
@@ -129,7 +158,7 @@ func _refresh_population() -> void:
 	_population_label.text = "Habitants %d / %d" % [population.count, GameState.housing]
 	_population_label.add_theme_color_override("font_color", WARNING_COLOR if unemployed > 0 else Color.WHITE)
 	_population_label.tooltip_text = "Habitants / logements\nActifs : %d (%d %%)  ·  au travail : %d  ·  en route : %d  ·  chômeurs : %d  ·  en expédition : %d\nSatisfaction : %d %% (besoins couverts hier : nourriture %d %%, bois %d %%)" % [
-		population.active(), roundi(Population.ACTIVE_SHARE * 100.0), labor.employed(), labor.in_transit(), unemployed,
+		population.active(), roundi(population.active_share * 100.0), labor.employed(), labor.in_transit(), unemployed,
 		GameState.exploration.members_out(), roundi(population.satisfaction * 100.0), roundi(population.food_coverage * 100.0), roundi(population.wood_coverage * 100.0)]
 	_refresh_tier()
 	_refresh_water()
@@ -237,6 +266,19 @@ func _refresh_stone() -> void:
 			roundi(stock.amount[oil]), roundi(stock.capacity[oil])]
 
 
+## Bouton du trésor (à partir du bourg) : pièces ; impôts et commerce
+## d'hier au survol, panneau Économie au clic.
+func _refresh_money() -> void:
+	var treasury := GameState.treasury
+	if treasury == null:
+		return
+	_money_button.visible = GameState.tier.level >= GameState.ECONOMY_TIER
+	_money_button.text = "Trésor %d" % floori(treasury.money)
+	_money_button.tooltip_text = "Trésor : %d pièces\nImpôts (%s) hier : +%s\nCommerce hier : %s\nImpôts, décrets et commerce : panneau Économie (E)" % [
+		floori(treasury.money), Treasury.TAX_NAMES[treasury.tax_level].to_lower(),
+		Format.decimal(GameState.stats.last(&"taxes")), Format.decimal(GameState.stats.last(&"trade"))]
+
+
 ## Puissance de la cité (moyenne glissante) et par habitant ; parts au survol.
 func _refresh_power() -> void:
 	var power := GameState.power
@@ -264,12 +306,18 @@ func _on_speed_changed(speed: int) -> void:
 		_speed_buttons[value].button_pressed = value == speed
 
 
+## Date compacte du bandeau (« Printemps j1, an 1 · 03:00 »).
+static func _short_date(tick: int) -> String:
+	return "%s j%d, an %d · %02d:00" % [GameDate.SEASON_NAMES[GameDate.season(tick)], GameDate.day_of_season(tick),
+		GameDate.year(tick), GameDate.hour_of_day(tick)]
+
+
 ## Saison, durée du jour, prochaine saison.
 static func _date_tooltip(tick: int) -> String:
 	var season := GameDate.season(tick)
 	var days_left := GameDate.DAYS_PER_SEASON - GameDate.day_of_season(tick) + 1
-	return "%s, an %d\nJour : %d h de soleil\n%s dans %d jour(s)\n1 jour ≈ 2,4 s à ×1" % [
-		GameDate.SEASON_NAMES[season], GameDate.year(tick), roundi(Weather.DAY_LENGTH[season]),
+	return "%s\n%s, an %d\nJour : %d h de soleil\n%s dans %d jour(s)\n1 jour ≈ 2,4 s à ×1" % [
+		GameDate.format(tick), GameDate.SEASON_NAMES[season], GameDate.year(tick), roundi(Weather.DAY_LENGTH[season]),
 		GameDate.SEASON_NAMES[(season + 1) % GameDate.SEASONS_PER_YEAR], days_left]
 
 
@@ -277,6 +325,7 @@ func _on_game_started(seed_value: int) -> void:
 	_seed_edit.text = str(seed_value)
 	_refresh_population()
 	_refresh_stocks()
+	_refresh_money()
 
 
 func _on_overlay_changed(mode: int) -> void:

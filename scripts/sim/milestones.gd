@@ -9,6 +9,8 @@ const EXPLORER_TILES := 300
 const LARGE_TERRITORY_TILES := 2000
 ## Chevaux d'une écurie pleine.
 const STABLE_HORSES := 6
+## Pièces du jalon « Trésor ».
+const TREASURY_MONEY := 1000
 
 ## Un jalon : condition évaluée sur les faits de la journée close.
 class Def:
@@ -41,6 +43,8 @@ class Facts:
 	## Gares desservies par le train.
 	var served_stations := 0
 	var research: Research
+	## Pièces du trésor.
+	var money := 0.0
 
 	func has_building(id: StringName) -> bool:
 		return buildings.any(func(b: Building) -> bool: return b.def.id == id and b.is_complete())
@@ -94,6 +98,10 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.has_building(&"laboratory")),
 		Def.new(&"railway", "Chemin de fer", "Relier une gare lointaine à une gare du village par la voie ferrée.",
 			func(f: Facts) -> bool: return f.served_stations > 0),
+		Def.new(&"market", "Jour de marché", "Construire un marché pour commercer.",
+			func(f: Facts) -> bool: return f.has_building(&"market")),
+		Def.new(&"treasury", "Trésor", "Amasser %d pièces." % TREASURY_MONEY,
+			func(f: Facts) -> bool: return f.money >= TREASURY_MONEY),
 	]
 
 

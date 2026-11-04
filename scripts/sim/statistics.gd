@@ -7,7 +7,8 @@ extends RefCounted
 ## Séries journalières (une valeur par jour clos) : population, emploi et
 ## stocks en moyenne sur la journée ; production, pertes, satisfaction (%),
 ## puissance (W, moyenne glissante), territoire (tuiles), chevaux, eau (% des
-## habitants servis) et points de recherche du jour.
+## habitants servis), points de recherche du jour, trésor (pièces en fin de
+## journée), impôts et solde du commerce du jour.
 const SERIES: Array[StringName] = [
 	&"population", &"active", &"employed", &"unemployed",
 	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
@@ -16,6 +17,7 @@ const SERIES: Array[StringName] = [
 	&"coal_produced", &"oil_produced", &"fiber_produced", &"clothes_produced",
 	&"food_lost", &"wood_lost", &"satisfaction", &"power", &"power_per_capita",
 	&"territory", &"horses", &"water", &"research", &"coal_burned", &"clothes",
+	&"money", &"taxes", &"trade",
 ]
 ## Séries dont la valeur du jour est la moyenne horaire (sinon : la somme).
 const AVERAGED: Array[StringName] = [

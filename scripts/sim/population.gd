@@ -40,6 +40,8 @@ const FAMINE_PER_DAY := 0.06
 const HOMELESS_LEAVE_PER_DAY := 0.2
 
 var count := START
+## Part active (ACTIVE_SHARE, plus la corvée).
+var active_share := ACTIVE_SHARE
 ## Satisfaction 0–1 (moyenne des derniers jours).
 var satisfaction := 1.0
 ## Couverture des besoins de la veille (0–1).
@@ -55,7 +57,7 @@ var _change := 0.0
 
 ## Habitants actifs (arrondi inférieur).
 func active() -> int:
-	return floori(count * ACTIVE_SHARE)
+	return floori(count * active_share)
 
 
 ## Nourriture nécessaire par jour (unités).
@@ -74,10 +76,11 @@ func clothes_need() -> float:
 
 
 ## Clôt la journée avec la couverture des besoins (0–1 ; l'eau et les outils
-## à partir du village, les vêtements à partir du bourg) et les logements ;
-## renvoie la variation du nombre d'habitants.
+## à partir du village, les vêtements à partir du bourg), les logements et
+## l'humeur [param mood] (impôts, décrets : facteur de la satisfaction du
+## jour) ; renvoie la variation du nombre d'habitants.
 func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int, p_water_coverage := 1.0,
-		p_tools_coverage := 1.0, p_clothes_coverage := 1.0) -> int:
+		p_tools_coverage := 1.0, p_clothes_coverage := 1.0, mood := 1.0) -> int:
 	food_coverage = clampf(p_food_coverage, 0.0, 1.0)
 	wood_coverage = clampf(p_wood_coverage, 0.0, 1.0)
 	water_coverage = clampf(p_water_coverage, 0.0, 1.0)
@@ -85,7 +88,8 @@ func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int, p_wat
 	clothes_coverage = clampf(p_clothes_coverage, 0.0, 1.0)
 	_history.append((FOOD_WEIGHT * food_coverage + (1.0 - FOOD_WEIGHT) * wood_coverage)
 		* (1.0 - WATER_WEIGHT * (1.0 - water_coverage)) * (1.0 - TOOLS_WEIGHT * (1.0 - tools_coverage))
-		* (1.0 - CLOTHES_WEIGHT * (1.0 - clothes_coverage)))
+		* (1.0 - CLOTHES_WEIGHT * (1.0 - clothes_coverage)) * mood)
+	_history[-1] = clampf(_history[-1], 0.0, 1.0)
 	if _history.size() > SATISFACTION_DAYS:
 		_history.pop_front()
 	var total := 0.0

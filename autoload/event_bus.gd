@@ -46,6 +46,8 @@ signal territory_changed()
 signal research_changed()
 ## La ville a changé de palier.
 signal tier_changed()
+## Trésor, impôts, commerce ou décrets modifiés.
+signal economy_changed()
 ## Outil Expédition : tuile cible cliquée (repère de la vue).
 signal expedition_target_clicked(cell: Vector2i)
 ## Message bref pour le joueur (erreur de construction…).

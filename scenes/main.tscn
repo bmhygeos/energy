@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/tutorial.tscn" id="9_tuto"]
 [ext_resource type="PackedScene" path="res://scenes/ui/labor_panel.tscn" id="10_labor"]
 [ext_resource type="PackedScene" path="res://scenes/ui/research_panel.tscn" id="11_research"]
+[ext_resource type="PackedScene" path="res://scenes/ui/economy_panel.tscn" id="12_economy"]
 
 [node name="Main" type="Node2D"]
 
@@ -37,3 +38,5 @@ script = ExtResource("2_cam")
 [node name="LaborPanel" parent="." instance=ExtResource("10_labor")]
 
 [node name="ResearchPanel" parent="." instance=ExtResource("11_research")]
+
+[node name="EconomyPanel" parent="." instance=ExtResource("12_economy")]

@@ -36,8 +36,8 @@ nécessite un navigateur avec WebGL 2.
 Elle est publiée sur https://bmhygeos.github.io/energy/ (branche `gh-pages`,
 contenu de `build/web` sans les fichiers `.import`). Sur tablette : toucher
 pour sélectionner ou construire, glisser à un doigt (outil Sélection) ou à deux
-doigts pour déplacer la vue, pincer pour zoomer ; bouton « Aide » pour le
-tutoriel.
+doigts pour déplacer la vue, pincer pour zoomer ; « Aide » du menu « Partie »
+pour le tutoriel.
 
 ## Contrôles
 
@@ -55,11 +55,12 @@ tutoriel.
 | Poser une voie ferrée | « Voie ferrée » du menu (bourg, recherche Locomotive), puis glisser sur la carte (tracé en L) ; « Démolir » retire une voie |
 | Explorer | « Expédition » du menu, régler explorateurs et jours de vivres, puis cliquer la destination sur la carte |
 | Recherche | `R` ou bouton « Recherche » du bandeau, puis « Rechercher » |
+| Économie (bourg) | `E` ou bouton « Trésor » du bandeau : impôts, décrets, achat et vente au marché |
 | Améliorer | « Améliorer » du menu puis clic sur une maison ou un grenier |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
-| Tutoriel | `H` pour l'afficher ou le masquer (affiché au lancement) |
+| Tutoriel | `H` ou « Aide » du menu « Partie » pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
-| Nouvelle carte | champ « Graine » + « Carte », ou « Hasard » |
+| Nouvelle carte | menu « Partie » : champ « Graine » + « Carte », ou « Hasard » |
 
 ## État de la v2
 
@@ -307,6 +308,28 @@ météo et interface conservés.
   son cheval va 1,5 fois plus vite (aperçu de l'aller-retour « à cheval »).
 - **Jalon** Chemin de fer (première gare desservie) ; tutoriel complété.
 - Reste pour le bourg : routes et marché (avec l'économie, section 8 du plan).
+
+### V9 : économie du bourg — trésor, impôts, marché, décrets
+- **Trésor** (à partir du bourg) : bouton « Trésor » du bandeau (pièces) et
+  panneau **Économie** (`E`).
+- **Impôts** chaque jour, par habitant : aucun, faible (0,05 pièce, par
+  défaut), normal (0,1 ; satisfaction −5 %) ou élevé (0,2 ; −15 %) ; de 50 %
+  à 100 % du montant selon la satisfaction.
+- **Marché** (2×2, 60 bois, 40 pierre) : les marchands achètent et vendent
+  100 marchandises par jour et par marché. Prix de vente en pièces :
+  nourriture, bois et fibres 1, pierre 2, charbon 3, fer 4, vêtements 5,
+  pétrole 6, outils 8 ; achat 1,5 fois plus cher. Boutons par lots de 10 ;
+  case « Surplus » : vente chaque jour de ce qui dépasse 75 % de la capacité.
+- **Décrets** : rationnement (nourriture −25 %, satisfaction −10 %), corvée
+  (actifs 60 % → 70 % des habitants, satisfaction −10 %), fête (1 nourriture
+  et 0,5 pièce par habitant : satisfaction ×1,2 pendant 10 jours, une fête
+  tous les 30 jours au plus). L'humeur (impôt × décrets) multiplie la
+  satisfaction du jour, bornée à 100 % ; il en faut 80 % pour changer de
+  palier.
+- **Statistiques** : onglet Économie (trésor, impôts, solde du commerce) ;
+  **jalons** Jour de marché et Trésor (1 000 pièces).
+- **Bandeau** compacté : graine, nouvelle carte et aide dans le menu
+  « Partie ».
 
 ### Recherche (avancée de V6)
 - **Points de recherche** : 1 par habitant et par jour, de 50 % à 100 % selon

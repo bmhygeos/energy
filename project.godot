@@ -79,6 +79,10 @@ research={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"keycode":82)]
 }
+economy={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"keycode":69)]
+}
 tutorial={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":72)]

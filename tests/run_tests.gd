@@ -43,6 +43,8 @@ func _init() -> void:
 	_test_bourg()
 	_test_rails()
 	_test_steam_and_scouts()
+	_test_treasury()
+	_test_decrees()
 
 
 ## Tests qui demandent les autoloads (GameState), prêts après la première
@@ -50,6 +52,7 @@ func _init() -> void:
 func _initialize() -> void:
 	await process_frame
 	_test_bourg_game()
+	_test_economy_game()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -1119,7 +1122,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 16 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 18 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1243,6 +1246,96 @@ func _test_bourg_game() -> void:
 		and is_equal_approx(stock.amount[Stockpile.Good.COAL], 50.0 - made * gs.FORGE_WOOD_PER_TOOL)
 		and stock.amount[Stockpile.Good.WOOD] == wood_before, "coke : charbon au lieu du bois, outils +50 %%")
 	gs.new_game(4242)
+
+
+func _test_treasury() -> void:
+	var t := Treasury.new()
+	var stock := Stockpile.new()
+	_check(t.tax_level == Treasury.DEFAULT_TAX and t.mood() == 1.0, "impôt faible par défaut, sans effet sur l'humeur")
+	t.tax_level = 2
+	_check(is_equal_approx(t.taxes_for(100, 1.0), 10.0) and is_equal_approx(t.taxes_for(100, 0.0), 5.0)
+		and t.mood() < 1.0, "impôt normal : 0,1 pièce par habitant, moitié à satisfaction nulle")
+	_check(t.sell(stock, Stockpile.Good.FOOD, 10.0) == 0.0, "pas de marché : pas de commerce")
+	t.trade_capacity = 30.0
+	stock.amount[Stockpile.Good.IRON] = 50.0
+	var sold := t.sell(stock, Stockpile.Good.IRON, 20.0)
+	_check(sold == 20.0 and t.money == 20.0 * Treasury.PRICES[Stockpile.Good.IRON] and stock.amount[Stockpile.Good.IRON] == 30.0,
+		"vente au prix courant")
+	t.money = 1000.0
+	var bought := t.buy(stock, Stockpile.Good.TOOLS, 50.0)
+	_check(bought == 10.0 and is_equal_approx(t.money, 1000.0 - 10.0 * Treasury.buy_price(Stockpile.Good.TOOLS)),
+		"achat limité par le volume du jour (%s)" % bought)
+	_check(t.trade_left() == 0.0 and t.buy(stock, Stockpile.Good.FOOD, 1.0) == 0.0, "volume épuisé")
+	t.reset_day()
+	t.money = 3.0
+	_check(is_equal_approx(t.buy(stock, Stockpile.Good.WOOD, 10.0), 2.0), "achat limité par les pièces")
+	t.reset_day()
+	t.money = 0.0
+	t.trade_capacity = 1000.0
+	stock.amount[Stockpile.Good.WOOD] = stock.capacity[Stockpile.Good.WOOD]
+	t.auto_sell[Stockpile.Good.WOOD] = true
+	t.sell_surplus(stock)
+	_check(is_equal_approx(stock.amount[Stockpile.Good.WOOD], stock.capacity[Stockpile.Good.WOOD] * Treasury.AUTO_SELL_RATIO)
+		and t.money > 0.0, "vente automatique des surplus")
+
+
+func _test_decrees() -> void:
+	var d := Decrees.new()
+	_check(d.mood() == 1.0 and d.food_factor() == 1.0 and d.active_bonus() == 0.0, "sans décret : aucun effet")
+	d.rationing = true
+	d.corvee = true
+	_check(d.food_factor() == Decrees.RATION_FOOD and is_equal_approx(d.mood(), Decrees.RATION_MOOD * Decrees.CORVEE_MOOD),
+		"rationnement et corvée")
+	d.rationing = false
+	d.corvee = false
+	d.start_feast()
+	_check(d.mood() == Decrees.FEAST_MOOD and not d.can_feast(), "fête : humeur en hausse, pas de nouvelle fête")
+	for k in Decrees.FEAST_DAYS:
+		d.end_day()
+	_check(d.mood() == 1.0 and not d.can_feast(), "fin de la fête")
+	for k in Decrees.FEAST_COOLDOWN_DAYS:
+		d.end_day()
+	_check(d.can_feast(), "nouvelle fête possible")
+	var p := Population.new()
+	p.end_day(1.0, 1.0, 100, 1.0, 1.0, 1.0, 0.8)
+	_check(is_equal_approx(p.satisfaction, 0.8), "humeur : satisfaction du jour réduite")
+	p = Population.new()
+	p.end_day(1.0, 1.0, 100, 1.0, 1.0, 1.0, 1.2)
+	_check(p.satisfaction == 1.0, "humeur : satisfaction bornée à 100 %")
+
+
+func _test_economy_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	_check(not gs.economy_error().is_empty() and gs.mood() == 1.0, "hameau : pas d'économie")
+	var money: float = gs.treasury.money
+	gs._run_economy()
+	_check(gs.treasury.money == money, "hameau : pas d'impôt")
+	gs.tier.level = 3
+	gs.population.count = 400
+	gs._run_economy()
+	_check(gs.treasury.money > 0.0, "bourg : impôts encaissés")
+	_check(gs.trade_error().contains("marché"), "commerce : marché requis")
+	var market := _place_running(gs, BuildingDb.get_def(&"market"))
+	gs._refresh_capacities()
+	_check(market != null and gs.trade_error().is_empty() and gs.treasury.trade_capacity == market.def.trade_per_day,
+		"marché : commerce ouvert")
+	gs.stockpile.amount[Stockpile.Good.STONE] = 50.0
+	_check(gs.trade(Stockpile.Good.STONE, -10.0) == 10.0, "vente au marché")
+	var food: float = gs.food_need()
+	gs.set_rationing(true)
+	_check(is_equal_approx(gs.food_need(), food * Decrees.RATION_FOOD), "rationnement : moins de nourriture")
+	var active: int = gs.population.active()
+	gs.set_corvee(true)
+	_check(gs.population.active() > active, "corvée : plus d'actifs")
+	gs.treasury.money = 0.0
+	_check(gs.feast_error().contains("Pièces"), "fête : pièces requises")
+	gs.treasury.money = 1000.0
+	gs.stockpile.amount[Stockpile.Good.FOOD] = 1000.0
+	_check(gs.hold_feast() and gs.treasury.money == 800.0 and gs.stockpile.amount[Stockpile.Good.FOOD] == 600.0,
+		"fête : 400 nourriture et 200 pièces")
+	gs.new_game(4242)
+	_check(gs.population.active_share == Population.ACTIVE_SHARE and not gs.decrees.corvee, "nouvelle partie : décrets levés")
 
 
 ## Pose [param def] terminé sur la première tuile libre près du village de

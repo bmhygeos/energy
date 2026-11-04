@@ -21,12 +21,13 @@ theme_override_constants/margin_bottom = 6
 
 [node name="Row" type="HBoxContainer" parent="TopBar/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 8
 
 [node name="DateLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(205, 0)
+custom_minimum_size = Vector2(190, 0)
 layout_mode = 2
+mouse_filter = 1
 text = "Printemps, jour 1, an 1 — 00:00"
 
 [node name="WeatherLabel" type="Label" parent="TopBar/Margin/Row"]
@@ -100,6 +101,13 @@ tooltip_text = "Points de recherche et recherches du palier (R)"
 focus_mode = 0
 text = "Recherche"
 
+[node name="EconomyButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Trésor, impôts, décrets et commerce (E)"
+focus_mode = 0
+text = "Trésor 0"
+
 [node name="StatsButton" type="Button" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -133,6 +141,7 @@ focus_mode = 0
 text = "Hasard"
 
 [node name="Speed" type="HBoxContainer" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
 layout_mode = 2
 
 [node name="PauseButton" type="Button" parent="TopBar/Margin/Row/Speed"]

@@ -392,6 +392,9 @@ au-delà de laquelle la pénalité de trajet commence, section 5) et augmente la
   et ouvre l'ère spatiale (satellites suivants : météo prévue, communications).
 
 ## 8. Économie et gouvernance (à partir du palier 3–4)
+Réalisé en V9 au bourg : trésor, impôts selon le taux, la population et la
+satisfaction, marché (achat, vente, surplus), décrets (rationnement, corvée,
+fête). Restent les événements et l'entretien en argent (université).
 - **Argent** : impôts (selon population et satisfaction), commerce des surplus.
 - **Décrets** du gouverneur : rationnement, corvée (plus de travailleurs, moins de
   satisfaction), fêtes (satisfaction contre stocks).
@@ -453,7 +456,8 @@ effectif, vivres).
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 (outil `simulate_pacing`, points de recherche mis de côté plafonnés) |
 | V8 (partie 1) | Palier 3, première partie | Charbon (mine, chauffage, coke), vêtements (lin, laine, tissage), laboratoire, moulin à eau — réalisé |
 | V8 (partie 2) | Palier 3, deuxième partie | Machine à vapeur, voies ferrées et gares, éclaireurs à cheval — réalisé |
-| V8+ | Paliers 3 à 5 | Routes et logistique, artisanat, impôts, décrets ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
+| V9 | Économie du bourg | Trésor, impôts, marché (achat, vente, surplus), décrets (rationnement, corvée, fête) — réalisé |
+| V9+ | Paliers 3 à 5 | Routes et logistique, artisanat, événements ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses
