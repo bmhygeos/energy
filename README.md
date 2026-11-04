@@ -114,7 +114,7 @@ météo et interface conservés.
 ### V4 : production et saisons (première version jouable)
 - **Rendement** d'une tuile = travailleurs × base × qualité × saison × proximité :
   agriculture 12 nourriture/travailleur/j du printemps à l'automne (rien en
-  hiver), élevage 2,4 toute l'année (×0,8 l'hiver), coupe du
+  hiver), élevage 4,8 toute l'année (×0,8 l'hiver), coupe du
   bois 4,5.
 - **Fertilité** : un champ cultivé s'use, il se reconstitue au repos.
 - **Forêt** : la coupe vide le bois sur pied (rendement qui baisse avec la
@@ -270,7 +270,7 @@ météo et interface conservés.
   - **Champ de lin** : zone sur les terres cultivables (2 travailleurs,
     1,5 fibre/j chacun, du printemps à l'automne ; charrue, assolement et
     irrigation s'appliquent, pas les moulins).
-  - **Laine** : au bourg, chaque éleveur donne aussi 0,25 fibre/j.
+  - **Laine** : au bourg, chaque éleveur donne aussi 0,5 fibre/j.
   - **Atelier de tissage** (40 bois, 30 pierre, 5 fer) : 4 vêtements/j, une
     fibre chacun.
   - Fibres (200) et vêtements (150) en stock.

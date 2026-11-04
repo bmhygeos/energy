@@ -31,7 +31,7 @@ const ROTATION_BONUS := 1.15
 const GEARS_BONUS := 1.15
 ## Bourg : laine des troupeaux (fibres par éleveur et par jour, en plus de la
 ## nourriture).
-const WOOL_PER_WORKER := 0.25
+const WOOL_PER_WORKER := 0.5
 
 
 class Report:
