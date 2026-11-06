@@ -65,6 +65,8 @@ func _initialize() -> void:
 	_test_ports_game()
 	_test_power_grid()
 	_test_grid_game()
+	_test_trucks()
+	_test_trucks_game()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -256,6 +258,70 @@ func _test_grid_game() -> void:
 	stock.amount[Stockpile.Good.FUEL] = 0.0
 	_check(is_equal_approx(gs._burn_light(), 0.5), "sans carburant : la part du courant seule")
 	_check(gs.grid.base_costs()[Stockpile.Good.COPPER] == PowerGrid.COPPER_PER_TILE and gs.lines_error().is_empty(), "une ligne coûte du cuivre")
+	gs.new_game(4242)
+
+
+func _test_trucks() -> void:
+	var flat := _flat_map()
+	var map: WorldMap = flat[0]
+	var territory: Territory = flat[1]
+	var cells: Array[Vector2i] = []
+	for y in 20:
+		for x in 64:
+			cells.append(Vector2i(x, y))
+	territory.annex(cells)
+	var registry := BuildingRegistry.new(map, territory)
+	var roads := RoadNetwork.new(map, territory, registry, Vector2i(2, 10))
+	registry.roads = roads
+	roads.add_cells(TrackNetwork.l_path(Vector2i(3, 10), Vector2i(50, 10)))
+	roads.refresh()
+	var far := Vector2i(50, 12)
+	var wide := Vector2i(50, 13)
+	_check(roads.distance_via(far) == 21 + 2 and roads.distance_via(wide) == -1 and not roads.has_trucks() and roads.fuel_need() == 0.0,
+		"sans camions : 2 tuiles de route par tuile de marche")
+	var depot: Building = registry.place(registry.check_placement(BuildingDb.get_def(&"truck_depot"), Vector2i(10, 12)))
+	roads.depots.append(depot)
+	roads.refresh()
+	_check(roads.served_depots.is_empty() and roads.fuel_need() == 0.0, "dépôt sans route : aucun camion")
+	registry.remove(depot)
+	var served: Building = registry.place(registry.check_placement(BuildingDb.get_def(&"truck_depot"), Vector2i(10, 11)))
+	roads.depots.clear()
+	roads.depots.append(served)
+	roads.refresh()
+	# Tuile (49, 10), 42e de la route : (42 − 30) / 6 = 2 tuiles de marche, plus 2 ou 3 de côté.
+	_check(roads.has_trucks() and roads.distance_via(far) == 2 + 2 and roads.distance_via(wide) == 2 + 3, "camions : 30 tuiles libres, puis 6 par tuile de marche")
+	_check(is_equal_approx(roads.fuel_need(), 2.0 + 0.05 * 48.0), "carburant : dépôt et tuiles de route")
+	roads.running = false
+	roads.refresh()
+	_check(roads.distance_via(far) == 21 + 2 and roads.distance_via(wide) == -1, "camions arrêtés : retour aux charrettes")
+
+
+func _test_trucks_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	gs.tier.level = 4
+	var depot := _place_running(gs, BuildingDb.get_def(&"truck_depot"))
+	_check(depot != null, "dépôt posé")
+	var road: Array[Vector2i] = []
+	for cell in depot.cells:
+		for o in WorldMap.NEIGHBORS_4:
+			if road.is_empty() and not gs.buildings.building_at(cell + o):
+				road.append(cell + o)
+	gs.roads.add_cells(road)
+	gs._refresh_capacities()
+	_check(depot in gs.roads.served_depots and gs.roads.has_trucks(), "route du village : camions en service")
+	var stock: Stockpile = gs.stockpile
+	stock.capacity[Stockpile.Good.FUEL] = 100.0
+	stock.amount[Stockpile.Good.FUEL] = 50.0
+	var need: float = gs.roads.fuel_need()
+	gs._run_trucks()
+	_check(gs.roads.running and is_equal_approx(stock.amount[Stockpile.Good.FUEL], 50.0 - need), "les camions brûlent du carburant")
+	stock.amount[Stockpile.Good.FUEL] = 0.0
+	gs._run_trucks()
+	_check(not gs.roads.running and not gs.roads.has_trucks(), "sans carburant : camions arrêtés")
+	stock.amount[Stockpile.Good.FUEL] = 50.0
+	gs._run_trucks()
+	_check(gs.roads.running and gs.roads.has_trucks(), "carburant revenu : camions repartis")
 	gs.new_game(4242)
 
 

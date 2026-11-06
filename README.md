@@ -378,6 +378,17 @@ météo et interface conservés.
   statistiques et jalon « Fée électricité » ; les barrages comptent dans le
   compteur de puissance (le charbon y est déjà compté).
 
+### V11 (partie 3) : camions
+
+- **Moteur à explosion** (50 000 points, après le raffinage) : **dépôt de
+  camions** (40 bois, 60 pierre, 40 fer, 10 outils).
+- Un dépôt qui touche une route reliée au village change toutes les routes
+  reliées : 30 tuiles de route sans pénalité, puis 6 tuiles de route par tuile
+  de marche (−0,5 % par tuile), et 3 tuiles desservies de chaque côté au lieu
+  de 2.
+- Les camions brûlent 2 carburant/j par dépôt, plus 0,05 par tuile de route.
+  Sans carburant, ils s'arrêtent et les routes retrouvent leur portée.
+
 ### Ports : pêche au large, navires et transport par l'eau
 
 - **Pêche** : au village, à une tuile du rivage au plus.

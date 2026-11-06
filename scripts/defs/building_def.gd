@@ -85,6 +85,8 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## charbon (PowerGrid.WATTS_PER_COAL) ; un barrage suit le débit des saisons.
 @export var power_watts := 0.0
 @export var burns_coal := false
+## Dépôt de camions : les routes reliées portent plus loin, contre du carburant.
+@export var truck_depot := false
 ## Port de pêche : les zones de pêche vont jusqu'à ce nombre de tuiles du
 ## rivage (le plus grand compte).
 @export var fishing_reach := 0
@@ -184,6 +186,10 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Électricité : %s%s" % [PowerMeter.format(power_watts), " pour %s charbon par jour à plein régime" % Format.decimal(
 			power_watts / PowerGrid.WATTS_PER_COAL) if burns_coal else " selon le débit, sans combustible"])
 		lines.append("À %d tuiles du centre ou moins, ou raccordé par une ligne électrique" % Labor.FREE_DISTANCE)
+	if truck_depot:
+		lines.append("Camions : à côté d'une route reliée au village, %d tuiles de route sans pénalité, −0,5 %% par tuile ensuite" % RoadNetwork.TRUCK_FREE_TILES)
+		lines.append("Brûlent %s carburant par jour, plus %s par tuile de route" % [Format.decimal(RoadNetwork.FUEL_PER_DEPOT_PER_DAY),
+			Format.decimal(RoadNetwork.FUEL_PER_TILE_PER_DAY, 2)])
 	if fishing_reach > 0:
 		lines.append("Pêche jusqu'à %d tuiles du rivage" % fishing_reach)
 	if harbor:

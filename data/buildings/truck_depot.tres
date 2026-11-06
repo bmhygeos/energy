@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"truck_depot"
+display_name = "Dépôt de camions"
+description = "Hangars, atelier et pompes : les camions prennent la route à la place des charrettes."
+category = 2
+tier = 4
+research = &"combustion_engine"
+size = Vector2i(2, 1)
+build_hours = 96
+wood_cost = 40
+stone_cost = 60
+iron_cost = 40
+tools_cost = 10
+truck_depot = true
+color = Color(0.56, 0.5, 0.42, 1)
+roof_color = Color(0.5, 0.32, 0.2, 1)
+height = 14.0

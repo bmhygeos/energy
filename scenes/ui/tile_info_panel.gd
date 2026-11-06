@@ -67,7 +67,8 @@ func _refresh() -> void:
 			lines.append("Par le train : à %d tuiles du village (à pied : %d)" % [via, _walk_distance(cell)])
 		var by_road := GameState.roads.distance_via(cell)
 		if by_road >= 0 and by_road < _walk_distance(cell):
-			lines.append("Par la route : à %d tuiles du village (à pied : %d)" % [by_road, _walk_distance(cell)])
+			lines.append("Par la route%s : à %d tuiles du village (à pied : %d)" % [
+				" (camions)" if GameState.roads.has_trucks() else "", by_road, _walk_distance(cell)])
 		var by_sea := GameState.ports.distance_via(cell)
 		if by_sea >= 0 and by_sea < _walk_distance(cell):
 			lines.append("Par bateau : à %d tuiles du village (à pied : %d)" % [by_sea, _walk_distance(cell)])
@@ -144,6 +145,13 @@ func _building_lines(b: Building) -> PackedStringArray:
 				"" if rails.running else " (trains arrêtés : plus de charbon)"])
 		else:
 			lines.append("Non desservie : reliez-la par la voie à une gare du village")
+	if b.is_complete() and b.def.truck_depot:
+		if b not in GameState.roads.served_depots:
+			lines.append("Sans route : posez une route reliée au village à côté de lui")
+		elif not GameState.roads.running:
+			lines.append("Camions à l'arrêt : plus de carburant")
+		else:
+			lines.append("Camions en service sur %d tuiles de route" % GameState.roads.lengths.size())
 	if b.is_complete() and b.def.power_watts > 0.0:
 		lines.append("Raccordé au réseau" if GameState.grid.feeds_city(b) else "Non raccordé : reliez-le au village par une ligne électrique")
 	if b.is_complete() and b.def.harbor:

@@ -147,6 +147,10 @@ func _refresh() -> void:
 		_needs.text += "\nTrains : %d gare%s desservie%s  ·  charbon %s /j%s" % [rails.served.size(),
 			"s" if rails.served.size() > 1 else "", "s" if rails.served.size() > 1 else "",
 			Format.decimal(rails.coal_need()), "" if rails.running else "  ·  à l'arrêt (plus de charbon)"]
+	var roads := GameState.roads
+	if not roads.served_depots.is_empty():
+		_needs.text += "\nCamions : %d dépôt%s  ·  carburant %s /j%s" % [roads.served_depots.size(), "s" if roads.served_depots.size() > 1 else "",
+			Format.decimal(roads.fuel_need()), "" if roads.running else "  ·  à l'arrêt (plus de carburant)"]
 	if GameState.steam_coal_need() > 0.0:
 		_needs.text += "\nMachines à vapeur : charbon %s /j%s" % [Format.decimal(GameState.steam_coal_need()),
 			"" if GameState.steam_running else "  ·  à l'arrêt"]

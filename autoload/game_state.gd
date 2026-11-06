@@ -436,6 +436,7 @@ func _refresh_capacities() -> void:
 	_refresh_rails()
 	_refresh_ports()
 	_refresh_grid()
+	_refresh_trucks()
 	production.wool = tier.level >= CLOTHES_TIER
 	stockpile.spoilage_factor = 0.5 if mill > 0.0 else 1.0
 	var trade := 0.0
@@ -472,6 +473,16 @@ func _run_steam() -> void:
 	elif was and need > 0.0:
 		EventBus.notified.emit("Plus de charbon : les machines à vapeur s'arrêtent")
 	_apply_steam()
+
+
+## Dépôts de camions terminés ; les routes en tiennent compte.
+func _refresh_trucks() -> void:
+	roads.depots.clear()
+	for b in buildings.all():
+		if b.is_complete() and b.def.truck_depot:
+			roads.depots.append(b)
+	roads.refresh()
+	EventBus.roads_changed.emit([] as Array[Vector2i])
 
 
 ## Lignes reliées et centrales raccordées d'après les bâtiments terminés.
@@ -530,6 +541,22 @@ func _run_trains() -> void:
 		EventBus.notified.emit("Plus de charbon : les trains s'arrêtent")
 	if was != rails.running:
 		EventBus.rails_changed.emit([] as Array[Vector2i])
+
+
+## Camions : brûlent leur carburant du jour s'il y en a assez, sinon ils
+## s'arrêtent (les routes retrouvent leur portée de charrette).
+func _run_trucks() -> void:
+	var need := roads.fuel_need()
+	var was := roads.running
+	roads.running = need <= 0.0 or stockpile.has(Stockpile.Good.FUEL, need)
+	if need > 0.0 and roads.running:
+		stockpile.take(Stockpile.Good.FUEL, need)
+	if was and not roads.running:
+		EventBus.notified.emit("Plus de carburant : les camions s'arrêtent")
+	if was != roads.running:
+		roads.refresh()
+		EventBus.roads_changed.emit([] as Array[Vector2i])
+		_update_labor()
 
 
 ## Ce qui empêche de poser des voies (vide : possible).
@@ -1233,6 +1260,7 @@ func _on_day(day: int) -> void:
 	_run_refineries()
 	_run_steam()
 	_run_trains()
+	_run_trucks()
 	var tools := _wear_tools()
 	var clothes := _wear_clothes()
 	var light := _burn_light()

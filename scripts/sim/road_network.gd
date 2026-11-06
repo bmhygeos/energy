@@ -5,8 +5,10 @@ extends TrackNetwork
 ## rapproche les tuiles à REACH tuiles ou moins d'elle : leur distance se
 ## compte depuis la route, plus sa longueur (TILES_PER_WALK_TILE tuiles de
 ## route valent une tuile de marche). Sans combustible : charrettes et
-## piétons. Une route peut croiser une voie ferrée (passage à niveau). Pure
-## donnée.
+## piétons. Un dépôt de camions touchant une route reliée porte la route plus
+## loin : TRUCK_FREE_TILES tuiles sans pénalité, puis TRUCK_TILES_PER_WALK_TILE
+## tuiles de route par tuile de marche, contre du carburant. Une route peut
+## croiser une voie ferrée (passage à niveau). Pure donnée.
 
 ## Pavés par tuile.
 const STONE_PER_TILE := 2.0
@@ -14,9 +16,23 @@ const STONE_PER_TILE := 2.0
 const TILES_PER_WALK_TILE := 2
 ## Tuiles desservies de part et d'autre de la route.
 const REACH := 2
+## Camions : tuiles de route sans pénalité, tuiles de route qui valent une tuile
+## de marche ensuite (−0,5 % par tuile), et tuiles desservies de part et d'autre.
+const TRUCK_FREE_TILES := 30
+const TRUCK_TILES_PER_WALK_TILE := 6
+const TRUCK_REACH := 3
+## Carburant brûlé par jour : par dépôt, et par tuile de route reliée.
+const FUEL_PER_DEPOT_PER_DAY := 2.0
+const FUEL_PER_TILE_PER_DAY := 0.05
 
 ## Tuiles de route reliées au village → longueur depuis le village.
 var lengths: Dictionary[Vector2i, int] = {}
+## Dépôts terminés (posés par GameState avant refresh).
+var depots: Array[Building] = []
+## Les camions roulent (assez de carburant la veille).
+var running := true
+## Dépôts qui touchent une route reliée.
+var served_depots: Array[Building] = []
 ## Tuiles desservies → distance au village par la route.
 var _reach: Dictionary[Vector2i, int] = {}
 
@@ -49,14 +65,43 @@ func refresh() -> void:
 			if _tiles.has(n) and not lengths.has(n):
 				lengths[n] = lengths[cell] + 1
 				queue.append(n)
+	served_depots = depots.filter(_touches_road)
+	var reach := TRUCK_REACH if has_trucks() else REACH
 	for cell: Vector2i in lengths:
-		var base := ceili(float(lengths[cell]) / TILES_PER_WALK_TILE)
-		for dy in range(-REACH, REACH + 1):
-			for dx in range(-REACH, REACH + 1):
+		var base := _walk_tiles(lengths[cell])
+		for dy in range(-reach, reach + 1):
+			for dx in range(-reach, reach + 1):
 				var n := map.wrap_cell(cell + Vector2i(dx, dy))
 				var d := base + maxi(absi(dx), absi(dy))
 				if not _reach.has(n) or d < _reach[n]:
 					_reach[n] = d
+
+
+## Des camions roulent sur les routes reliées.
+func has_trucks() -> bool:
+	return running and not served_depots.is_empty()
+
+
+## Carburant brûlé par jour par les camions (0 : aucun dépôt desservi).
+func fuel_need() -> float:
+	if served_depots.is_empty():
+		return 0.0
+	return FUEL_PER_DEPOT_PER_DAY * served_depots.size() + FUEL_PER_TILE_PER_DAY * lengths.size()
+
+
+## Tuiles de marche équivalentes à [param length] tuiles de route.
+func _walk_tiles(length: int) -> int:
+	if has_trucks():
+		return ceili(float(maxi(0, length - TRUCK_FREE_TILES)) / TRUCK_TILES_PER_WALK_TILE)
+	return ceili(float(length) / TILES_PER_WALK_TILE)
+
+
+func _touches_road(b: Building) -> bool:
+	for cell in b.cells:
+		for o in WorldMap.NEIGHBORS_4:
+			if lengths.has(map.wrap_cell(cell + o)):
+				return true
+	return false
 
 
 ## Distance de [param cell] au village par la route (-1 : non desservie).
