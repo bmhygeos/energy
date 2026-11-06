@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"conductivity"
+display_name = "Conductivité du cuivre"
+description = "Un fil de cuivre porte le courant au loin sans presque rien perdre."
+tier = 4
+cost = 45000.0
+prerequisites = Array[StringName]([&"scientific_method"])
+effect = "Lignes électriques et centrale à charbon : le courant éclaire la ville et accélère les ateliers."

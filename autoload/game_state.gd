@@ -55,6 +55,8 @@ var rails: RailNetwork
 var roads: RoadNetwork
 ## Ports : liaisons par l'eau.
 var ports: PortNetwork
+## Réseau électrique (ville).
+var grid: PowerGrid
 ## Zones peintes (agriculture, élevage, coupe du bois).
 var zones: ZoneMap
 var population: Population
@@ -120,6 +122,9 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	roads = RoadNetwork.new(world_map, territory, buildings, home)
 	roads.zones = zones
 	buildings.roads = roads
+	grid = PowerGrid.new(world_map, territory, buildings, home)
+	grid.zones = zones
+	buildings.lines = grid
 	population = Population.new()
 	tier = CityTier.new()
 	labor = Labor.new(zones, home)
@@ -366,6 +371,9 @@ func demolish(cell: Vector2i) -> bool:
 		elif roads.remove(cell):
 			roads.refresh()
 			EventBus.roads_changed.emit([cell] as Array[Vector2i])
+		elif grid.remove(cell):
+			_refresh_grid()
+			EventBus.grid_changed.emit([cell] as Array[Vector2i])
 		else:
 			return false
 		_update_labor()
@@ -427,6 +435,7 @@ func _refresh_capacities() -> void:
 	_apply_steam()
 	_refresh_rails()
 	_refresh_ports()
+	_refresh_grid()
 	production.wool = tier.level >= CLOTHES_TIER
 	stockpile.spoilage_factor = 0.5 if mill > 0.0 else 1.0
 	var trade := 0.0
@@ -463,6 +472,22 @@ func _run_steam() -> void:
 	elif was and need > 0.0:
 		EventBus.notified.emit("Plus de charbon : les machines à vapeur s'arrêtent")
 	_apply_steam()
+
+
+## Lignes reliées et centrales raccordées d'après les bâtiments terminés.
+func _refresh_grid() -> void:
+	var plants: Array[Building] = []
+	for b in buildings.all():
+		if b.is_complete() and b.def.power_watts > 0.0:
+			plants.append(b)
+	grid.refresh(plants)
+	EventBus.grid_changed.emit([] as Array[Vector2i])
+
+
+## Électricité du jour : barrages, puis centrales au charbon.
+func _run_grid(season: int) -> void:
+	var burnt := grid.run_day(population.count, season, stockpile.amount[Stockpile.Good.COAL])
+	coal_burned_today += stockpile.take(Stockpile.Good.COAL, burnt)
 
 
 ## Portée de la pêche, navires des expéditions et liaisons entre les ports
@@ -517,6 +542,16 @@ func rails_error() -> String:
 	return ""
 
 
+## Ce qui empêche de poser des lignes électriques (vide : possible).
+func lines_error() -> String:
+	var plant := BuildingDb.get_def(&"power_plant")
+	if tier.level < plant.tier:
+		return "Disponible au palier %s" % CityTier.NAMES[plant.tier - 1]
+	if not research.is_done(plant.research):
+		return "Recherche requise : %s" % ResearchDb.get_def(plant.research).display_name
+	return ""
+
+
 ## Ce qui empêche de poser des routes (vide : possible).
 func roads_error() -> String:
 	if tier.level < ROAD_TIER:
@@ -532,6 +567,10 @@ func plan_rails(from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
 
 func plan_roads(from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
 	return _plan_track(roads, roads_error(), from, to)
+
+
+func plan_lines(from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
+	return _plan_track(grid, lines_error(), from, to)
 
 
 func _plan_track(network: TrackNetwork, error: String, from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
@@ -556,6 +595,17 @@ func build_rails(p: TrackNetwork.Plan) -> int:
 	EventBus.rails_changed.emit(built)
 	_refresh_rails()
 	_update_labor()
+	return built.size()
+
+
+## Pose les lignes de [param p] ; renvoie le nombre de tuiles posées (raison
+## notifiée si aucune).
+func build_lines(p: TrackNetwork.Plan) -> int:
+	var built := _lay_track(grid, p)
+	if built.is_empty():
+		return 0
+	_refresh_grid()
+	EventBus.grid_changed.emit(built)
 	return built.size()
 
 
@@ -702,7 +752,7 @@ func _run_forges() -> void:
 	for b in buildings.all():
 		if b.is_complete():
 			rate += b.def.tools_per_day
-	rate *= 1.0 + production.drive_bonus
+	rate *= (1.0 + production.drive_bonus) * grid.industry_factor()
 	var fuel := Stockpile.Good.WOOD
 	var fuel_per_tool := FORGE_WOOD_PER_TOOL
 	if research.is_done(&"coke") and stockpile.amount[Stockpile.Good.COAL] > 0.0:
@@ -727,6 +777,7 @@ func _run_weavers() -> void:
 	for b in buildings.all():
 		if b.is_complete():
 			rate += b.def.clothes_per_day
+	rate *= grid.industry_factor()
 	var room := stockpile.capacity[Stockpile.Good.CLOTHES] - stockpile.amount[Stockpile.Good.CLOTHES]
 	var n := minf(minf(rate, room), stockpile.amount[Stockpile.Good.FIBER] / FIBER_PER_CLOTHES)
 	if n <= 0.0:
@@ -743,6 +794,7 @@ func _run_refineries() -> void:
 	for b in buildings.all():
 		if b.is_complete():
 			rate += b.def.fuel_per_day
+	rate *= grid.industry_factor()
 	var room := stockpile.capacity[Stockpile.Good.FUEL] - stockpile.amount[Stockpile.Good.FUEL]
 	var n := minf(minf(rate, room), stockpile.amount[Stockpile.Good.OIL] / OIL_PER_FUEL)
 	if n <= 0.0:
@@ -752,18 +804,23 @@ func _run_refineries() -> void:
 	production.produced_today[Stockpile.Good.FUEL] += n
 
 
-## Carburant des lampes par jour (à partir de la ville).
-func light_need() -> float:
+## Éclairage voulu par jour, en carburant (à partir de la ville).
+func _light_demand() -> float:
 	return population.light_need() if tier.level >= LIGHT_TIER else 0.0
+
+
+## Carburant des lampes par jour : le courant en remplace une part.
+func light_need() -> float:
+	return _light_demand() * (1.0 - grid.coverage)
 
 
 ## Éclairage du jour : prend le carburant au stock ; renvoie la part obtenue
 ## (1 sans besoin).
 func _burn_light() -> float:
-	var need := light_need()
-	if need <= 0.0:
+	var demand := _light_demand()
+	if demand <= 0.0:
 		return 1.0
-	return stockpile.take(Stockpile.Good.FUEL, need) / need
+	return grid.coverage + stockpile.take(Stockpile.Good.FUEL, light_need()) / demand
 
 
 ## Entretien par jour des bâtiments terminés (pièces).
@@ -1170,6 +1227,7 @@ func _on_day(day: int) -> void:
 	var coverage := PackedFloat32Array()
 	for good in _needed_today.size():
 		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)
+	_run_grid(GameDate.season(day_tick))
 	_run_forges()
 	_run_weavers()
 	_run_refineries()
@@ -1207,7 +1265,7 @@ func _on_day(day: int) -> void:
 	draft.breed(_pasture_quality())
 	draft.end_day(coverage[Stockpile.Good.FOOD])
 	power.push_day(production.produced_today, PackedFloat32Array([draft.working() * DraftAnimals.WORK_WATTS,
-		_mill_watts(day_tick)]))
+		_mill_watts(day_tick), grid.hydro]))
 	for good in Stockpile.COUNT:
 		stats.add(Statistics.PRODUCED_KEYS[good], production.produced_today[good])
 	stats.add(&"food_lost", stockpile.lost_today[Stockpile.Good.FOOD])
@@ -1222,6 +1280,7 @@ func _on_day(day: int) -> void:
 	stats.add(&"coal_burned", coal_burned_today)
 	stats.add(&"clothes", clothes * 100.0)
 	stats.add(&"light", light * 100.0)
+	stats.add(&"electricity", grid.coverage * 100.0)
 	stats.add(&"money", treasury.money)
 	stats.add(&"taxes", treasury.taxes_today)
 	stats.add(&"trade", treasury.sales_today - treasury.purchases_today)
@@ -1266,6 +1325,7 @@ func _check_milestones(day: int) -> void:
 	facts.clothes_coverage = population.clothes_coverage if tier.level >= CLOTHES_TIER else 0.0
 	facts.research = research
 	facts.money = treasury.money
+	facts.grid_coverage = grid.coverage
 	for def in milestones.check(facts, day):
 		EventBus.milestone_reached.emit(def)
 		EventBus.notified.emit("Jalon atteint : %s — %s" % [def.display_name, def.description])

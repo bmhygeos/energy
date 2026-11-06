@@ -16,7 +16,7 @@ const TAX_MIN_SATISFACTION_FACTOR := 0.5
 const DEFAULT_TAX := 1
 ## Prix de vente d'une unité, en pièces (Stockpile.Good) ; à l'achat,
 ## BUY_MARKUP fois plus.
-const PRICES: PackedFloat32Array = [1.0, 1.0, 2.0, 4.0, 8.0, 3.0, 6.0, 1.0, 5.0, 10.0]
+const PRICES: PackedFloat32Array = [1.0, 1.0, 2.0, 4.0, 8.0, 3.0, 6.0, 1.0, 5.0, 10.0, 6.0]
 const BUY_MARKUP := 1.5
 ## Surplus vendus automatiquement : ce qui dépasse cette part de la capacité.
 const AUTO_SELL_RATIO := 0.75

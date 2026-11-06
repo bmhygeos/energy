@@ -30,6 +30,7 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var stone_cost := 0
 @export var iron_cost := 0
 @export var tools_cost := 0
+@export var copper_cost := 0
 ## Niveau suivant, construit sur place (grenier → grenier en pierre…).
 @export var upgrade: BuildingDef
 ## Se construit directement au niveau du palier atteint (greniers) : coût de
@@ -49,6 +50,7 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var coal_capacity := 0.0
 @export var oil_capacity := 0.0
 @export var fuel_capacity := 0.0
+@export var copper_capacity := 0.0
 ## Forge : outils fabriqués par jour (FORGE_IRON_PER_TOOL fer et
 ## FORGE_WOOD_PER_TOOL bois chacun).
 @export var tools_per_day := 0.0
@@ -79,6 +81,10 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var trade_per_day := 0.0
 ## Gare : dessert les tuiles autour d'elle si une voie la relie au village.
 @export var station := false
+## Centrale ou barrage : puissance à plein régime (W). Une centrale brûle du
+## charbon (PowerGrid.WATTS_PER_COAL) ; un barrage suit le débit des saisons.
+@export var power_watts := 0.0
+@export var burns_coal := false
 ## Port de pêche : les zones de pêche vont jusqu'à ce nombre de tuiles du
 ## rivage (le plus grand compte).
 @export var fishing_reach := 0
@@ -130,6 +136,7 @@ func costs() -> PackedFloat32Array:
 	values[Stockpile.Good.STONE] = stone_cost
 	values[Stockpile.Good.IRON] = iron_cost
 	values[Stockpile.Good.TOOLS] = tools_cost
+	values[Stockpile.Good.COPPER] = copper_cost
 	return values
 
 
@@ -173,6 +180,10 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Commerce : achète et vend %d marchandises par jour" % roundi(trade_per_day))
 	if station:
 		lines.append("Gare : reliée par la voie à une gare du village, elle rapproche les tuiles autour d'elle")
+	if power_watts > 0.0:
+		lines.append("Électricité : %s%s" % [PowerMeter.format(power_watts), " pour %s charbon par jour à plein régime" % Format.decimal(
+			power_watts / PowerGrid.WATTS_PER_COAL) if burns_coal else " selon le débit, sans combustible"])
+		lines.append("À %d tuiles du centre ou moins, ou raccordé par une ligne électrique" % Labor.FREE_DISTANCE)
 	if fishing_reach > 0:
 		lines.append("Pêche jusqu'à %d tuiles du rivage" % fishing_reach)
 	if harbor:
@@ -230,4 +241,6 @@ func capacity_of(good: int) -> float:
 			return oil_capacity
 		Stockpile.Good.FUEL:
 			return fuel_capacity
+		Stockpile.Good.COPPER:
+			return copper_capacity
 	return 0.0

@@ -63,6 +63,8 @@ func _initialize() -> void:
 	_test_ships()
 	_test_port_links()
 	_test_ports_game()
+	_test_power_grid()
+	_test_grid_game()
 	print("%d vérifications, %d échec(s)" % [_count, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -176,6 +178,84 @@ func _test_ports_game() -> void:
 	b.build_progress = port.build_hours
 	gs._refresh_capacities()
 	_check(gs.zones.water_reach == ZoneMap.ALL_WATERS and gs.exploration.ships and gs.ports.distances.size() == 1, "port : eaux ouvertes, navires")
+	gs.new_game(4242)
+
+
+func _test_power_grid() -> void:
+	var flat := _sea_map()
+	var map: WorldMap = flat[0]
+	var territory: Territory = flat[1]
+	map.set_terrain(Vector2i(27, 3), TerrainDef.Type.RIVER)
+	var registry := BuildingRegistry.new(map, territory)
+	var grid := PowerGrid.new(map, territory, registry, Vector2i(20, 10))
+	registry.lines = grid
+	var plant_def := BuildingDb.get_def(&"power_plant")
+	var dam_def := BuildingDb.get_def(&"dam")
+	var near: Building = registry.place(registry.check_placement(plant_def, Vector2i(24, 10)))
+	var far: Building = registry.place(registry.check_placement(dam_def, Vector2i(28, 3)))
+	_check(near != null and far != null, "centrale, et barrage au bord d'une rivière")
+	_check(not registry.check_placement(dam_def, Vector2i(24, 14)).is_valid(), "barrage : à côté d'une rivière seulement")
+	var plants: Array[Building] = [near, far]
+	grid.refresh(plants)
+	_check(grid.connected.size() == 1 and near in grid.connected, "sans ligne : seule la centrale du village produit")
+	grid.add_cells(TrackNetwork.l_path(Vector2i(28, 10), Vector2i(28, 4)))
+	grid.refresh(plants)
+	_check(grid.connected.size() == 1 and grid.linked.is_empty(), "ligne isolée : barrage non raccordé")
+	grid.add_cells(TrackNetwork.l_path(Vector2i(25, 11), Vector2i(28, 11)))
+	grid.refresh(plants)
+	_check(far in grid.connected and grid.linked.has(Vector2i(28, 4)), "ligne reliée au village : barrage raccordé")
+	_check("Ligne" in registry.check_placement(BuildingDb.get_def(&"house"), Vector2i(28, 8)).error, "pas de bâtiment sur une ligne")
+	# 5 000 habitants : 100 kW ; barrage d'été 42 kW, centrale 40 kW.
+	var burnt := grid.run_day(5000, GameDate.SUMMER, 1000.0)
+	_check(is_equal_approx(grid.demand, 100000.0) and is_equal_approx(grid.hydro, 42000.0) and is_equal_approx(burnt, 40.0)
+		and is_equal_approx(grid.coverage, 0.82), "barrage d'abord, puis centrale (%s)" % grid.coverage)
+	burnt = grid.run_day(5000, GameDate.SUMMER, 10.0)
+	_check(is_equal_approx(burnt, 10.0) and is_equal_approx(grid.supplied, 52000.0), "centrale limitée par le charbon")
+	burnt = grid.run_day(1000, GameDate.SUMMER, 100.0)
+	_check(burnt == 0.0 and is_equal_approx(grid.coverage, 1.0) and is_equal_approx(grid.hydro, 20000.0)
+		and is_equal_approx(grid.industry_factor(), 1.25), "demande couverte par l'eau : pas de charbon brûlé")
+
+
+func _test_grid_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var site := StartSite.territory_rect(gs.home)
+	var copper_cells := 0
+	for y in range(site.position.y, site.end.y):
+		for x in range(site.position.x, site.end.x):
+			if gs.world_map.get_deposit(Vector2i(x, y)) == WorldMap.Deposit.COPPER:
+				copper_cells += 1
+	_check(copper_cells >= StartSite.MIN_COPPER, "cuivre près du village (%d tuiles)" % copper_cells)
+	var mine := ZoneDb.get_def(&"copper_mine")
+	_check(mine.tier == 4 and mine.output == Stockpile.Good.COPPER and mine.deposit == WorldMap.Deposit.COPPER, "mine de cuivre à la ville")
+	_check("palier" in gs.lines_error(), "lignes : à la ville")
+	gs.tier.level = 4
+	_check("Recherche" in gs.lines_error(), "lignes : recherche requise")
+	gs.research._done[&"conductivity"] = true
+	gs.population.count = 1000
+	var stock: Stockpile = gs.stockpile
+	for good in Stockpile.COUNT:
+		stock.capacity[good] = 5000.0
+		stock.amount[good] = 2000.0
+	var plant := _place_running(gs, BuildingDb.get_def(&"power_plant"))
+	gs._refresh_capacities()
+	stock.amount[Stockpile.Good.COAL] = 2000.0
+	stock.capacity[Stockpile.Good.COAL] = 5000.0
+	gs.coal_burned_today = 0.0
+	_check(plant != null and plant in gs.grid.connected, "centrale du village raccordée")
+	gs._run_grid(0)
+	_check(is_equal_approx(gs.grid.coverage, 1.0) and is_equal_approx(stock.amount[Stockpile.Good.COAL], 1980.0)
+		and is_equal_approx(gs.coal_burned_today, 20.0), "1 000 habitants : 20 kW, 20 charbon")
+	var fuel: float = stock.amount[Stockpile.Good.FUEL]
+	_check(gs.light_need() == 0.0 and gs._burn_light() == 1.0 and stock.amount[Stockpile.Good.FUEL] == fuel, "le courant remplace le carburant")
+	stock.amount[Stockpile.Good.COAL] = 10.0
+	gs._run_grid(0)
+	var need: float = gs.population.light_need()
+	_check(is_equal_approx(gs.grid.coverage, 0.5) and is_equal_approx(gs.light_need(), need / 2.0)
+		and is_equal_approx(gs._burn_light(), 1.0), "moitié courant, moitié carburant")
+	stock.amount[Stockpile.Good.FUEL] = 0.0
+	_check(is_equal_approx(gs._burn_light(), 0.5), "sans carburant : la part du courant seule")
+	_check(gs.grid.base_costs()[Stockpile.Good.COPPER] == PowerGrid.COPPER_PER_TILE and gs.lines_error().is_empty(), "une ligne coûte du cuivre")
 	gs.new_game(4242)
 
 
@@ -798,7 +878,7 @@ func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
 	stock.amount = Stockpile.zeros()
-	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -1261,7 +1341,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 20 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 21 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()

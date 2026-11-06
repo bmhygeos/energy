@@ -32,6 +32,8 @@ signal zone_plan_previewed(plan: ZoneMap.Plan)
 signal rails_changed(cells: Array[Vector2i])
 ## Routes posées ou retirées.
 signal roads_changed(cells: Array[Vector2i])
+## Lignes ou centrales changées.
+signal grid_changed(cells: Array[Vector2i])
 ## Aperçu d'un tracé de voie (null : aucun).
 signal track_plan_previewed(plan: TrackNetwork.Plan)
 ## Affectation des travailleurs modifiée (Labor).

@@ -45,6 +45,8 @@ class Facts:
 	var research: Research
 	## Pièces du trésor.
 	var money := 0.0
+	## Part de la demande d'électricité servie.
+	var grid_coverage := 0.0
 
 	func has_building(id: StringName) -> bool:
 		return buildings.any(func(b: Building) -> bool: return b.def.id == id and b.is_complete())
@@ -102,6 +104,8 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.tier >= 4),
 		Def.new(&"university", "Alma mater", "Construire une université (recherche ×10).",
 			func(f: Facts) -> bool: return f.has_building(&"university")),
+		Def.new(&"electricity", "Fée électricité", "Couvrir toute la demande d'électricité de la ville.",
+			func(f: Facts) -> bool: return f.grid_coverage >= 1.0),
 		Def.new(&"market", "Jour de marché", "Construire un marché pour commercer.",
 			func(f: Facts) -> bool: return f.has_building(&"market")),
 		Def.new(&"treasury", "Trésor", "Amasser %d pièces." % TREASURY_MONEY,

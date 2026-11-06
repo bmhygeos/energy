@@ -104,6 +104,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_update_track_plan()
 			if _track_plan and _mode == BuildTool.Mode.RAIL:
 				GameState.build_rails(_track_plan)
+			elif _track_plan and _mode == BuildTool.Mode.LINE:
+				GameState.build_lines(_track_plan)
 			elif _track_plan:
 				GameState.build_roads(_track_plan)
 			_track_plan = null
@@ -139,12 +141,13 @@ func _click(cell: Vector2i) -> void:
 			var b := GameState.buildings.building_at(cell)
 			var rail := cell.x >= 0 and GameState.rails.has_rail(cell)
 			var road := cell.x >= 0 and GameState.roads.has_tile(cell)
-			if (b or rail or road) and GameState.demolish(cell):
-				EventBus.notified.emit("%s démoli" % b.def.display_name if b else "Voie ferrée retirée" if rail else "Route retirée")
+			var line := cell.x >= 0 and GameState.grid.has_tile(cell)
+			if (b or rail or road or line) and GameState.demolish(cell):
+				EventBus.notified.emit("%s démoli" % b.def.display_name if b else "Voie ferrée retirée" if rail else "Route retirée" if road else "Ligne électrique retirée")
 		BuildTool.Mode.UPGRADE:
 			if cell.x >= 0:
 				GameState.upgrade(cell)
-		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.RAIL, BuildTool.Mode.ROAD:
+		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.RAIL, BuildTool.Mode.ROAD, BuildTool.Mode.LINE:
 			if cell.x >= 0:
 				_drag_start = cell
 				_drag_end = cell
@@ -201,7 +204,7 @@ func _is_zone_mode() -> bool:
 
 
 func _is_track_mode() -> bool:
-	return _mode == BuildTool.Mode.RAIL or _mode == BuildTool.Mode.ROAD
+	return _mode == BuildTool.Mode.RAIL or _mode == BuildTool.Mode.ROAD or _mode == BuildTool.Mode.LINE
 
 
 ## Outils qui se glissent (rectangle de zones, tracé de voie ou de route).
@@ -221,7 +224,14 @@ func _update_track_plan() -> void:
 			EventBus.track_plan_previewed.emit(null)
 		return
 	var end := _drag_end if _drag_start.x >= 0 else _hovered
-	var plan := GameState.plan_rails(start, end) if _mode == BuildTool.Mode.RAIL else GameState.plan_roads(start, end)
+	var plan: TrackNetwork.Plan
+	match _mode:
+		BuildTool.Mode.RAIL:
+			plan = GameState.plan_rails(start, end)
+		BuildTool.Mode.LINE:
+			plan = GameState.plan_lines(start, end)
+		_:
+			plan = GameState.plan_roads(start, end)
 	if _track_plan and _track_plan.cells == plan.cells and _track_plan.error == plan.error \
 			and _track_plan.new_cells == plan.new_cells:
 		return

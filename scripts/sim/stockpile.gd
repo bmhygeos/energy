@@ -5,21 +5,21 @@ extends RefCounted
 ## nourriture au-delà de la moitié du grenier, pertes au-delà de la capacité,
 ## et énergie contenue (compteur de puissance). Pure donnée.
 
-enum Good { FOOD, WOOD, STONE, IRON, TOOLS, COAL, OIL, FIBER, CLOTHES, FUEL }
+enum Good { FOOD, WOOD, STONE, IRON, TOOLS, COAL, OIL, FIBER, CLOTHES, FUEL, COPPER }
 
-const COUNT := 10
-const GOOD_NAMES: PackedStringArray = ["Nourriture", "Bois", "Pierre", "Fer", "Outils", "Charbon", "Pétrole", "Fibres", "Vêtements", "Carburant"]
+const COUNT := 11
+const GOOD_NAMES: PackedStringArray = ["Nourriture", "Bois", "Pierre", "Fer", "Outils", "Charbon", "Pétrole", "Fibres", "Vêtements", "Carburant", "Cuivre"]
 ## Accord de « insuffisant » avec le nom de la marchandise.
-const GOOD_AGREEMENT: PackedStringArray = ["e", "", "e", "", "s", "", "", "es", "s", ""]
+const GOOD_AGREEMENT: PackedStringArray = ["e", "", "e", "", "s", "", "", "es", "s", "", ""]
 ## Contenu énergétique d'une unité (MJ) : 2 500 kcal de nourriture, 10 kg de
 ## bois sec, de charbon ou de pétrole ; les matériaux n'en ont pas, ni le
 ## carburant (déjà compté comme pétrole).
-const ENERGY_MJ: PackedFloat32Array = [10.5, 150.0, 0.0, 0.0, 0.0, 290.0, 420.0, 0.0, 0.0, 0.0]
+const ENERGY_MJ: PackedFloat32Array = [10.5, 150.0, 0.0, 0.0, 0.0, 290.0, 420.0, 0.0, 0.0, 0.0, 0.0]
 ## Capacité du village sans bâtiment de stockage (le pétrole demande un
 ## réservoir).
-const BASE_CAPACITY: PackedFloat32Array = [200.0, 150.0, 300.0, 200.0, 100.0, 100.0, 0.0, 200.0, 150.0, 100.0]
+const BASE_CAPACITY: PackedFloat32Array = [200.0, 150.0, 300.0, 200.0, 100.0, 100.0, 0.0, 200.0, 150.0, 100.0, 100.0]
 ## Stocks au départ : de quoi tenir jusqu'aux premières récoltes.
-const START: PackedFloat32Array = [550.0, 120.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+const START: PackedFloat32Array = [550.0, 120.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ## Nourriture gâtée par jour, en part de l'excédent au-delà de la moitié de
 ## la capacité.
 const SPOILAGE_PER_DAY := 0.01

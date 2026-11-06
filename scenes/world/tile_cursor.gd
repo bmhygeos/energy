@@ -48,7 +48,7 @@ func _draw() -> void:
 					placement.def.size)
 				draw_colored_polygon(d, color * Color(1, 1, 1, 0.3))
 				_outline(d, color, 3.0)
-		BuildTool.Mode.RAIL, BuildTool.Mode.ROAD:
+		BuildTool.Mode.RAIL, BuildTool.Mode.ROAD, BuildTool.Mode.LINE:
 			if track_plan:
 				for cell in track_plan.cells:
 					var color := HOVER_COLOR

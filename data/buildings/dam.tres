@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"dam"
+display_name = "Barrage"
+description = "Une rivière retenue fait tourner les turbines : du courant sans combustible, au rythme des saisons."
+category = 2
+tier = 4
+research = &"hydroelectricity"
+build_hours = 240
+stone_cost = 150
+iron_cost = 40
+tools_cost = 10
+copper_cost = 30
+power_watts = 60000.0
+adjacent_terrains = Array[int]([4])
+color = Color(0.72, 0.72, 0.7, 1)
+roof_color = Color(0.45, 0.5, 0.55, 1)
+height = 20.0

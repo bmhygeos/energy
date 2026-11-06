@@ -80,6 +80,8 @@ func _refresh() -> void:
 			lines.append("Irriguée : +%d %%" % roundi((Production.IRRIGATION_BONUS - 1.0) * 100.0))
 	if GameState.rails.has_rail(cell):
 		lines.append("Voie ferrée%s" % ("" if GameState.rails.running else " (trains arrêtés : plus de charbon)"))
+	if GameState.grid.has_tile(cell):
+		lines.append("Ligne électrique%s" % ("" if GameState.grid.linked.has(map.wrap_cell(cell)) else " (pas reliée au village)"))
 	if GameState.roads.has_tile(cell):
 		lines.append("Route%s" % ("" if GameState.roads.lengths.has(map.wrap_cell(cell)) else " (pas reliée au village)"))
 	var regrowth := GameState.production.regrowth_days_left(cell)
@@ -142,6 +144,8 @@ func _building_lines(b: Building) -> PackedStringArray:
 				"" if rails.running else " (trains arrêtés : plus de charbon)"])
 		else:
 			lines.append("Non desservie : reliez-la par la voie à une gare du village")
+	if b.is_complete() and b.def.power_watts > 0.0:
+		lines.append("Raccordé au réseau" if GameState.grid.feeds_city(b) else "Non raccordé : reliez-le au village par une ligne électrique")
 	if b.is_complete() and b.def.harbor:
 		var ports := GameState.ports
 		if ports.is_linked(b.anchor):

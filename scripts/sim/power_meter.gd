@@ -9,7 +9,7 @@ const WINDOW_DAYS := 30
 const SECONDS_PER_DAY := 86400.0
 
 ## Sources mécaniques, après les marchandises (indices Stockpile.COUNT + k).
-const EXTRA_NAMES: PackedStringArray = ["Chevaux au travail", "Moulins"]
+const EXTRA_NAMES: PackedStringArray = ["Chevaux au travail", "Moulins", "Barrages"]
 
 ## Puissance moyenne de chaque jour clos, par marchandise puis par source
 ## mécanique (EXTRA_NAMES) (W).

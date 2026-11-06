@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"hydroelectricity"
+display_name = "Hydroélectricité"
+description = "Une chute d'eau captée fait tourner une turbine, sans rien brûler."
+tier = 4
+cost = 60000.0
+prerequisites = Array[StringName]([&"conductivity"])
+effect = "Barrage : du courant sans combustible, qui suit le débit des saisons."

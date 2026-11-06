@@ -76,6 +76,8 @@ func check_cell(def: ZoneDef, cell: Vector2i) -> String:
 		return "Voie ferrée présente"
 	if buildings.roads and buildings.roads.has_tile(cell):
 		return "Route présente"
+	if buildings.lines and buildings.lines.has_tile(cell):
+		return "Ligne électrique présente"
 	if def.deposit != 0 and territory.known_deposit(cell) != def.deposit:
 		return "Pas de gisement de %s prospecté" % WorldMap.DEPOSIT_NAMES[def.deposit].to_lower()
 	var error := def.terrain_error(map, cell)

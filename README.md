@@ -359,6 +359,25 @@ météo et interface conservés.
 - **Jalons** Ville et Alma mater. Bandeau : charbon, vêtements et carburant
   au survol, affichés seulement s'ils manquent.
 
+### V11 (partie 2) : électricité — cuivre, centrale, barrage, lignes
+
+- **Mine de cuivre** (ville) : zone sur un gisement de cuivre prospecté (2
+  mineurs, 1 cuivre/j chacun) ; 2 tuiles garanties à 4–6 tuiles du centre.
+  **Parc à cuivre** : +1 000 de stock.
+- **Conductivité du cuivre** (45 000 points) : lignes électriques (1 cuivre par
+  tuile) et **centrale à charbon** (40 kW pour 40 charbon/j à plein régime ; 80
+  pierre, 60 fer, 10 outils, 20 cuivre).
+- **Hydroélectricité** (60 000 points) : **barrage** à côté d'une rivière (60 kW
+  sans combustible, ×1,3 au printemps, ×0,7 en été, ×0,8 en hiver ; 150 pierre,
+  40 fer, 10 outils, 30 cuivre).
+- **Réseau** : une centrale ou un barrage produit s'il est à 6 tuiles du centre
+  ou moins, ou s'il touche une ligne reliée au village. La ville demande 20 W par
+  habitant ; les barrages passent d'abord, les centrales brûlent le reste.
+- **Effets** : le courant remplace d'autant le carburant des lampes, et forges,
+  tissages et raffineries vont jusqu'à +25 % plus vite. Panneau Main-d'œuvre,
+  statistiques et jalon « Fée électricité » ; les barrages comptent dans le
+  compteur de puissance (le charbon y est déjà compté).
+
 ### Ports : pêche au large, navires et transport par l'eau
 
 - **Pêche** : au village, à une tuile du rivage au plus.

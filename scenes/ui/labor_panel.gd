@@ -134,6 +134,10 @@ func _refresh() -> void:
 		_needs.text += "  ·  vêtements %s /j" % Format.decimal(GameState.clothes_need())
 	if GameState.light_need() > 0.0:
 		_needs.text += "  ·  carburant %s /j (éclairage)" % Format.decimal(GameState.light_need())
+	var grid := GameState.grid
+	if not grid.connected.is_empty():
+		_needs.text += "\nÉlectricité : %s sur %s demandés (%d %%)  ·  réseau %s" % [PowerMeter.format(grid.supplied),
+			PowerMeter.format(grid.demand), roundi(grid.coverage * 100.0), PowerMeter.format(grid.capacity(season))]
 	var draft := GameState.draft
 	if draft.capacity > 0 or draft.count() > 0:
 		_needs.text += "\nChevaux %d / %d (écuries)  ·  attelés %d  ·  en expédition %d  ·  fourrage %s /j" % [

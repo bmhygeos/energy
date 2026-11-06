@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"power_plant"
+display_name = "Centrale à charbon"
+description = "Chaudières et alternateurs : le charbon devient du courant."
+category = 2
+tier = 4
+research = &"conductivity"
+size = Vector2i(2, 1)
+build_hours = 144
+stone_cost = 80
+iron_cost = 60
+tools_cost = 10
+copper_cost = 20
+power_watts = 40000.0
+burns_coal = true
+color = Color(0.5, 0.48, 0.46, 1)
+roof_color = Color(0.25, 0.24, 0.24, 1)
+height = 30.0

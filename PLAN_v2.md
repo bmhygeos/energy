@@ -462,7 +462,8 @@ effectif, vivres).
 | V10 | Routes du bourg | Tracé en L, 2 pierres par tuile, abords rapprochés du village — réalisé |
 | V11 (partie 1) | Palier 4, première partie | Pétrole (puits, raffinerie, carburant), éclairage, université et son entretien — réalisé |
 | V11 (ports) | Pêche et ports | Portée de la pêche, port de pêche, port, navires des expéditions, transport entre ports — réalisé |
-| V11+ | Paliers 4 à 5 | Logistique, artisanat ; charbon et train (palier 3), pétrole, cuivre, camions, électricité et barrages (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
+| V11 (partie 2) | Électricité | Cuivre, conductivité, lignes, centrale à charbon, barrage, réseau — réalisé (sans la noyade des tuiles en amont ni le fioul) |
+| V11+ | Paliers 4 à 5 | Logistique, artisanat ; camions, santé, ordre, biens variés (palier 4), électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses

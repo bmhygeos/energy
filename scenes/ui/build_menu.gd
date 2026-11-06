@@ -23,6 +23,7 @@ var _upgrade_button: Button
 var _expedition_button: Button
 var _rail_button: Button
 var _road_button: Button
+var _line_button: Button
 var _members: SpinBox
 var _days: SpinBox
 var _horses: SpinBox
@@ -132,6 +133,11 @@ func _refresh_tier_locks() -> void:
 			CityTier.NAMES[2] if level < 3 else ResearchDb.get_def(&"locomotive").display_name))
 	if _road_button:
 		_lock(_road_button, "Route   %s" % _road_cost_text(), GameState.ROAD_TIER, level)
+	if _line_button:
+		var error := GameState.lines_error() if GameState.grid else "?"
+		_line_button.disabled = not error.is_empty()
+		_line_button.text = "Ligne électrique   %s" % _line_cost_text() + ("" if error.is_empty() else "   (%s)" % (
+			CityTier.NAMES[3] if level < 4 else ResearchDb.get_def(&"conductivity").display_name))
 	if _days:
 		_update_days_limit()
 		_horses_row.visible = level >= 2
@@ -168,10 +174,23 @@ func _build_transport() -> void:
 		"Démolir retire une voie."]))
 	_rail_button.pressed.connect(func() -> void:
 		_select_tool(_rail_button, BuildTool.Mode.RAIL, null))
+	_line_button = _tool_button("Ligne électrique   %s" % _line_cost_text())
+	_line_button.tooltip_text = "\n".join(PackedStringArray(["Ligne électrique (ville, recherche Conductivité du cuivre)",
+		"Glisser pour poser un tracé en L ; %s par tuile, sur rivière ×%d ; pas sur l'eau, la montagne ni les zones." % [
+			_line_cost_text(), roundi(TrackNetwork.BRIDGE_FACTOR)],
+		"Reliée au village (une tuile à %d tuiles du centre ou moins), elle raccorde les centrales et barrages qui la touchent." % Labor.FREE_DISTANCE,
+		"Le courant remplace le carburant des lampes et accélère forges, tissages et raffineries (jusqu'à +%d %%)." % roundi(PowerGrid.INDUSTRY_BONUS * 100.0),
+		"Démolir retire une ligne."]))
+	_line_button.pressed.connect(func() -> void:
+		_select_tool(_line_button, BuildTool.Mode.LINE, null))
 
 
 static func _road_cost_text() -> String:
 	return "%d pierre" % roundi(RoadNetwork.STONE_PER_TILE)
+
+
+static func _line_cost_text() -> String:
+	return "%d cuivre" % roundi(PowerGrid.COPPER_PER_TILE)
 
 
 static func _rail_cost_text() -> String:
@@ -350,6 +369,7 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 	_expedition_button.set_pressed_no_signal(_mode == BuildTool.Mode.EXPEDITION)
 	_rail_button.set_pressed_no_signal(_mode == BuildTool.Mode.RAIL)
 	_road_button.set_pressed_no_signal(_mode == BuildTool.Mode.ROAD)
+	_line_button.set_pressed_no_signal(_mode == BuildTool.Mode.LINE)
 	_track_plan = null
 	_refresh_hint()
 
@@ -404,8 +424,9 @@ func _refresh_hint() -> void:
 					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
 		BuildTool.Mode.EXPEDITION:
 			text = _expedition_hint()
-		BuildTool.Mode.RAIL, BuildTool.Mode.ROAD:
-			text = "[b]%s[/b] — glisser pour poser un tracé en L · Échap : annuler" % ("Voie ferrée" if _mode == BuildTool.Mode.RAIL else "Route")
+		BuildTool.Mode.RAIL, BuildTool.Mode.ROAD, BuildTool.Mode.LINE:
+			text = "[b]%s[/b] — glisser pour poser un tracé en L · Échap : annuler" % {
+				BuildTool.Mode.RAIL: "Voie ferrée", BuildTool.Mode.ROAD: "Route"}.get(_mode, "Ligne électrique")
 			if _track_plan:
 				if _track_plan.is_valid():
 					var n := _track_plan.new_cells.size()
