@@ -10,4 +10,4 @@ description = "La vapeur pousse un piston : une force sans vent ni rivière, tan
 tier = 3
 cost = 25000.0
 prerequisites = Array[StringName]([&"coke"])
-effect = "Débloque la machine à vapeur (6 charbon/j) : carrières et mines +25 %, coupe du bois et forges +30 %."
+effect = "Débloque la machine à vapeur (6 charbon/j) : carrières et mines +50 %, coupe du bois et forges +30 %."

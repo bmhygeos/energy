@@ -12,6 +12,13 @@ const FORGE_WOOD_PER_TOOL := 0.5
 const TOOL_LIFE_DAYS := 60.0
 ## Outils : maisons moins chères en bois ; engrenage : puits plus efficaces.
 const TOOLS_HOUSE_WOOD := 0.75
+## Sylviculture : facteur de la vitesse de repousse des forêts.
+const SYLVICULTURE_REGROWTH := 2.0
+## Charbon de bois : part du bois coupé du jour transformée, bois par unité de
+## charbon, et jours de chauffage d'hiver gardés en bois.
+const CHARCOAL_WOOD_SHARE := 0.2
+const WOOD_PER_CHARCOAL := 3.0
+const CHARCOAL_RESERVE_DAYS := 10.0
 const GEARS_WATER_BONUS := 1.15
 ## Pompe à eau : puits plus efficaces.
 const PUMP_WATER_BONUS := 1.5
@@ -445,6 +452,7 @@ func _refresh_capacities() -> void:
 			trade += b.def.trade_per_day
 	treasury.trade_capacity = trade
 	draft.collar = research.is_done(&"harness_collar")
+	production.regrowth_factor = SYLVICULTURE_REGROWTH if research.is_done(&"sylviculture") else 1.0
 
 
 ## Bonus des machines (moulin à eau ; machines à vapeur si alimentées).
@@ -795,6 +803,23 @@ func _run_forges() -> void:
 	stockpile.take(fuel, n * fuel_per_tool)
 	stockpile.add(Stockpile.Good.TOOLS, n)
 	production.produced_today[Stockpile.Good.TOOLS] += n
+
+
+## Charbon de bois : une part du bois coupé aujourd'hui devient du charbon,
+## sans entamer la réserve de chauffage ni dépasser la place en stock.
+func _run_charcoal() -> void:
+	if not research.is_done(&"charcoal"):
+		return
+	var spare := stockpile.amount[Stockpile.Good.WOOD] - wood_need(GameDate.WINTER) * CHARCOAL_RESERVE_DAYS
+	var room := stockpile.capacity[Stockpile.Good.COAL] - stockpile.amount[Stockpile.Good.COAL]
+	var wood := minf(production.produced_today[Stockpile.Good.WOOD] * CHARCOAL_WOOD_SHARE,
+		minf(spare, room * WOOD_PER_CHARCOAL))
+	if wood <= 0.0:
+		return
+	var n := wood / WOOD_PER_CHARCOAL
+	stockpile.take(Stockpile.Good.WOOD, wood)
+	stockpile.add(Stockpile.Good.COAL, n)
+	production.produced_today[Stockpile.Good.COAL] += n
 
 
 ## Ateliers de tissage : fibres du jour transformées en vêtements, dans la
@@ -1254,6 +1279,7 @@ func _on_day(day: int) -> void:
 	var coverage := PackedFloat32Array()
 	for good in _needed_today.size():
 		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)
+	_run_charcoal()
 	_run_grid(GameDate.season(day_tick))
 	_run_forges()
 	_run_weavers()

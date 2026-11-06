@@ -43,6 +43,12 @@ const MIN_COPPER := 2
 const COPPER_MIN_DISTANCE := 4
 const COPPER_RADIUS := 6
 const COPPER_AMOUNT := 20000.0
+## Tuiles de pierre (carrières hors des collines) à STONE_DEPOSIT_MIN_DISTANCE–
+## STONE_DEPOSIT_RADIUS tuiles du centre, avec STONE_DEPOSIT_AMOUNT de pierre.
+const MIN_STONE_DEPOSIT := 6
+const STONE_DEPOSIT_MIN_DISTANCE := 4
+const STONE_DEPOSIT_RADIUS := 8
+const STONE_DEPOSIT_AMOUNT := 30000.0
 ## Terrains où placer le fer et le charbon, par préférence (forêt et collines avant les
 ## terres cultivables).
 const IRON_TERRAINS: Array[int] = [T.FOREST, T.HILL, T.TUNDRA, T.PRAIRIE, T.PLAIN]
@@ -107,7 +113,9 @@ static func ensure(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 	for c in _ensure_deposit(map, rect, WorldMap.Deposit.IRON, MIN_IRON, IRON_MIN_DISTANCE, IRON_RADIUS, IRON_AMOUNT) \
 			+ _ensure_deposit(map, rect, WorldMap.Deposit.COAL, MIN_COAL, COAL_MIN_DISTANCE, COAL_RADIUS, COAL_AMOUNT) \
 			+ _ensure_deposit(map, rect, WorldMap.Deposit.OIL, MIN_OIL, OIL_MIN_DISTANCE, OIL_RADIUS, OIL_AMOUNT) \
-			+ _ensure_deposit(map, rect, WorldMap.Deposit.COPPER, MIN_COPPER, COPPER_MIN_DISTANCE, COPPER_RADIUS, COPPER_AMOUNT):
+			+ _ensure_deposit(map, rect, WorldMap.Deposit.COPPER, MIN_COPPER, COPPER_MIN_DISTANCE, COPPER_RADIUS, COPPER_AMOUNT) \
+			+ _ensure_deposit(map, rect, WorldMap.Deposit.STONE, MIN_STONE_DEPOSIT, STONE_DEPOSIT_MIN_DISTANCE, STONE_DEPOSIT_RADIUS,
+				STONE_DEPOSIT_AMOUNT):
 		if c not in changed:
 			changed.append(c)
 	return changed

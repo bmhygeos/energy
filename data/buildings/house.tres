@@ -7,11 +7,12 @@
 script = ExtResource("1_def")
 id = &"house"
 display_name = "Maison"
-description = "Maison simple en bois : la population ne grandit que s'il reste des logements ; s'améliore à chaque palier."
+description = "Maison simple en bois : la population ne grandit que s'il reste des logements ; se construit au niveau du palier atteint."
 category = 0
 build_hours = 24
 wood_cost = 15
 upgrade = ExtResource("2_up")
+build_at_tier = true
 housing = 5
 color = Color(0.82, 0.74, 0.6, 1)
 roof_color = Color(0.6, 0.32, 0.22, 1)

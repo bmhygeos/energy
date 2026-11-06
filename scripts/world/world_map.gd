@@ -9,12 +9,12 @@ extends RefCounted
 ## ramenée sur la planète (wrap), ce qui permet à la vue d'utiliser des
 ## coordonnées « dépliées » autour du village.
 
-enum Deposit { NONE, COAL, IRON, OIL, COPPER, URANIUM, LITHIUM }
+enum Deposit { NONE, COAL, IRON, OIL, COPPER, URANIUM, LITHIUM, STONE }
 
-const DEPOSIT_NAMES: PackedStringArray = ["Aucun", "Charbon", "Fer", "Pétrole", "Cuivre", "Uranium", "Lithium"]
+const DEPOSIT_NAMES: PackedStringArray = ["Aucun", "Charbon", "Fer", "Pétrole", "Cuivre", "Uranium", "Lithium", "Pierre"]
 const CHUNK_SIZE := 32
 ## Bois sur pied d'une forêt de densité maximale (unités de 10 kg).
-const WOOD_PER_FOREST := 400.0
+const WOOD_PER_FOREST := 1200.0
 const NEIGHBORS_4: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
 ]

@@ -154,6 +154,9 @@ func _refresh() -> void:
 	if GameState.steam_coal_need() > 0.0:
 		_needs.text += "\nMachines à vapeur : charbon %s /j%s" % [Format.decimal(GameState.steam_coal_need()),
 			"" if GameState.steam_running else "  ·  à l'arrêt"]
+	if GameState.research.is_done(&"charcoal"):
+		_needs.text += "\nCharbon de bois : %d %% du bois coupé (%s bois pour 1 charbon)" % [
+			roundi(GameState.CHARCOAL_WOOD_SHARE * 100.0), Format.decimal(GameState.WOOD_PER_CHARCOAL)]
 	for def: ZoneDef in _rows:
 		var row := _rows[def]
 		(row[0] as Label).text = str(GameState.zones.tile_count(def))

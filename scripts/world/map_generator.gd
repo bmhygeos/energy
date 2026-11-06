@@ -55,6 +55,7 @@ const DEPOSIT_RULES := [
 	[WorldMap.Deposit.OIL, [T.DESERT, T.PLAIN, T.PRAIRIE, T.TUNDRA], 0.008, 3000, 10000],
 	[WorldMap.Deposit.IRON, [T.HILL, T.PLAIN, T.FOREST, T.PRAIRIE, T.TUNDRA], 0.012, 15000, 45000],
 	[WorldMap.Deposit.COAL, [T.PLAIN, T.HILL, T.FOREST, T.PRAIRIE], 0.016, 20000, 60000],
+	[WorldMap.Deposit.STONE, [T.PLAIN, T.PRAIRIE, T.FOREST, T.TUNDRA, T.DESERT], 0.02, 20000, 60000],
 ]
 
 
@@ -103,8 +104,11 @@ func _init(p_seed: int, p_size: Vector2i) -> void:
 	_river = _make_noise(rng, RIVER_PERIOD, 2)
 	_lake = _make_noise(rng, LAKE_PERIOD, 2)
 	_detail = _make_noise(rng, DETAIL_PERIOD, 2)
+	# La pierre a son propre tirage : le reste de la carte d'une graine ne change pas.
+	var stone_rng := RandomNumberGenerator.new()
+	stone_rng.seed = p_seed + 1
 	for rule: Array in DEPOSIT_RULES:
-		_deposits.append(_make_noise(rng, DEPOSIT_PERIOD, 2))
+		_deposits.append(_make_noise(stone_rng if rule[0] == WorldMap.Deposit.STONE else rng, DEPOSIT_PERIOD, 2))
 	_calibrate(rng)
 
 

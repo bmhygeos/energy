@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"sylviculture"
+display_name = "Sylviculture"
+description = "Semis, éclaircies et rotation des parcelles : la forêt devient une culture."
+tier = 3
+cost = 15000.0
+prerequisites = Array[StringName]([&"crop_rotation"])
+effect = "Les forêts repoussent deux fois plus vite : une coupe à blanc redevient forêt en 60 jours au lieu de 120."

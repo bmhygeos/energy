@@ -11,7 +11,7 @@ const MODE_NAMES: PackedStringArray = [
 ## Par WorldMap.Deposit.
 const DEPOSIT_COLORS: Array[Color] = [
 	Color.TRANSPARENT, Color("1a1a1a"), Color("b0503a"), Color("2b2b55"),
-	Color("d9822b"), Color("4be03c"), Color("c45cff"),
+	Color("d9822b"), Color("4be03c"), Color("c45cff"), Color("c8c8d0"),
 ]
 ## Altitude du niveau de la mer dans le dégradé du relief.
 const RELIEF_SEA := 0.3

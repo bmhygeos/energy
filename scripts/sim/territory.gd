@@ -13,7 +13,7 @@ const PROSPECTED_BIT := 4
 ## Palier à partir duquel chaque gisement (WorldMap.Deposit) se prospecte :
 ## fer au village, charbon au bourg, pétrole et cuivre à la ville, uranium et
 ## lithium à la cité-État.
-const DEPOSIT_TIER: PackedInt32Array = [0, 3, 2, 4, 4, 5, 5]
+const DEPOSIT_TIER: PackedInt32Array = [0, 3, 2, 4, 4, 5, 5, 2]
 
 var map: WorldMap
 ## Palier de la ville : seuls les gisements de ce palier ou d'avant sont vus.

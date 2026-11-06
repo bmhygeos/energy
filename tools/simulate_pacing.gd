@@ -6,6 +6,8 @@ extends SceneTree
 ## laboratoire et moulin à eau au bourg ; réservoir, puits de pétrole,
 ## raffinerie et université à la ville) et affiche l'évolution mois par mois, puis les jours
 ## où chaque palier et chaque jalon sont atteints.
+## Les camps d'abattage sont plafonnés et le bois en trop vendu au bourg ; sans
+## place au centre, un bâtiment remplace une zone.
 ## Lancer : godot --headless -s res://tools/simulate_pacing.gd -- [graine] [années]
 
 const ZONE_ORDER: Array[StringName] = [&"pasture", &"agriculture", &"forestry", &"quarry", &"fishing", &"iron_mine",
@@ -28,6 +30,9 @@ const HOUSE_RADIUS := 9
 const TRADE_GOAL := 600.0
 ## Jours de réserve sous lesquels une marchandise est achetée.
 const BUY_BELOW_DAYS := 10.0
+## Jours de chauffage d'hiver que les camps d'abattage doivent pouvoir stocker
+## (au-delà, ils prendraient la place des maisons).
+const WOOD_STORE_DAYS := 60.0
 ## Logements libres en dessous desquels une maison est construite.
 const HOUSING_MARGIN := 3
 const DIRECTIONS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1),
@@ -95,42 +100,45 @@ func _play_day(day: int) -> void:
 		_build_near(&"woodshed")
 	if _gs.housing - _gs.population.count <= HOUSING_MARGIN and not _build_near(&"house", 0, HOUSE_RADIUS) \
 			and not _upgrade_house():
-		_build_near(&"house")
+		_build_anywhere(&"house")
 	var stock: Stockpile = _gs.stockpile
 	# Au bourg, sous le seuil de vente automatique : sinon, les greniers ne
 	# grandiraient plus.
 	var full_food := 0.7 if _gs.tier.level >= 3 else 0.9
 	if stock.amount[Stockpile.Good.FOOD] >= full_food * stock.capacity[Stockpile.Good.FOOD] \
 			and stock.capacity[Stockpile.Good.FOOD] < _gs.food_need() * GameDate.DAYS_PER_SEASON * 2:
-		_build_near(&"granary")
-	if stock.amount[Stockpile.Good.WOOD] >= 0.9 * stock.capacity[Stockpile.Good.WOOD]:
-		_build_near(&"woodshed")
+		_build_anywhere(&"granary")
+	if stock.amount[Stockpile.Good.WOOD] >= 0.9 * stock.capacity[Stockpile.Good.WOOD] \
+			and stock.capacity[Stockpile.Good.WOOD] < _gs.wood_need(GameDate.WINTER) * WOOD_STORE_DAYS:
+		_build_anywhere(&"woodshed")
 	if _gs.tier.level >= 2:
 		if _gs.water_coverage() < 1.0:
-			_build_near(&"well")
+			_build_anywhere(&"well")
 		if not _has(&"workshop"):
-			_build_near(&"workshop")
+			_build_anywhere(&"workshop")
 		if not _has(&"stable"):
-			_build_near(&"stable")
+			_build_anywhere(&"stable")
 		if _gs.research.is_done(&"iron_metallurgy") \
 				and _count(&"forge") * BuildingDb.get_def(&"forge").tools_per_day < maxf(1.0, _gs.tools_need()):
-			_build_near(&"forge")
+			_build_anywhere(&"forge")
 	if _gs.tier.level >= 3:
 		if _count(&"weaver") * BuildingDb.get_def(&"weaver").clothes_per_day < _gs.clothes_need():
-			_build_near(&"weaver")
+			_build_anywhere(&"weaver")
 		if _gs.research.is_done(&"scientific_method") and not _has(&"laboratory"):
-			_build_near(&"laboratory")
+			_build_anywhere(&"laboratory")
 		if _gs.research.is_done(&"water_mill") and not _has(&"water_mill"):
-			_build_near(&"water_mill", 12)
+			if not _build_near(&"water_mill", 12):
+				_build_clearing(&"water_mill")
 		if _gs.research.is_done(&"steam_engine") and not _has(&"steam_engine"):
-			_build_near(&"steam_engine")
+			_build_anywhere(&"steam_engine")
 		if stock.amount[Stockpile.Good.COAL] >= 0.9 * stock.capacity[Stockpile.Good.COAL]:
-			_build_near(&"coal_yard")
+			_build_anywhere(&"coal_yard")
 		if _gs.treasury.trade_capacity + _building_markets() * BuildingDb.get_def(&"market").trade_per_day < TRADE_GOAL:
-			_build_near(&"market")
+			_build_anywhere(&"market")
 		# Impôt normal et surplus de nourriture vendus : de quoi payer les achats.
 		_gs.set_tax_level(2)
 		_gs.set_auto_sell(Stockpile.Good.FOOD, true)
+		_gs.set_auto_sell(Stockpile.Good.WOOD, true)
 		_buy_shortages()
 	if _gs.tier.level >= 4:
 		if not _has(&"oil_tank"):
@@ -197,25 +205,41 @@ func _build_near(id: StringName, radius := 0, limit := 1000) -> bool:
 					continue
 				var placement: BuildingRegistry.Placement = _gs.check_placement(def, _center + Vector2i(dx, dy))
 				# Ni sur la colline des carrières, ni sur le fer des mines.
-				if placement.is_valid() and placement.cleared.is_empty() \
-						and not placement.cells.any(Callable(_gs, &"_reserved_at_start")):
+				if placement.is_valid() and placement.cleared.is_empty() and not placement.cells.any(_reserved):
 					return _gs.build(def, _center + Vector2i(dx, dy)) != null
 	return false
+
+
+## Collines et gisements restent aux carrières et aux mines ; les gisements de
+## pierre, nombreux près du village, se bâtissent : sinon, plus de place.
+func _reserved(cell: Vector2i) -> bool:
+	return _gs._reserved_at_start(cell) and _gs.world_map.get_deposit(cell) != WorldMap.Deposit.STONE
+
+
+## Construit [param id] au centre, ou à défaut à la place d'une zone.
+func _build_anywhere(id: StringName) -> bool:
+	return _build_near(id) or _build_clearing(id)
 
 
 ## Construit [param id] au plus près du centre en effaçant les zones de son
 ## emprise ; renvoie true si posé.
 func _build_clearing(id: StringName) -> bool:
 	var def := BuildingDb.get_def(id)
+	var level: BuildingDef = _gs.build_level(def)
+	var costs: PackedFloat32Array = _gs.build_costs(def)
+	if level.tier > _gs.tier.level:
+		return false
+	for good in costs.size():
+		if not _gs.stockpile.has(good, costs[good]):
+			return false
 	for r in range(1, ZONE_RADIUS):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				if maxi(absi(dx), absi(dy)) != r:
 					continue
 				var anchor: Vector2i = _center + Vector2i(dx, dy)
-				var placement: BuildingRegistry.Placement = _gs.buildings.check_placement(def, anchor)
-				if placement.is_valid() and placement.cleared.is_empty() \
-						and not placement.cells.any(Callable(_gs, &"_reserved_at_start")):
+				var placement: BuildingRegistry.Placement = _gs.buildings.check_placement(level, anchor)
+				if placement.is_valid() and placement.cleared.is_empty() and not placement.cells.any(_reserved):
 					_gs.apply_zones(_gs.plan_zones(null, placement.cells[0], placement.cells[-1]))
 					return _gs.build(def, anchor) != null
 	return false

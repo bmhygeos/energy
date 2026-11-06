@@ -14,10 +14,10 @@ extends RefCounted
 const FERTILITY_WEAR_PER_DAY := 0.0015
 const FERTILITY_RECOVERY_PER_DAY := 0.003
 ## Bois regagné par jour par une forêt entamée hors exploitation.
-const FOREST_REGROWTH_PER_DAY := 1.5
+const FOREST_REGROWTH_PER_DAY := 4.5
 ## Jours pour qu'une coupe à blanc redevienne forêt, et son bois à ce moment.
 const CLEARCUT_REGROW_DAYS := 120
-const REGROWN_WOOD := 60.0
+const REGROWN_WOOD := 180.0
 ## Irrigation : bonus des champs à IRRIGATION_RANGE tuiles ou moins (distance
 ## de Tchebychev) d'une rivière, d'un lac ou d'un puits.
 const IRRIGATION_BONUS := 1.3
@@ -69,6 +69,8 @@ var sawmill_bonus := 0.0
 var drive_bonus := 0.0
 ## Carrières et mines : bonus des machines à vapeur alimentées.
 var mine_bonus := 0.0
+## Vitesse de repousse des forêts (recherche Sylviculture).
+var regrowth_factor := 1.0
 ## Laine des pâturages (à partir du bourg).
 var wool := false
 ## Tuiles irrigables par une rivière ou un lac déjà calculées (l'eau douce ne
@@ -196,7 +198,7 @@ func step_hour(tick: int, stock: Stockpile) -> Report:
 			continue
 		if def.output == Stockpile.Good.WOOD:
 			qty = _cut(cell, qty, report)
-		elif def.deposit != 0:
+		elif def.deposit != 0 or def.uses_alt_deposit(map, cell):
 			qty = _mine(cell, qty, report)
 		stock.add(def.output, qty)
 		produced_today[def.output] += qty
@@ -269,7 +271,7 @@ func end_day(day_tick: int) -> Array[Vector2i]:
 	for cell: Vector2i in _forest_max.keys():
 		if labor.workers_at.has(cell) and zones.zone_at(cell) != null:
 			continue
-		var wood := minf(_forest_max[cell], map.get_wood(cell) + FOREST_REGROWTH_PER_DAY)
+		var wood := minf(_forest_max[cell], map.get_wood(cell) + FOREST_REGROWTH_PER_DAY * regrowth_factor)
 		map.set_wood(cell, wood)
 		if wood >= _forest_max[cell]:
 			_forest_max.erase(cell)
@@ -283,7 +285,7 @@ func end_day(day_tick: int) -> Array[Vector2i]:
 		if zone and zone.quality != ZoneDef.Quality.WOOD:
 			continue
 		_clearcuts[cell] += 1
-		if _clearcuts[cell] >= CLEARCUT_REGROW_DAYS:
+		if _clearcuts[cell] >= clearcut_days():
 			map.set_terrain(cell, TerrainDef.Type.FOREST)
 			map.set_wood(cell, REGROWN_WOOD)
 			_forest_max[cell] = WorldMap.WOOD_PER_FOREST * 0.6
@@ -292,10 +294,15 @@ func end_day(day_tick: int) -> Array[Vector2i]:
 	return regrown
 
 
+## Jours qu'il faut à une coupe à blanc pour redevenir forêt.
+func clearcut_days() -> int:
+	return ceili(CLEARCUT_REGROW_DAYS / regrowth_factor)
+
+
 ## Jours restants avant qu'une coupe à blanc redevienne forêt (-1 : aucune).
 func regrowth_days_left(cell: Vector2i) -> int:
 	var c := map.wrap_cell(cell)
-	return CLEARCUT_REGROW_DAYS - _clearcuts[c] if _clearcuts.has(c) else -1
+	return maxi(0, clearcut_days() - _clearcuts[c]) if _clearcuts.has(c) else -1
 
 
 func reset_day() -> void:

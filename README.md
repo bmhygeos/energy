@@ -123,7 +123,7 @@ météo et interface conservés.
   repousse : la tuile redevient forêt après 120 jours sans bâtiment ni autre
   zone ; une forêt entamée se densifie au repos.
 - **Stocks** (nourriture, bois) : capacité du village + greniers (600) et
-  camps d'abattage (300 ; scierie au village : 600 et coupe du bois +20 %) ;
+  camps d'abattage (300 ; scierie, construite directement dès le village : 600 et coupe du bois +20 %) ;
   surplus perdu ; la nourriture se gâte (1 %/j de l'excédent au-delà de la
   moitié du grenier). Les bâtiments coûtent du bois.
 - **Consommation** heure par heure ; **satisfaction** = couverture des besoins
@@ -151,7 +151,10 @@ météo et interface conservés.
 - **Palier Village** (100 habitants, 80 % de satisfaction) : zones et bâtiments
   du village grisés avant, avec le palier indiqué.
 - **Pierre** (nouvelle marchandise, 300 de capacité) : zone **Carrière** sur
-  collines et montagnes (2 carriers par tuile, 1,5 pierre/j chacun). Chaque
+  collines et montagnes, sans limite, ou sur les **gisements de pierre** de la
+  carte (plaines, prairies, forêts, toundra, désert ; visibles dès le village,
+  6 tuiles garanties près du départ, 20 000 à 60 000 de pierre par tuile, la
+  zone disparaît à l'épuisement) (2 carriers par tuile, 1,5 pierre/j chacun). Chaque
   carte place une colline à pierre près du village : au moins 4 tuiles de
   colline à 4 tuiles du centre au plus (bloc de 2×2 ajouté s'il le faut,
   laissé libre par les bâtiments de départ).
@@ -227,14 +230,15 @@ météo et interface conservés.
   | Entrepôt | Ville | 7 000 | 20 bois, 60 pierre, 30 fer |
   | Silo | Cité-État | 12 000 | 80 pierre, 60 fer |
 - **Maisons améliorables** de la même façon (logements gardés pendant les
-  travaux ; la maison en pierre se construit aussi directement) :
+  travaux) ; une nouvelle maison se construit directement au niveau du palier
+  atteint, pour le coût de la maison plus celui des améliorations sautées :
   | Niveau | Palier | Habitants | Coût de l'amélioration |
   |---|---|---|---|
   | Maison | Hameau | 5 | (construction : 15 bois) |
   | Maison en pierre | Village | 10 | 10 bois, 20 pierre |
-  | Maison bourgeoise | Bourg | 16 | 20 bois, 30 pierre, 5 fer |
-  | Immeuble | Ville | 30 | 10 bois, 50 pierre, 20 fer |
-  | Tour d'habitation | Cité-État | 60 | 80 pierre, 50 fer |
+  | Maison bourgeoise | Bourg | 30 | 20 bois, 30 pierre, 5 fer |
+  | Immeuble | Ville | 100 | 10 bois, 50 pierre, 20 fer |
+  | Tour d'habitation | Cité-État | 500 | 80 pierre, 50 fer |
 
 ### V7 : interface et équilibrage
 - **Statistiques** (`G`) : stocks et production de toutes les marchandises
@@ -290,8 +294,10 @@ météo et interface conservés.
 - **Recherches** :
   | Recherche | Prérequis | Points | Effet |
   |---|---|---|---|
-  | Machine à vapeur | Coke | 25 000 | **Machine à vapeur** (30 bois, 40 pierre, 30 fer ; 6 charbon/j) : carrières et mines +25 %, coupe du bois et forges +30 % (le meilleur entraînement compte avec le moulin à eau) ; à l'arrêt sans charbon |
+  | Machine à vapeur | Coke | 25 000 | **Machine à vapeur** (30 bois, 40 pierre, 30 fer ; 6 charbon/j) : carrières et mines +50 %, coupe du bois et forges +30 % (le meilleur entraînement compte avec le moulin à eau) ; à l'arrêt sans charbon |
   | Locomotive | Machine à vapeur | 35 000 | **Voies ferrées** et **gares** |
+  | Sylviculture | Assolement | 15 000 | Les forêts repoussent deux fois plus vite : coupe à blanc redevenue forêt en 60 jours au lieu de 120, densification ×2 |
+  | Charbon de bois | Sylviculture | 20 000 | 20 % du bois coupé chaque jour devient du charbon (3 bois pour 1 charbon), sans entamer 10 jours de chauffage d'hiver en bois |
 - **Voie ferrée** (menu, section Transport) : glisser pour poser un tracé en
   L ; 1 fer et 1 bois par tuile, pont sur rivière ×5 ; sur le territoire,
   pas sur l'eau, la montagne, la glace, les bâtiments ni les zones ; les

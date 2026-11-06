@@ -228,8 +228,13 @@ puits, au village (ou en annexant vers une rivière ou un lac).
 - **Moulin à eau** (recherche, après le moulin à vent ; bord de rivière) :
   agriculture +30 %, coupe du bois et forges +20 % (simplifié : tout le
   bourg plutôt que les bâtiments voisins), 8 kW.
+- **Sylviculture** (recherche, après l'assolement) : les forêts repoussent
+  deux fois plus vite (coupe à blanc en 60 jours, densification ×2).
+- **Charbon de bois** (recherche, après la sylviculture) : 20 % du bois coupé
+  chaque jour devient du charbon (3 bois pour 1 charbon), sans entamer 10 jours
+  de chauffage d'hiver en bois.
 - **Machine à vapeur** (réalisé en V8, partie 2) : 6 charbon/j, carrières et
-  mines +25 %, coupe du bois et forges +30 %.
+  mines +50 %, coupe du bois et forges +30 %.
 - **Train** (partie 2) : voies posées au glisser (fer et bois par tuile),
   gares ; une gare reliée à une gare du village rapproche ses environs
   (distance depuis la gare + 1 tuile pour 3 tuiles de voie) ; charbon par gare
@@ -253,9 +258,10 @@ puits, au village (ou en annexant vers une rivière ou un lac).
 ### Maisons et greniers améliorables (un niveau par palier)
 Le camp d'abattage (réserve de bois du hameau, 300) devient une **scierie** au
 village (600, coupe du bois +20 %).
-Les maisons s'améliorent sur place, logements gardés pendant les travaux :
+Les maisons se construisent au niveau du palier atteint, et les anciennes
+s'améliorent sur place, logements gardés pendant les travaux :
 maison (5 habitants, hameau) → maison en pierre (10, village) → maison
-bourgeoise (16, bourg) → immeuble (30, ville) → tour d'habitation (60,
+bourgeoise (30, bourg) → immeuble (100, ville) → tour d'habitation (500,
 cité-État).
 
 Le grenier s'améliore sur place à chaque palier, sans cesser de servir pendant

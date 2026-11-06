@@ -227,12 +227,24 @@ func _test_grid_game() -> void:
 		for x in range(site.position.x, site.end.x):
 			if gs.world_map.get_deposit(Vector2i(x, y)) == WorldMap.Deposit.COPPER:
 				copper_cells += 1
+	var stone_cells := 0
+	for y in range(gs.home.y - StartSite.STONE_DEPOSIT_RADIUS, gs.home.y + StartSite.STONE_DEPOSIT_RADIUS + 1):
+		for x in range(gs.home.x - StartSite.STONE_DEPOSIT_RADIUS, gs.home.x + StartSite.STONE_DEPOSIT_RADIUS + 1):
+			if gs.world_map.get_deposit(Vector2i(x, y)) == WorldMap.Deposit.STONE:
+				stone_cells += 1
+	_check(stone_cells >= StartSite.MIN_STONE_DEPOSIT, "pierre près du village (%d tuiles)" % stone_cells)
 	_check(copper_cells >= StartSite.MIN_COPPER, "cuivre près du village (%d tuiles)" % copper_cells)
 	var mine := ZoneDb.get_def(&"copper_mine")
 	_check(mine.tier == 4 and mine.output == Stockpile.Good.COPPER and mine.deposit == WorldMap.Deposit.COPPER, "mine de cuivre à la ville")
 	_check("palier" in gs.lines_error(), "lignes : à la ville")
 	gs.tier.level = 4
 	_check("Recherche" in gs.lines_error(), "lignes : recherche requise")
+	gs.research._done[&"sylviculture"] = true
+	gs._refresh_capacities()
+	_check(is_equal_approx(gs.production.regrowth_factor, gs.SYLVICULTURE_REGROWTH), "sylviculture : effet appliqué une fois la recherche finie")
+	gs.research._done.erase(&"sylviculture")
+	gs._refresh_capacities()
+	_test_charcoal(gs)
 	gs.research._done[&"conductivity"] = true
 	gs.population.count = 1000
 	var stock: Stockpile = gs.stockpile
@@ -500,7 +512,7 @@ func _test_planet_chunks() -> void:
 		if found.size() == WorldMap.Deposit.size() - 1 and chunk.x > 0:
 			break
 	_check(errors.is_empty(), "blocs cohérents %s" % [errors.slice(0, 3)])
-	_check(found.size() == WorldMap.Deposit.size() - 1, "les 6 gisements existent (%d)" % found.size())
+	_check(found.size() == WorldMap.Deposit.size() - 1, "les 7 gisements existent (%d)" % found.size())
 
 	map.set_terrain(cell, TerrainDef.Type.PLAIN)
 	var neighbor := cell + Vector2i(1, 0)
@@ -1159,6 +1171,7 @@ func _test_inventions() -> void:
 		"le charbon attend le bourg")
 	map.set_deposit_amount(ore, 0.0)
 	_check(map.get_deposit(ore) == WorldMap.Deposit.NONE, "gisement épuisé")
+	_test_stone_deposit()
 
 
 func _test_granary_upgrades() -> void:
@@ -1193,8 +1206,8 @@ func _test_granary_upgrades() -> void:
 	var forestry := ZoneDb.get_def(&"forestry")
 	prod.sawmill_bonus = camp.upgrade.forestry_bonus
 	_check(is_equal_approx(prod.invention_factor(forestry, Vector2i(3, 3)), 1.2), "scierie : coupe du bois +20 %%")
-	_check(BuildingDb.get_def(&"stone_house").player_buildable and not BuildingDb.get_def(&"town_house").player_buildable,
-		"maison en pierre : construite ou améliorée ; au-delà, par amélioration")
+	_check(not BuildingDb.get_def(&"stone_house").player_buildable and not BuildingDb.get_def(&"town_house").player_buildable,
+		"niveaux de maison : seule la maison figure au menu, construite au niveau du palier")
 	_check(not BuildingDb.get_def(&"stone_granary").player_buildable and BuildingDb.get_def(&"large_granary").iron_cost > 0,
 		"niveaux supérieurs : par amélioration seulement, en fer au bourg")
 	# Amélioration sur place : l'ancien niveau reste en service pendant les travaux.
@@ -1333,6 +1346,7 @@ func _test_forest_cycle() -> void:
 	_check(regrown == [cell] and map.get_terrain(cell) == TerrainDef.Type.FOREST and map.get_wood(cell) > 0.0,
 		"repousse après %d jours sous la zone de coupe" % Production.CLEARCUT_REGROW_DAYS)
 	_check(zones.places(forestry) == forestry.workers_per_tile, "forêt revenue : la zone produit de nouveau")
+	_test_sylviculture(prod, map, cell)
 	var wood := map.get_wood(cell)
 	prod.end_day(0)
 	_check(map.get_wood(cell) > wood, "une jeune forêt se densifie")
@@ -1482,7 +1496,16 @@ func _test_bourg_game() -> void:
 	_check(gs.build_level(granary).id == &"large_granary" and costs[Stockpile.Good.WOOD] == 90.0
 		and costs[Stockpile.Good.STONE] == 70.0 and costs[Stockpile.Good.IRON] == 10.0,
 		"bourg : grand grenier (90 bois, 70 pierre, 10 fer)")
-	_check(gs.build_level(BuildingDb.get_def(&"house")).id == &"house", "maison : niveau de base")
+	var house := BuildingDb.get_def(&"house")
+	var house_costs: PackedFloat32Array = gs.build_costs(house)
+	_check(gs.build_level(house).id == &"town_house" and house_costs[Stockpile.Good.WOOD] == 45.0
+		and house_costs[Stockpile.Good.STONE] == 50.0 and house_costs[Stockpile.Good.IRON] == 5.0,
+		"bourg : maison bourgeoise directe (45 bois, 50 pierre, 5 fer)")
+	var camp := BuildingDb.get_def(&"woodshed")
+	var camp_costs: PackedFloat32Array = gs.build_costs(camp)
+	_check(gs.build_level(camp).id == &"sawmill" and camp_costs[Stockpile.Good.WOOD] == 40.0
+		and camp_costs[Stockpile.Good.STONE] == 15.0, "bourg : scierie directe (40 bois, 15 pierre)")
+	_check(not BuildingDb.get_def(&"stone_house").player_buildable, "maison en pierre : plus de doublon au menu")
 	for good in Stockpile.COUNT:
 		gs.stockpile.amount[good] = 0.0
 	var placement: BuildingRegistry.Placement
@@ -1864,6 +1887,88 @@ func _test_rails() -> void:
 	_check(rails.served.is_empty() and labor.distance(cell) == 28, "voie coupée : gare plus desservie")
 
 
+## Gisement de pierre : carrière hors des collines, épuisable.
+func _test_stone_deposit() -> void:
+	var setup := _labor_setup()
+	var zones: ZoneMap = setup[0]
+	var labor: Labor = setup[1]
+	var map: WorldMap = zones.map
+	var territory: Territory = zones.territory
+	var quarry := ZoneDb.get_def(&"quarry")
+	var cell := Vector2i(3, 3)
+	var free := Vector2i(5, 5)
+	map.set_terrain(cell, TerrainDef.Type.PLAIN)
+	map.set_terrain(free, TerrainDef.Type.PLAIN)
+	map._chunk(cell).deposit[map._local(cell)] = WorldMap.Deposit.STONE
+	map._chunk(cell).deposit_amount[map._local(cell)] = 1.0
+	territory.prospect([cell] as Array[Vector2i])
+	territory.tier = 1
+	_check(not zones.check_cell(quarry, cell).is_empty(), "pierre cachée au hameau")
+	territory.tier = 2
+	_check(zones.check_cell(quarry, cell).is_empty() and not zones.check_cell(quarry, free).is_empty(),
+		"carrière sur un gisement de pierre, pas sur une plaine nue")
+	_check(quarry.uses_alt_deposit(map, cell), "gisement de pierre : la carrière y puise")
+	var hill := Vector2i(7, 7)
+	map.set_terrain(hill, TerrainDef.Type.HILL)
+	_check(zones.check_cell(quarry, hill).is_empty() and not quarry.uses_alt_deposit(map, hill), "colline : carrière sans épuisement")
+	var report := Production.Report.new()
+	var prod := Production.new(zones, labor)
+	prod._mine(cell, 5.0, report)
+	_check(report.cleared == [cell] and map.get_deposit(cell) == WorldMap.Deposit.NONE, "gisement de pierre épuisé : zone retirée")
+
+
+## Recherche Charbon de bois : part du bois coupé transformée en charbon.
+func _test_charcoal(gs: Node) -> void:
+	var def := ResearchDb.get_def(&"charcoal")
+	var pre: Array[StringName] = [&"sylviculture"]
+	_check(def != null and def.tier == 3 and def.prerequisites == pre, "charbon de bois : bourg, après la sylviculture")
+	var stock: Stockpile = gs.stockpile
+	var wood := Stockpile.Good.WOOD
+	var coal := Stockpile.Good.COAL
+	var saved := [stock.amount[wood], stock.amount[coal], stock.capacity[wood], stock.capacity[coal]]
+	stock.capacity[wood] = 100000.0
+	stock.capacity[coal] = 100.0
+	stock.amount[wood] = 50000.0
+	stock.amount[coal] = 0.0
+	gs.production.produced_today[wood] = 300.0
+	gs._run_charcoal()
+	_check(stock.amount[wood] == 50000.0 and stock.amount[coal] == 0.0, "charbon de bois : rien sans la recherche")
+	gs.research._done[&"charcoal"] = true
+	var produced: float = gs.production.produced_today[coal]
+	gs._run_charcoal()
+	_check(is_equal_approx(stock.amount[wood], 49940.0) and is_equal_approx(stock.amount[coal], 20.0)
+		and is_equal_approx(gs.production.produced_today[coal] - produced, 20.0), "charbon de bois : 20 % du bois coupé, 3 bois pour 1 charbon")
+	stock.amount[coal] = 99.0
+	gs._run_charcoal()
+	_check(is_equal_approx(stock.amount[wood], 49937.0) and is_equal_approx(stock.amount[coal], 100.0), "charbon de bois : limité par la place en stock")
+	stock.amount[coal] = 0.0
+	var reserve: float = gs.wood_need(GameDate.WINTER) * gs.CHARCOAL_RESERVE_DAYS
+	stock.amount[wood] = reserve
+	gs._run_charcoal()
+	_check(reserve > 0.0 and is_equal_approx(stock.amount[wood], reserve) and stock.amount[coal] == 0.0, "charbon de bois : réserve de chauffage gardée")
+	gs.research._done.erase(&"charcoal")
+	gs.production.produced_today[wood] = 0.0
+	gs.production.produced_today[coal] = produced
+	stock.amount[wood] = saved[0]
+	stock.amount[coal] = saved[1]
+	stock.capacity[wood] = saved[2]
+	stock.capacity[coal] = saved[3]
+
+
+## Recherche Sylviculture : forêts deux fois plus rapides à repousser.
+func _test_sylviculture(prod: Production, map: WorldMap, cell: Vector2i) -> void:
+	var def := ResearchDb.get_def(&"sylviculture")
+	var pre: Array[StringName] = [&"crop_rotation"]
+	_check(def != null and def.tier == 3 and def.prerequisites == pre, "sylviculture : bourg, après l'assolement")
+	prod.regrowth_factor = 2.0
+	_check(prod.clearcut_days() == Production.CLEARCUT_REGROW_DAYS / 2, "sylviculture : coupe à blanc deux fois plus courte")
+	var wood := map.get_wood(cell)
+	prod.end_day(0)
+	_check(is_equal_approx(map.get_wood(cell) - wood, Production.FOREST_REGROWTH_PER_DAY * 2.0),
+		"sylviculture : densification deux fois plus rapide")
+	prod.regrowth_factor = 1.0
+
+
 func _test_steam_and_scouts() -> void:
 	var engine := BuildingDb.get_def(&"steam_engine")
 	_check(engine.research == &"steam_engine" and engine.coal_per_day > 0.0 and engine.mine_bonus > 0.0
@@ -1874,9 +1979,9 @@ func _test_steam_and_scouts() -> void:
 		and ResearchDb.get_def(&"locomotive").prerequisites == loco_pre, "vapeur après le coke, locomotive après la vapeur")
 	var setup := _labor_setup()
 	var prod := Production.new(setup[0], setup[1])
-	prod.mine_bonus = 0.25
-	_check(is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"coal_mine"), Vector2i(3, 3)), 1.25)
-		and is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"quarry"), Vector2i(3, 3)), 1.25)
+	prod.mine_bonus = engine.mine_bonus
+	_check(is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"coal_mine"), Vector2i(3, 3)), 1.5)
+		and is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"quarry"), Vector2i(3, 3)), 1.5)
 		and is_equal_approx(prod.invention_factor(ZoneDb.get_def(&"pasture"), Vector2i(3, 3)), 1.0), "vapeur : mines et carrières")
 	# Éclaireurs à cheval : au bourg, un cheval par explorateur.
 	var exploration := Exploration.new(_flat_map()[1])

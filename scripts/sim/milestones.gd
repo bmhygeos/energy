@@ -79,7 +79,7 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.tier >= 2),
 		Def.new(&"water", "Eau pour tous", "Au village, servir tous les habitants par des puits.",
 			func(f: Facts) -> bool: return f.tier >= 2 and f.has_building(&"well") and f.water_coverage >= 1.0),
-		Def.new(&"stone_house", "Maisons en dur", "Améliorer une maison en maison en pierre.",
+		Def.new(&"stone_house", "Maisons en dur", "Bâtir une maison en pierre.",
 			func(f: Facts) -> bool: return f.has_building(&"stone_house")),
 		Def.new(&"forge", "Maître de forge", "Forger les premiers outils.",
 			func(f: Facts) -> bool: return f.stats != null and f.stats.last(&"tools_produced") > 0.0),

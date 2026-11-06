@@ -6,12 +6,13 @@
 script = ExtResource("1_def")
 id = &"quarry"
 display_name = "Carrière"
-description = "Carriers : pierre pour les maisons en dur, le puits et l'atelier."
+description = "Carriers : pierre pour les maisons en dur, le puits et l'atelier, sur les collines, les montagnes et les gisements de pierre."
 tier = 2
 allowed_terrains = Array[int]([2, 3])
 on_banks = false
 min_fertility = 0.0
 workers_per_tile = 2
+alt_deposit = 7
 quality = 3
 color = Color(0.7, 0.7, 0.72, 1)
 output = 2

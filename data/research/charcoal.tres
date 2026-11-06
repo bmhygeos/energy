@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"charcoal"
+display_name = "Charbon de bois"
+description = "Meules de bois couvertes de terre, cuites lentement à l'étouffée par les charbonniers."
+tier = 3
+cost = 20000.0
+prerequisites = Array[StringName]([&"sylviculture"])
+effect = "20 % du bois coupé chaque jour devient du charbon (3 bois pour 1 charbon), sauf si la réserve de chauffage en bois est trop basse."

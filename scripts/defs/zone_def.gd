@@ -25,6 +25,9 @@ enum Quality { FERTILITY, PASTURE, WOOD, UNIFORM }
 @export var workers_per_tile := 1
 ## Gisement exigé (WorldMap.Deposit, prospecté ; 0 : aucun) ; il s'épuise.
 @export var deposit := 0
+## Gisement (WorldMap.Deposit) qui autorise aussi la zone hors de ses terrains ;
+## elle l'épuise, là seulement (0 : aucun).
+@export var alt_deposit := 0
 ## Ce qui fait une bonne tuile pour cette zone.
 @export var quality: Quality = Quality.FERTILITY
 @export_group("Production")
@@ -36,6 +39,11 @@ enum Quality { FERTILITY, PASTURE, WOOD, UNIFORM }
 @export var season_factors := PackedFloat32Array([1.0, 1.0, 1.0, 1.0])
 ## Couleur de la zone sur la carte.
 @export var color := Color.WHITE
+
+
+## La zone puise-t-elle dans son gisement secondaire sur [param cell] ?
+func uses_alt_deposit(map: WorldMap, cell: Vector2i) -> bool:
+	return alt_deposit != 0 and map.get_terrain(cell) not in allowed_terrains and map.get_deposit(cell) == alt_deposit
 
 
 ## Motif qui empêche la zone sur [param cell] de [param map] (vide : valide).

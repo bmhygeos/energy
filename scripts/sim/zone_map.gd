@@ -80,7 +80,8 @@ func check_cell(def: ZoneDef, cell: Vector2i) -> String:
 		return "Ligne électrique présente"
 	if def.deposit != 0 and territory.known_deposit(cell) != def.deposit:
 		return "Pas de gisement de %s prospecté" % WorldMap.DEPOSIT_NAMES[def.deposit].to_lower()
-	var error := def.terrain_error(map, cell)
+	var on_alt := def.alt_deposit != 0 and territory.known_deposit(cell) == def.alt_deposit
+	var error := "" if on_alt else def.terrain_error(map, cell)
 	if error.is_empty() and def.shore_limited and not near_shore(cell):
 		return "Trop loin du rivage (%d tuile%s au plus)" % [water_reach, "s" if water_reach > 1 else ""]
 	return error
