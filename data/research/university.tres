@@ -10,4 +10,4 @@ description = "Chaires, bibliothèques et amphithéâtres : le savoir s'enseigne
 tier = 4
 cost = 50000.0
 prerequisites = Array[StringName]([&"scientific_method"])
-effect = "Université : recherche ×10 pour 1 000 habitants, contre un entretien en pièces."
+effect = "Université : recherche ×10 pour 1 000 habitants ; elle instruit aussi 1 000 habitants (cité-État)."

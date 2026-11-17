@@ -8,8 +8,8 @@ extends SceneTree
 ## garde à la ville ; écoles, théâtres, centrales et centres de calcul à la
 ## cité-État) et affiche l'évolution mois par mois, puis les jours
 ## où chaque palier et chaque jalon sont atteints.
-## Les camps d'abattage sont plafonnés et le bois en trop vendu au bourg ; sans
-## place au centre, un bâtiment remplace une zone.
+## Les camps d'abattage sont plafonnés ; sans place au centre, un bâtiment du
+## monde remplace une zone.
 ## Lancer : godot --headless -s res://tools/simulate_pacing.gd -- [graine] [années]
 
 const ZONE_ORDER: Array[StringName] = [&"pasture", &"agriculture", &"forestry", &"quarry", &"fishing", &"iron_mine",
@@ -28,10 +28,6 @@ const MAX_BUILD_RADIUS := 14
 ## Les maisons restent dans ce carré : le pourtour garde de la place pour les
 ## puits et les ateliers (ensuite, elles s'améliorent sur place).
 const HOUSE_RADIUS := 9
-## Marchés visés (volume échangé par jour).
-const TRADE_GOAL := 600.0
-## Jours de réserve sous lesquels une marchandise est achetée.
-const BUY_BELOW_DAYS := 10.0
 ## Jours de chauffage d'hiver que les camps d'abattage doivent pouvoir stocker
 ## (au-delà, ils prendraient la place des maisons).
 const WOOD_STORE_DAYS := 60.0
@@ -143,20 +139,13 @@ func _play_day(day: int) -> void:
 			_build_anywhere(&"steam_engine")
 		if stock.amount[Stockpile.Good.COAL] >= 0.9 * stock.capacity[Stockpile.Good.COAL]:
 			_build_anywhere(&"coal_yard")
-		if _gs.treasury.trade_capacity + _building_markets() * BuildingDb.get_def(&"market").trade_per_day < TRADE_GOAL:
-			_build_anywhere(&"market")
-		# Impôt normal et surplus de nourriture vendus : de quoi payer les achats.
-		_gs.set_tax_level(2)
-		_gs.set_auto_sell(Stockpile.Good.FOOD, true)
-		_gs.set_auto_sell(Stockpile.Good.WOOD, true)
-		_buy_shortages()
 	if _gs.tier.level >= 4:
 		if not _has(&"oil_tank"):
 			_build_near(&"oil_tank")
 		if _gs.research.is_done(&"refining") and _count(&"refinery") * BuildingDb.get_def(&"refinery").fuel_per_day \
 				< _gs.light_need() + _gs.fuel_heat_need(GameDate.WINTER) + _gs.tractor_fuel_need():
 			_build_near(&"refinery")
-		if _gs.research.is_done(&"university") and not _has(&"university") and _gs.treasury.money > 1000.0:
+		if _gs.research.is_done(&"university") and not _has(&"university"):
 			_build_clearing(&"university")
 		# Courant : une centrale à charbon de plus tant que la demande n'est pas
 		# couverte (le charbon abonde à la ville).
@@ -291,26 +280,6 @@ func _build_clearing(id: StringName) -> bool:
 					_gs.apply_zones(_gs.plan_zones(null, placement.cells[0], placement.cells[-1]))
 					return _gs.build(def, anchor) != null
 	return false
-
-
-## Marchés en chantier.
-func _building_markets() -> int:
-	return _gs.all_buildings().filter(func(b: Building) -> bool: return b.def.id == &"market" and not b.is_complete()).size()
-
-
-## Achète au marché ce qui manque : vivres et chauffage d'abord, puis le reste.
-func _buy_shortages() -> void:
-	if _gs.trade_error() != "":
-		return
-	var stock: Stockpile = _gs.stockpile
-	var season := GameDate.season(_clock.tick)
-	var needs := {Stockpile.Good.FOOD: _gs.food_need(), Stockpile.Good.WOOD: _gs.wood_need(season), Stockpile.Good.CLOTHES: _gs.clothes_need(),
-		Stockpile.Good.TOOLS: _gs.tools_need(), Stockpile.Good.FUEL: _gs.light_need() + _gs.fuel_heat_need(season) + _gs.tractor_fuel_need(), Stockpile.Good.GOODS: _gs.goods_need(),
-		Stockpile.Good.COAL: _gs.coal_heat_need(season)}
-	for good: int in needs:
-		var missing: float = needs[good] * BUY_BELOW_DAYS - stock.amount[good]
-		if missing > 0.0:
-			_gs.treasury.buy(stock, good, missing)
 
 
 ## Plus de place : améliore une maison ; false si aucune ne peut l'être.

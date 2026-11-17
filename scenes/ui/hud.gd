@@ -38,7 +38,7 @@ var _overlay_buttons: Array[Button] = []
 @onready var _stone_label: Label = %StoneLabel
 @onready var _water_label: Label = %WaterLabel
 @onready var _power_label: Label = %PowerLabel
-@onready var _money_button: Button = %EconomyButton
+@onready var _decrees_button: Button = %EconomyButton
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _legend: RichTextLabel = %Legend
 @onready var _legend_gradient: TextureRect = %LegendGradient
@@ -68,8 +68,8 @@ func _ready() -> void:
 	EventBus.population_changed.connect(_refresh_population)
 	EventBus.stocks_changed.connect(_refresh_stocks)
 	EventBus.tier_changed.connect(_refresh_population)
-	EventBus.economy_changed.connect(_refresh_money)
-	EventBus.tier_changed.connect(_refresh_money)
+	EventBus.economy_changed.connect(_refresh_decrees)
+	EventBus.tier_changed.connect(_refresh_decrees)
 	_on_tick(GameClock.tick)
 	_on_speed_changed(GameClock.speed)
 	_on_game_started(Rng.seed_value)
@@ -329,7 +329,7 @@ func _refresh_stone() -> void:
 		_stone_label.tooltip_text += "\nBiens : %d / %d (ateliers d'artisans) · usure %s /j\nSoins : %d %% des habitants (dispensaires)\nOrdre : %d %% des habitants (postes de garde)%s" % [
 			roundi(stock.amount[goods]), roundi(stock.capacity[goods]), Format.decimal(GameState.goods_need()),
 			roundi(GameState.health_coverage() * 100.0), roundi(GameState.order_coverage() * 100.0),
-			"\nBiens, soins ou ordre manquants : satisfaction réduite (et impôts sans ordre)." if not lacking.is_empty() else ""]
+			"\nBiens, soins ou ordre manquants : satisfaction réduite." if not lacking.is_empty() else ""]
 		if GameState.tier.level >= GameState.CITY_STATE_TIER:
 			_stone_label.tooltip_text += "\nÉducation : %d %% (écoles, universités)\nCulture : %d %% (théâtres)\nÉlectricité : %d %% de la demande" % [
 				roundi(GameState.education_coverage() * 100.0), roundi(GameState.culture_coverage() * 100.0),
@@ -344,17 +344,13 @@ func _refresh_stone() -> void:
 			roundi(smog * 100.0), roundi(GameState.pollution_harm() * 100.0)]
 
 
-## Bouton du trésor (à partir du bourg) : pièces ; impôts et commerce
-## d'hier au survol, panneau Économie au clic.
-func _refresh_money() -> void:
-	var treasury := GameState.treasury
-	if treasury == null:
+## Bouton des décrets (à partir du bourg) : panneau Décrets au clic.
+func _refresh_decrees() -> void:
+	if GameState.decrees == null:
 		return
-	_money_button.visible = GameState.tier.level >= GameState.ECONOMY_TIER
-	_money_button.text = "Trésor %d" % floori(treasury.money)
-	_money_button.tooltip_text = "Trésor : %d pièces\nImpôts (%s) hier : +%s\nCommerce hier : %s\nImpôts, décrets et commerce : panneau Économie (E)" % [
-		floori(treasury.money), Treasury.TAX_NAMES[treasury.tax_level].to_lower(),
-		Format.decimal(GameState.stats.last(&"taxes")), Format.decimal(GameState.stats.last(&"trade"))]
+	_decrees_button.visible = GameState.tier.level >= GameState.DECREES_TIER
+	_decrees_button.text = "Décrets"
+	_decrees_button.tooltip_text = "Rationnement, corvée et fête : panneau Décrets (E)"
 
 
 ## Puissance de la cité (moyenne glissante) et par habitant ; parts au survol.
@@ -403,7 +399,7 @@ func _on_game_started(seed_value: int) -> void:
 	_seed_edit.text = str(seed_value)
 	_refresh_population()
 	_refresh_stocks()
-	_refresh_money()
+	_refresh_decrees()
 
 
 func _on_overlay_changed(mode: int) -> void:

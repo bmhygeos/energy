@@ -96,11 +96,11 @@ Palier 4 — Ville
 * Enseignement supérieur  (50 000 points)
     Prérequis : Méthode expérimentale
     Débloque : Université (ville)
-    Effet : Université : recherche ×10 pour 1 000 habitants, contre un entretien en pièces.
+    Effet : Université : recherche ×10 pour 1 000 habitants ; elle instruit aussi 1 000 habitants (cité-État).
 * Médecine  (40 000 points)
     Prérequis : Méthode expérimentale
     Débloque : Dispensaire (ville)
-    Effet : Dispensaire : soigne 500 habitants contre un entretien en pièces ; les épidémies emportent moins d'habitants.
+    Effet : Dispensaire : soigne 500 habitants ; les épidémies emportent moins d'habitants.
 
 Palier 5 — Cité-État
 --------------------
@@ -111,7 +111,7 @@ Palier 5 — Cité-État
 * Informatique  (150 000 points)
     Prérequis : Électronique, Enseignement supérieur
     Débloque : Centre informatique (ville)
-    Effet : Centre informatique : recherche ×20 pour 2 000 habitants, contre du courant et des pièces.
+    Effet : Centre informatique : recherche ×20 pour 2 000 habitants, contre du courant (20 kW).
 * Intelligence artificielle  (400 000 points)
     Prérequis : Informatique
     Débloque : Datacenter (monde)
@@ -162,7 +162,7 @@ Palier 5 :
                 ├→ Radioactivité
                 └→ Énergie éolienne
 
-Sans recherche (débloqués par le palier) : maisons, greniers, atelier (×2), écurie, marché,
+Sans recherche (débloqués par le palier) : maisons, greniers, atelier (×2), écurie,
 tissage, artisans, poste de garde, école, théâtre, ports, routes, etc.
 
 Pas encore dans l'arbre : recherche de la fusée (ère spatiale, V∞).

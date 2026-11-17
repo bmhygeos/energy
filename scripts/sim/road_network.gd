@@ -12,7 +12,9 @@ extends TrackNetwork
 ## PORTERS_PER_TRUCK travailleurs : ils desservent d'abord les tuiles zonées
 ## qu'ils rapprochent le plus ; les autres gardent la portée des charrettes.
 ## Une route peut
-## croiser une voie ferrée (passage à niveau). Pure donnée.
+## croiser une voie ferrée (passage à niveau) ; comme les canaux, elle passe
+## sur les zones, les autres réseaux et sous les bâtiments du monde. Pure
+## donnée.
 
 ## Pavés par tuile.
 const STONE_PER_TILE := 2.0
@@ -62,6 +64,18 @@ var truck_load := 0
 
 func track_name() -> String:
 	return "route"
+
+
+## Motif qui empêche une route sur [param cell] : seulement le terrain (eau,
+## montagne, glace) et les limites du territoire ; zones, réseaux et
+## bâtiments l'acceptent.
+func check_cell(cell: Vector2i) -> String:
+	if not map.has_cell(cell) or not territory.is_territory(cell):
+		return "Hors du territoire"
+	var t := map.get_terrain(cell)
+	if t in FORBIDDEN:
+		return "Pas de route sur : %s" % TerrainDb.get_def(t).display_name.to_lower()
+	return ""
 
 
 func base_costs() -> PackedFloat32Array:

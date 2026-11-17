@@ -10,4 +10,4 @@ description = "Hygiène, vaccins et diagnostics : soigner plutôt que subir."
 tier = 4
 cost = 40000.0
 prerequisites = Array[StringName]([&"scientific_method"])
-effect = "Dispensaire : soigne 500 habitants contre un entretien en pièces ; les épidémies emportent moins d'habitants."
+effect = "Dispensaire : soigne 500 habitants ; les épidémies emportent moins d'habitants."

@@ -76,9 +76,6 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## École, université, théâtre : habitants instruits, habitants qui sortent.
 @export var education_coverage := 0
 @export var culture_coverage := 0
-## Entretien en pièces par jour ; impayé, ses effets (recherche, soins,
-## gardes) cessent.
-@export var upkeep_per_day := 0.0
 ## Moulin : moud le grain (agriculture : bonus grain_bonus, le meilleur
 ## compte ; gâchis) ; puissance mécanique moyenne (W), à vent normal pour un
 ## moulin à vent.
@@ -96,8 +93,6 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var coal_per_day := 0.0
 ## Carrières et mines : bonus (pompes d'exhaure, treuils à vapeur).
 @export var mine_bonus := 0.0
-## Marché : marchandises achetées et vendues par jour (commerce).
-@export var trade_per_day := 0.0
 ## Gare : dessert les tuiles autour d'elle si une voie la relie au village.
 @export var station := false
 ## Centrale : puissance à plein régime (W) et source. Les barrages suivent le
@@ -214,7 +209,7 @@ func describe_effects() -> PackedStringArray:
 	if health_coverage > 0:
 		lines.append("Soigne %d habitants" % health_coverage)
 	if order_coverage > 0:
-		lines.append("Garde l'ordre pour %d habitants (impôts et satisfaction)" % order_coverage)
+		lines.append("Garde l'ordre pour %d habitants" % order_coverage)
 	if grinds_grain:
 		lines.append("Moud le grain : agriculture +%d %%, gâchis de la nourriture moitié moindre" % roundi(grain_bonus * 100.0))
 	if drive_bonus > 0.0:
@@ -223,8 +218,6 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Carrières et mines +%d %%" % roundi(mine_bonus * 100.0))
 	if coal_per_day > 0.0:
 		lines.append("Brûle %s charbon par jour (sans charbon, à l'arrêt)" % Format.decimal(coal_per_day))
-	if trade_per_day > 0.0:
-		lines.append("Commerce : achète et vend %d marchandises par jour" % roundi(trade_per_day))
 	if station:
 		lines.append("Gare : reliée par la voie à une gare du village, elle rapproche les tuiles autour d'elle")
 	if power_watts > 0.0:
@@ -279,8 +272,6 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Eau pour %d habitants ; irrigue les champs voisins (recherche Irrigation)" % water_supply)
 	if research_coverage > 0:
 		lines.append("Recherche ×%s pour %d habitants" % [Format.decimal(research_multiplier), research_coverage])
-	if upkeep_per_day > 0.0:
-		lines.append("Entretien : %d pièces par jour (impayé, à l'arrêt)" % roundi(upkeep_per_day))
 	return lines
 
 

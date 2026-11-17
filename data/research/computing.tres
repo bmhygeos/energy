@@ -10,4 +10,4 @@ description = "Calculateurs programmables : la recherche s'automatise."
 tier = 5
 cost = 150000.0
 prerequisites = Array[StringName]([&"electronics", &"university"])
-effect = "Centre informatique : recherche ×20 pour 2 000 habitants, contre du courant et des pièces."
+effect = "Centre informatique : recherche ×20 pour 2 000 habitants, contre du courant (20 kW)."

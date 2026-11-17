@@ -87,8 +87,6 @@ func _placement_error(p: Placement) -> String:
 			return "Emplacement occupé (%s)" % occupant.def.display_name
 		if rails and rails.has_rail(cell):
 			return "Voie ferrée présente"
-		if roads and roads.has_tile(cell):
-			return "Route présente"
 		if lines and lines.has_tile(cell):
 			return "Ligne électrique présente"
 		if canals and canals.has_tile(cell):

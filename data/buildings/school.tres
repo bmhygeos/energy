@@ -14,7 +14,6 @@ wood_cost = 40
 stone_cost = 80
 iron_cost = 10
 education_coverage = 500
-upkeep_per_day = 8.0
 color = Color(0.85, 0.75, 0.55, 1)
 roof_color = Color(0.6, 0.25, 0.2, 1)
 height = 16.0

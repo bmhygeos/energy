@@ -65,8 +65,8 @@ const CARE_POLLUTION_SHIELD := 0.5
 const COKE_FORGE_BONUS := 1.5
 ## Atelier de tissage : fibres par vêtement.
 const FIBER_PER_CLOTHES := 1.0
-## Palier à partir duquel la cité lève l'impôt et prend des décrets (bourg).
-const ECONOMY_TIER := 3
+## Palier à partir duquel le gouverneur prend des décrets (bourg).
+const DECREES_TIER := 3
 ## Palier à partir duquel des événements frappent la cité (bourg).
 const EVENTS_TIER := 3
 ## Palier à partir duquel les habitants s'éclairent au carburant (ville).
@@ -138,8 +138,7 @@ var stockpile: Stockpile
 var production: Production
 var power: PowerMeter
 var weather: Weather
-## Pièces, impôts et commerce ; décrets du gouverneur (bourg).
-var treasury: Treasury
+## Décrets du gouverneur (bourg).
 var decrees: Decrees
 ## Événements en cours (hiver rude, sécheresse…).
 var events: CityEvents
@@ -159,8 +158,6 @@ var wood_burned_today := 0.0
 var pollution: Pollution
 ## Machines à vapeur alimentées en charbon (la veille), et leurs bonus.
 var steam_running := false
-## Entretien payé la veille (sinon, universités à l'arrêt).
-var upkeep_paid := true
 var _steam_drive := 0.0
 var _steam_mine := 0.0
 var _water_drive := 0.0
@@ -224,7 +221,6 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	production.draft = draft
 	power = PowerMeter.new()
 	weather = Weather.new(seed_value)
-	treasury = Treasury.new()
 	decrees = Decrees.new()
 	events = CityEvents.new(seed_value)
 	production.events = events
@@ -233,7 +229,6 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	milestones.defs = Milestones.standard()
 	_needed_today = Stockpile.zeros()
 	_consumed_today = Stockpile.zeros()
-	upkeep_paid = true
 	steam_running = false
 	coal_burned_today = 0.0
 	fuel_burned_today = 0.0
@@ -607,11 +602,6 @@ func _refresh_capacities() -> void:
 	_refresh_trucks()
 	production.wool = tier.level >= CLOTHES_TIER
 	stockpile.spoilage_factor = 0.5 if mill > 0.0 else 1.0
-	var trade := 0.0
-	for b in all_buildings():
-		if b.is_complete():
-			trade += b.def.trade_per_day
-	treasury.trade_capacity = trade
 	draft.collar = research.is_done(&"harness_collar")
 	production.regrowth_factor = SYLVICULTURE_REGROWTH if research.is_done(&"sylviculture") else 1.0
 	roads.electric = research.is_done(&"electric_vehicle")
@@ -1232,7 +1222,7 @@ func _wear_goods() -> float:
 func service_capacity(service: Service) -> int:
 	var total := 0
 	for b in all_buildings():
-		if b.is_complete() and (upkeep_paid or b.def.upkeep_per_day <= 0.0):
+		if b.is_complete():
 			match service:
 				Service.HEALTH:
 					total += b.def.health_coverage
@@ -1348,25 +1338,6 @@ func _burn_light() -> float:
 	return grid.coverage + lamps / demand
 
 
-## Entretien par jour des bâtiments terminés (pièces).
-func upkeep_need() -> float:
-	var total := 0.0
-	for b in all_buildings():
-		if b.is_complete():
-			total += b.def.upkeep_per_day
-	return total
-
-
-## Paie l'entretien du jour ; sans pièces, les bâtiments concernés s'arrêtent
-## jusqu'au prochain paiement.
-func _pay_upkeep() -> void:
-	var need := upkeep_need()
-	var was := upkeep_paid
-	upkeep_paid = need <= 0.0 or treasury.pay_upkeep(need)
-	if was and not upkeep_paid:
-		EventBus.notified.emit("Trésor vide : universités, dispensaires, postes de garde, écoles et théâtres à l'arrêt faute d'entretien")
-
-
 ## Vêtements usés par jour (à partir du bourg).
 func clothes_need() -> float:
 	return population.clothes_need() if tier.level >= CLOTHES_TIER else 0.0
@@ -1466,8 +1437,7 @@ func _pasture_quality() -> float:
 func research_per_day() -> float:
 	var boosts: Array[Vector2] = []
 	for b in all_buildings():
-		if b.is_complete() and b.def.research_coverage > 0 and (upkeep_paid or b.def.upkeep_per_day <= 0.0) \
-				and (b.def.power_demand <= 0.0 or machines_powered()):
+		if b.is_complete() and b.def.research_coverage > 0 and (b.def.power_demand <= 0.0 or machines_powered()):
 			boosts.append(Vector2(b.def.research_multiplier, b.def.research_coverage))
 	return Research.points_per_day(population.count, population.satisfaction, boosts)
 
@@ -1662,83 +1632,32 @@ func _burn_forest() -> int:
 	return burnt.size()
 
 
-## Ce qui empêche l'impôt et les décrets (vide : possible).
-func economy_error() -> String:
-	if tier.level < ECONOMY_TIER:
-		return "Disponible au palier %s" % CityTier.NAMES[ECONOMY_TIER - 1]
+## Ce qui empêche les décrets (vide : possible).
+func decrees_error() -> String:
+	if tier.level < DECREES_TIER:
+		return "Disponible au palier %s" % CityTier.NAMES[DECREES_TIER - 1]
 	return ""
 
 
-## Ce qui empêche le commerce (vide : possible).
-func trade_error() -> String:
-	var error := economy_error()
-	if error.is_empty() and treasury.trade_capacity <= 0.0:
-		error = "Construisez un marché pour commercer"
-	return error
-
-
-## Humeur du jour : facteur de satisfaction de l'impôt et des décrets.
+## Humeur du jour : facteur de satisfaction des décrets.
 func mood() -> float:
-	if tier.level < ECONOMY_TIER:
+	if tier.level < DECREES_TIER:
 		return 1.0
-	return treasury.mood() * decrees.mood()
-
-
-## Impôts du jour et vente des surplus (à partir du bourg).
-func _run_economy() -> void:
-	if tier.level < ECONOMY_TIER:
-		return
-	treasury.collect_taxes(population.count, population.satisfaction, order_coverage())
-	treasury.sell_surplus(stockpile)
-	_pay_upkeep()
-
-
-func set_tax_level(level: int) -> void:
-	treasury.tax_level = clampi(level, 0, Treasury.TAX_NAMES.size() - 1)
-	EventBus.economy_changed.emit()
-
-
-func set_auto_sell(good: int, enabled: bool) -> void:
-	treasury.auto_sell[good] = enabled
-	EventBus.economy_changed.emit()
-
-
-## Achète (qty > 0) ou vend (qty < 0) au marché ; renvoie la quantité
-## échangée (raison notifiée si aucune).
-func trade(good: int, qty: float) -> float:
-	var error := trade_error()
-	var done := 0.0
-	if error.is_empty():
-		done = treasury.buy(stockpile, good, qty) if qty > 0.0 else treasury.sell(stockpile, good, -qty)
-		if done <= 0.0:
-			if treasury.trade_left() <= 0.0:
-				error = "Les marchands ont tout échangé aujourd'hui"
-			elif qty < 0.0:
-				error = "%s : rien à vendre" % Stockpile.GOOD_NAMES[good]
-			elif stockpile.amount[good] >= stockpile.capacity[good]:
-				error = "%s : stock plein" % Stockpile.GOOD_NAMES[good]
-			else:
-				error = "Pas assez de pièces"
-	if not error.is_empty():
-		EventBus.notified.emit(error)
-		return 0.0
-	EventBus.stocks_changed.emit()
-	EventBus.economy_changed.emit()
-	return done
+	return decrees.mood()
 
 
 ## Décret de rationnement ou de corvée.
 func set_rationing(enabled: bool) -> void:
-	if enabled and not economy_error().is_empty():
-		EventBus.notified.emit(economy_error())
+	if enabled and not decrees_error().is_empty():
+		EventBus.notified.emit(decrees_error())
 		return
 	decrees.rationing = enabled
 	EventBus.economy_changed.emit()
 
 
 func set_corvee(enabled: bool) -> void:
-	if enabled and not economy_error().is_empty():
-		EventBus.notified.emit(economy_error())
+	if enabled and not decrees_error().is_empty():
+		EventBus.notified.emit(decrees_error())
 		return
 	decrees.corvee = enabled
 	population.active_share = Population.ACTIVE_SHARE + decrees.active_bonus()
@@ -1749,7 +1668,7 @@ func set_corvee(enabled: bool) -> void:
 
 ## Ce qui empêche une fête (vide : possible).
 func feast_error() -> String:
-	var error := economy_error()
+	var error := decrees_error()
 	if not error.is_empty():
 		return error
 	if not decrees.can_feast():
@@ -1757,9 +1676,6 @@ func feast_error() -> String:
 	var food := Decrees.feast_food(population.count)
 	if not stockpile.has(Stockpile.Good.FOOD, food):
 		return "Nourriture insuffisante (%d requis)" % roundi(food)
-	var money := Decrees.feast_money(population.count)
-	if treasury.money < money:
-		return "Pièces insuffisantes (%d requises)" % roundi(money)
 	return ""
 
 
@@ -1770,7 +1686,6 @@ func hold_feast() -> bool:
 		EventBus.notified.emit(error)
 		return false
 	stockpile.take(Stockpile.Good.FOOD, Decrees.feast_food(population.count))
-	treasury.money -= Decrees.feast_money(population.count)
 	decrees.start_feast()
 	EventBus.notified.emit("Fête au bourg : la satisfaction grimpe pendant %d jours" % Decrees.FEAST_DAYS)
 	EventBus.stocks_changed.emit()
@@ -1860,8 +1775,6 @@ func _on_day(day: int) -> void:
 	var clothes := _wear_clothes()
 	var light := _burn_light()
 	var goods := _wear_goods()
-	_run_economy()
-	# Après l'entretien : un trésor vide ferme dispensaires et postes de garde.
 	var health := health_coverage()
 	var order := order_coverage()
 	var education := education_coverage()
@@ -1889,8 +1802,8 @@ func _on_day(day: int) -> void:
 			EventBus.notified.emit("La ville veut des biens, des soins et de l'ordre : atelier d'artisans, dispensaire (recherche Médecine) et poste de garde")
 		if tier.level == CITY_STATE_TIER:
 			EventBus.notified.emit("La cité-État veut de l'électricité pour tous, des écoles et des théâtres ; uranium et lithium se prospectent")
-		if tier.level == ECONOMY_TIER:
-			EventBus.notified.emit("Le bourg lève l'impôt : trésor, marché et décrets dans le panneau Économie (E)")
+		if tier.level == DECREES_TIER:
+			EventBus.notified.emit("Le gouverneur du bourg prend des décrets (rationnement, corvée, fête) : panneau Décrets (E)")
 		EventBus.tier_changed.emit()
 	var points := research_per_day()
 	var finished := research.add_points(points)
@@ -1923,10 +1836,6 @@ func _on_day(day: int) -> void:
 	stats.add(&"order", order * 100.0)
 	stats.add(&"education", education * 100.0)
 	stats.add(&"culture", culture * 100.0)
-	stats.add(&"money", treasury.money)
-	stats.add(&"taxes", treasury.taxes_today)
-	stats.add(&"trade", treasury.sales_today - treasury.purchases_today)
-	treasury.reset_day()
 	EventBus.economy_changed.emit()
 	coal_burned_today = 0.0
 	fuel_burned_today = 0.0
@@ -1968,7 +1877,6 @@ func _check_milestones(day: int) -> void:
 	facts.served_stations = rails.served.size()
 	facts.clothes_coverage = population.clothes_coverage if tier.level >= CLOTHES_TIER else 0.0
 	facts.research = research
-	facts.money = treasury.money
 	facts.grid_coverage = grid.coverage
 	facts.nuclear_power = grid.nuclear
 	facts.pollution = pollution_index()

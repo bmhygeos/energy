@@ -57,7 +57,7 @@ pour le tutoriel.
 | Poser une voie ferrée | « Voie ferrée » du menu (bourg, recherche Locomotive), puis glisser sur la carte (tracé en L) ; « Démolir » retire une voie |
 | Explorer | « Expédition » du menu, régler explorateurs et jours de vivres, puis cliquer la destination sur la carte |
 | Recherche | `R` ou bouton « Recherche » du bandeau, puis « Rechercher » |
-| Économie (bourg) | `E` ou bouton « Trésor » du bandeau : impôts, décrets, achat et vente au marché |
+| Décrets (bourg) | `E` ou bouton « Décrets » du bandeau : rationnement, corvée, fête |
 | Améliorer | « Améliorer » du menu puis clic sur une maison ou un grenier |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` ou « Aide » du menu « Partie » pour l'afficher ou le masquer (affiché au lancement) |
@@ -316,25 +316,16 @@ météo et interface conservés.
   son cheval va 1,5 fois plus vite (aperçu de l'aller-retour « à cheval »).
 - **Jalon** Chemin de fer (première gare desservie) ; tutoriel complété.
 
-### V9 : économie du bourg — trésor, impôts, marché, décrets
-- **Trésor** (à partir du bourg) : bouton « Trésor » du bandeau (pièces) et
-  panneau **Économie** (`E`).
-- **Impôts** chaque jour, par habitant : aucun, faible (0,05 pièce, par
-  défaut), normal (0,1 ; satisfaction −5 %) ou élevé (0,2 ; −15 %) ; de 50 %
-  à 100 % du montant selon la satisfaction.
-- **Marché** (2×2, 60 bois, 40 pierre) : les marchands achètent et vendent
-  100 marchandises par jour et par marché. Prix de vente en pièces :
-  nourriture, bois et fibres 1, pierre 2, charbon 3, fer 4, vêtements 5,
-  pétrole 6, outils 8 ; achat 1,5 fois plus cher. Boutons par lots de 10 ;
-  case « Surplus » : vente chaque jour de ce qui dépasse 75 % de la capacité.
-- **Décrets** : rationnement (nourriture −25 %, satisfaction −10 %), corvée
-  (actifs 60 % → 70 % des habitants, satisfaction −10 %), fête (1 nourriture
-  et 0,5 pièce par habitant : satisfaction ×1,2 pendant 10 jours, une fête
-  tous les 30 jours au plus). L'humeur (impôt × décrets) multiplie la
-  satisfaction du jour, bornée à 100 % ; il en faut 80 % pour changer de
-  palier.
-- **Statistiques** : onglet Économie (trésor, impôts, solde du commerce) ;
-  **jalons** Jour de marché et Trésor (1 000 pièces).
+### V9 : décrets du bourg
+- **Pas d'extérieur** : la cité ne commerce avec personne. Le marché, le
+  trésor, les impôts et l'entretien en pièces des bâtiments publics ont été
+  retirés ; tout ce dont la cité a besoin, elle le produit.
+- **Décrets** (à partir du bourg ; panneau **Décrets**, `E`) : rationnement
+  (nourriture −25 %, satisfaction −10 %), corvée (actifs 60 % → 70 % des
+  habitants, satisfaction −10 %), fête (1 nourriture par habitant :
+  satisfaction ×1,2 pendant 10 jours, une fête tous les 30 jours au plus).
+  L'humeur des décrets multiplie la satisfaction du jour, bornée à 100 % ; il
+  en faut 80 % pour changer de palier.
 - **Bandeau** compacté : graine, nouvelle carte et aide dans le menu
   « Partie ».
 - **Événements** (à partir du bourg, au moins 60 jours d'écart, reproductibles
@@ -346,8 +337,12 @@ météo et interface conservés.
 
 ### V10 : routes du bourg
 - **Route** (menu, section Transport) : glisser pour poser un tracé en L ;
-  2 pierres par tuile, pont sur rivière ×5 ; mêmes règles de pose que la voie
-  ferrée, qu'elle peut croiser. « Démolir » retire une route.
+  2 pierres par tuile, pont sur rivière ×5 ; pas sur l'eau, la montagne ni la
+  glace. Comme les canaux, elle passe sur les zones (champs, élevage, coupe,
+  mines…), croise ou longe canaux, lignes et voies ferrées, et passe sous les
+  bâtiments du monde ; zones et bâtiments se posent aussi sur une route. Une
+  forêt traversée est défrichée. « Démolir » retire une route (après le
+  bâtiment s'il y en a un).
 - Reliée au village (une de ses tuiles à 6 tuiles du centre ou moins), elle
   rapproche les tuiles à 2 tuiles ou moins d'elle : 2 tuiles de route valent
   1 tuile de marche, sans combustible. Fiche de la tuile : distance par la
@@ -360,7 +355,7 @@ météo et interface conservés.
   | Recherche | Prérequis | Points | Effet |
   |---|---|---|---|
   | Raffinage du pétrole | Méthode expérimentale | 45 000 | **Raffinerie** (60 pierre, 60 fer, 10 outils) : 10 carburant par jour, un pétrole chacun |
-  | Enseignement supérieur | Méthode expérimentale | 50 000 | **Université** (80 bois, 150 pierre, 30 fer, 20 outils) : recherche ×10 pour 1 000 habitants, entretien de 30 pièces par jour ; impayée, elle s'arrête |
+  | Enseignement supérieur | Méthode expérimentale | 50 000 | **Université** (80 bois, 150 pierre, 30 fer, 20 outils) : recherche ×10 pour 1 000 habitants |
 - **Éclairage** (à partir de la ville) : 0,01 carburant par habitant et par
   jour ; sans lui, satisfaction réduite jusqu'à −10 %.
 - **Jalons** Ville et Alma mater. Bandeau : charbon, vêtements et carburant
@@ -402,16 +397,13 @@ météo et interface conservés.
   (meubles, vaisselle, ustensiles). **Atelier d'artisans** (50 bois, 40
   pierre, 10 fer, 5 outils) : 10 biens par jour, chacun pour 1 bois et 0,25
   fer ; il garde 10 jours de chauffage d'hiver en bois. Moulin à eau, machine
-  à vapeur et électricité l'accélèrent comme les forges. Stock de 200 biens,
-  vendus 6 pièces au marché.
+  à vapeur et électricité l'accélèrent comme les forges. Stock de 200 biens.
 - **Santé** : **Médecine** (40 000 points, après la méthode expérimentale)
   débloque le **dispensaire** (40 bois, 80 pierre, 10 fer, 10 outils) : 500
-  habitants soignés, 10 pièces d'entretien par jour.
+  habitants soignés.
 - **Ordre** : **poste de garde** (30 bois, 50 pierre, 10 fer) : 400 habitants
-  sous la garde, 6 pièces d'entretien par jour. Sans ordre, jusqu'à 30 % des
-  impôts se perdent (fraude, vols).
-- Chaque besoin manquant réduit la satisfaction jusqu'à −10 %. Trésor vide :
-  universités, dispensaires et postes de garde s'arrêtent tous.
+  sous la garde.
+- Chaque besoin manquant réduit la satisfaction jusqu'à −10 %.
 - **Épidémie** (événement de la ville, automne et hiver) : emporte jusqu'à 8 %
   des habitants, d'autant moins que les dispensaires en soignent.
 - Bandeau (« Manque : biens, soins, ordre ») et détail au survol, panneau
@@ -455,7 +447,7 @@ météo et interface conservés.
   la ville au centre de la carte mondiale) : une plaine où se bâtissent
   logements, stockage, ateliers, forges, tissages, artisans, raffineries,
   usines, laboratoire, université, écoles, théâtres, dispensaires, postes de
-  garde, marchés et centres informatiques. Sa partie constructible grandit
+  garde et centres informatiques. Sa partie constructible grandit
   avec le palier : 12×12, 16×16, 24×24, 32×32 puis 40×40 cases.
 - **Carte mondiale** : zones, exploration, routes, voies ferrées, lignes
   électriques, et les bâtiments liés au terrain ou aux réseaux (puits,
@@ -501,8 +493,8 @@ pétrole, cuivre, uranium, lithium) rendent ×2 à la ville (engins à moteur) e
 ### V12 : palier 5 — cité-État
 
 - **Besoins** (à partir de 5 000 habitants) : **éducation** (**École** : 500
-  habitants, 8 pièces/j ; l'**Université** instruit aussi 1 000 habitants),
-  **culture** (**Théâtre** : 1 000 habitants, 15 pièces/j) et **électricité**
+  habitants ; l'**Université** instruit aussi 1 000 habitants),
+  **culture** (**Théâtre** : 1 000 habitants) et **électricité**
   (part de la demande servie). Chacun réduit la satisfaction jusqu'à −10 %
   (−15 % pour le courant).
 - **Uranium et lithium** : prospectés à la cité-État, 2 tuiles de chaque
@@ -512,8 +504,8 @@ pétrole, cuivre, uranium, lithium) rendent ×2 à la ville (engins à moteur) e
   | Recherche | Prérequis | Points | Effet |
   |---|---|---|---|
   | Électronique | Conductivité | 120 000 | **Usine d'électronique** : 10 composants/j, un cuivre chacun |
-  | Informatique | Électronique, Enseignement supérieur | 150 000 | **Centre informatique** : recherche ×20 pour 2 000 habitants, 20 kW, 40 pièces/j |
-  | Intelligence artificielle | Informatique | 400 000 | **Datacenter** (près de l'eau) : ×100 pour 10 000 habitants, 200 kW (60 % aux pôles : refroidissement), 120 pièces/j |
+  | Informatique | Électronique, Enseignement supérieur | 150 000 | **Centre informatique** : recherche ×20 pour 2 000 habitants, 20 kW |
+  | Intelligence artificielle | Informatique | 400 000 | **Datacenter** (près de l'eau) : ×100 pour 10 000 habitants, 200 kW (60 % aux pôles : refroidissement) |
   | Radioactivité | Conductivité | 200 000 | **Centrale nucléaire** (près de l'eau) : 200 kW pour 2 uranium/j |
   | Énergie éolienne | Conductivité | 100 000 | **Éolienne** : 15 kW par grand vent ; crêtes et côtes à plein rendement, ailleurs ×0,6 |
   | Photovoltaïque | Électronique | 150 000 | **Champ solaire** : 30 kW en plein soleil, de jour, × cos(latitude) |

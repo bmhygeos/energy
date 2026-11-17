@@ -44,7 +44,6 @@ func _init() -> void:
 	_test_rails()
 	_test_steam_and_scouts()
 	_test_roads()
-	_test_treasury()
 	_test_decrees()
 	_test_city_events()
 
@@ -54,7 +53,7 @@ func _init() -> void:
 func _initialize() -> void:
 	await process_frame
 	_test_bourg_game()
-	_test_economy_game()
+	_test_decrees_game()
 	_test_events_game()
 	_test_roads_game()
 	_test_city_game()
@@ -1464,7 +1463,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 27 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 25 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1599,37 +1598,6 @@ func _test_bourg_game() -> void:
 	gs.new_game(4242)
 
 
-func _test_treasury() -> void:
-	var t := Treasury.new()
-	var stock := Stockpile.new()
-	_check(t.tax_level == Treasury.DEFAULT_TAX and t.mood() == 1.0, "impôt faible par défaut, sans effet sur l'humeur")
-	t.tax_level = 2
-	_check(is_equal_approx(t.taxes_for(100, 1.0), 10.0) and is_equal_approx(t.taxes_for(100, 0.0), 5.0)
-		and t.mood() < 1.0, "impôt normal : 0,1 pièce par habitant, moitié à satisfaction nulle")
-	_check(t.sell(stock, Stockpile.Good.FOOD, 10.0) == 0.0, "pas de marché : pas de commerce")
-	t.trade_capacity = 30.0
-	stock.amount[Stockpile.Good.IRON] = 50.0
-	var sold := t.sell(stock, Stockpile.Good.IRON, 20.0)
-	_check(sold == 20.0 and t.money == 20.0 * Treasury.PRICES[Stockpile.Good.IRON] and stock.amount[Stockpile.Good.IRON] == 30.0,
-		"vente au prix courant")
-	t.money = 1000.0
-	var bought := t.buy(stock, Stockpile.Good.TOOLS, 50.0)
-	_check(bought == 10.0 and is_equal_approx(t.money, 1000.0 - 10.0 * Treasury.buy_price(Stockpile.Good.TOOLS)),
-		"achat limité par le volume du jour (%s)" % bought)
-	_check(t.trade_left() == 0.0 and t.buy(stock, Stockpile.Good.FOOD, 1.0) == 0.0, "volume épuisé")
-	t.reset_day()
-	t.money = 3.0
-	_check(is_equal_approx(t.buy(stock, Stockpile.Good.WOOD, 10.0), 2.0), "achat limité par les pièces")
-	t.reset_day()
-	t.money = 0.0
-	t.trade_capacity = 1000.0
-	stock.amount[Stockpile.Good.WOOD] = stock.capacity[Stockpile.Good.WOOD]
-	t.auto_sell[Stockpile.Good.WOOD] = true
-	t.sell_surplus(stock)
-	_check(is_equal_approx(stock.amount[Stockpile.Good.WOOD], stock.capacity[Stockpile.Good.WOOD] * Treasury.AUTO_SELL_RATIO)
-		and t.money > 0.0, "vente automatique des surplus")
-
-
 func _test_decrees() -> void:
 	var d := Decrees.new()
 	_check(d.mood() == 1.0 and d.food_factor() == 1.0 and d.active_bonus() == 0.0, "sans décret : aucun effet")
@@ -1690,8 +1658,19 @@ func _test_roads() -> void:
 	_check(roads.lengths.size() == 36 and roads.lengths[Vector2i(85, 60)] == 35, "route reliée au village, longueur comptée depuis la portée du village")
 	_check(roads.distance_via(far) == 17 + 2 and labor.distance(far) == 19, "2 tuiles de route = 1 de marche, 2 tuiles de portée")
 	_check(roads.distance_via(Vector2i(85, 63)) == -1 and labor.distance(Vector2i(85, 63)) == 40, "au-delà de la portée : à pied")
-	_check(not zones.check_cell(ZoneDb.get_def(&"pasture"), Vector2i(70, 60)).is_empty(), "pas de zone sur une route")
+	_check(zones.check_cell(ZoneDb.get_def(&"pasture"), Vector2i(70, 60)).is_empty(), "une zone peut passer sur une route")
 	_check(roads.plan(Vector2i(50, 60), Vector2i(55, 60)).error == "Route déjà posée", "route déjà posée")
+	var pasture := ZoneDb.get_def(&"pasture")
+	zones.apply(zones.plan(pasture, ZoneMap.rect_between(Vector2i(70, 64), Vector2i(72, 64))))
+	var registry: BuildingRegistry = roads.buildings
+	var well: Building = registry.place(registry.check_placement(BuildingDb.get_def(&"well"), Vector2i(74, 64)))
+	var across := roads.plan(Vector2i(69, 64), Vector2i(75, 64))
+	_check(well != null and zones.zone_at(Vector2i(71, 64)) == pasture and across.is_valid(),
+		"route sur une zone et sous un bâtiment (%s)" % across.error)
+	roads.build(across)
+	_check(zones.zone_at(Vector2i(71, 64)) == pasture and registry.building_at(Vector2i(74, 64)) == well,
+		"la zone et le bâtiment restent sous la route")
+	_check(registry.check_placement(BuildingDb.get_def(&"well"), Vector2i(75, 64)).is_valid(), "un bâtiment se pose sur une route")
 	roads.remove(Vector2i(70, 60))
 	roads.refresh()
 	_check(roads.distance_via(far) == -1 and roads.lengths.size() == 20, "route coupée : le reste n'est plus relié")
@@ -1750,12 +1729,7 @@ func _test_city_game() -> void:
 	_check(is_equal_approx(p.satisfaction, 1.0 - Population.LIGHT_WEIGHT), "sans éclairage : satisfaction réduite")
 	var uni := _place_running(gs, BuildingDb.get_def(&"university"))
 	var points: float = gs.research_per_day()
-	gs.treasury.money = 100.0
-	gs._pay_upkeep()
-	_check(uni != null and gs.upkeep_paid and gs.treasury.money == 70.0 and points > 5000.0, "université : entretien payé, recherche ×10")
-	gs.treasury.money = 10.0
-	gs._pay_upkeep()
-	_check(not gs.upkeep_paid and gs.treasury.money == 10.0 and gs.research_per_day() < points, "entretien impayé : université à l'arrêt")
+	_check(uni != null and points > 5000.0, "université : recherche ×10, sans entretien")
 	gs.new_game(4242)
 
 
@@ -1782,9 +1756,6 @@ func _test_services_game() -> void:
 	p.end_day(1.0, 1.0, 100, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0)
 	_check(is_equal_approx(p.satisfaction, (1.0 - Population.GOODS_WEIGHT) * (1.0 - Population.HEALTH_WEIGHT)
 		* (1.0 - Population.ORDER_WEIGHT)), "sans biens, soins ni ordre : satisfaction réduite")
-	var t := Treasury.new()
-	_check(is_equal_approx(t.taxes_for(1000, 1.0, 0.0), t.taxes_for(1000, 1.0) * (1.0 - Treasury.DISORDER_TAX_LOSS)),
-		"sans ordre : impôts perdus")
 	var needs_medicine := false
 	stock.amount[Stockpile.Good.STONE] = 500.0
 	stock.amount[Stockpile.Good.IRON] = 100.0
@@ -1799,11 +1770,6 @@ func _test_services_game() -> void:
 	_place_running(gs, BuildingDb.get_def(&"guard_post"))
 	_check(is_equal_approx(gs.health_coverage(), 0.5) and is_equal_approx(gs.order_coverage(), 0.4),
 		"dispensaire et poste de garde : habitants couverts")
-	gs.treasury.money = 0.0
-	gs._pay_upkeep()
-	_check(not gs.upkeep_paid and gs.health_coverage() == 0.0 and gs.order_coverage() == 0.0,
-		"entretien impayé : dispensaire et poste de garde à l'arrêt")
-	gs.upkeep_paid = true
 	gs.apply_event(CityEvents.Kind.EPIDEMIC)
 	_check(gs.population.count == 1000 - floori(1000 * CityEvents.EPIDEMIC_DEATHS * 0.5), "épidémie : moitié moins de morts avec des soins")
 	gs.new_game(4242)
@@ -2247,36 +2213,23 @@ func _test_events_game() -> void:
 	gs.new_game(4242)
 
 
-func _test_economy_game() -> void:
+func _test_decrees_game() -> void:
 	var gs: Node = root.get_node("GameState")
 	gs.new_game(4242)
-	_check(not gs.economy_error().is_empty() and gs.mood() == 1.0, "hameau : pas d'économie")
-	var money: float = gs.treasury.money
-	gs._run_economy()
-	_check(gs.treasury.money == money, "hameau : pas d'impôt")
+	_check(not gs.decrees_error().is_empty() and gs.mood() == 1.0, "hameau : pas de décret")
+	_check(BuildingDb.get_def(&"market") == null, "plus de marché : pas d'extérieur")
 	gs.tier.level = 3
 	gs.population.count = 400
-	gs._run_economy()
-	_check(gs.treasury.money > 0.0, "bourg : impôts encaissés")
-	_check(gs.trade_error().contains("marché"), "commerce : marché requis")
-	var market := _place_running(gs, BuildingDb.get_def(&"market"))
-	gs._refresh_capacities()
-	_check(market != null and gs.trade_error().is_empty() and gs.treasury.trade_capacity == market.def.trade_per_day,
-		"marché : commerce ouvert")
-	gs.stockpile.amount[Stockpile.Good.STONE] = 50.0
-	_check(gs.trade(Stockpile.Good.STONE, -10.0) == 10.0, "vente au marché")
 	var food: float = gs.food_need()
 	gs.set_rationing(true)
 	_check(is_equal_approx(gs.food_need(), food * Decrees.RATION_FOOD), "rationnement : moins de nourriture")
 	var active: int = gs.population.active()
 	gs.set_corvee(true)
 	_check(gs.population.active() > active, "corvée : plus d'actifs")
-	gs.treasury.money = 0.0
-	_check(gs.feast_error().contains("Pièces"), "fête : pièces requises")
-	gs.treasury.money = 1000.0
+	gs.stockpile.amount[Stockpile.Good.FOOD] = 100.0
+	_check(gs.feast_error().contains("Nourriture"), "fête : nourriture requise")
 	gs.stockpile.amount[Stockpile.Good.FOOD] = 1000.0
-	_check(gs.hold_feast() and gs.treasury.money == 800.0 and gs.stockpile.amount[Stockpile.Good.FOOD] == 600.0,
-		"fête : 400 nourriture et 200 pièces")
+	_check(gs.hold_feast() and gs.stockpile.amount[Stockpile.Good.FOOD] == 600.0, "fête : 400 nourriture")
 	gs.new_game(4242)
 	_check(gs.population.active_share == Population.ACTIVE_SHARE and not gs.decrees.corvee, "nouvelle partie : décrets levés")
 

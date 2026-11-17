@@ -19,7 +19,6 @@ tools_cost = 20
 research_multiplier = 10.0
 research_coverage = 1000
 education_coverage = 1000
-upkeep_per_day = 30.0
 color = Color(0.85, 0.8, 0.7, 1)
 roof_color = Color(0.3, 0.32, 0.45, 1)
 height = 28.0

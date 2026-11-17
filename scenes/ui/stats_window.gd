@@ -129,10 +129,6 @@ func _build() -> void:
 		_chart(&"horses", "Chevaux de trait", "chevaux"),
 		_chart(&"research", "Recherche", "points / jour"),
 	])
-	_add_tab("Économie", [
-		_chart(&"money", "Trésor (fin de journée)", "pièces"),
-		_chart(&"income", "Impôts et solde du commerce du jour", "pièces"),
-	])
 	_add_tab("Puissance", [
 		_chart(&"power", "Puissance de la cité (moyenne sur %d j)" % PowerMeter.WINDOW_DAYS, "kW"),
 		_chart(&"power_per_capita", "Puissance par habitant", "W"),
@@ -196,7 +192,7 @@ func _refresh() -> void:
 		satisfaction.append(Chart.Series.new("Culture", stats.values(&"culture"), Color("d98a4f")))
 	if GameState.research.is_done(&"conductivity"):
 		satisfaction.append(Chart.Series.new("Électricité", stats.values(&"electricity"), Color("e0a23c")))
-	if GameState.stats.values(&"pollution").size() > 0 and GameState.tier.level >= GameState.ECONOMY_TIER:
+	if GameState.stats.values(&"pollution").size() > 0 and GameState.tier.level >= GameState.DECREES_TIER:
 		satisfaction.append(Chart.Series.new("Pollution", stats.values(&"pollution"), Color("8a7f74")))
 	_show(&"satisfaction", satisfaction, first)
 	# Pierre, fer et outils n'apparaissent qu'une fois produits.
@@ -214,11 +210,6 @@ func _refresh() -> void:
 	_show(&"territory", [Chart.Series.new("Territoire", stats.values(&"territory"), Color("7ee787"))], first)
 	_show(&"horses", [Chart.Series.new("Chevaux", stats.values(&"horses"), Color("c08a5a"))], first)
 	_show(&"research", [Chart.Series.new("Points", stats.values(&"research"), Color("b37feb"))], first)
-	_show(&"money", [Chart.Series.new("Trésor", stats.values(&"money"), Color("e3c04a"))], first)
-	_show(&"income", [
-		Chart.Series.new("Impôts", stats.values(&"taxes"), Color("4caf50")),
-		Chart.Series.new("Commerce", stats.values(&"trade"), Color("5b9bd5")),
-	], first)
 	var kw := PackedFloat32Array()
 	for w in stats.values(&"power"):
 		kw.append(w / 1000.0)

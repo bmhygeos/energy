@@ -9,8 +9,6 @@ const EXPLORER_TILES := 300
 const LARGE_TERRITORY_TILES := 2000
 ## Chevaux d'une écurie pleine.
 const STABLE_HORSES := 6
-## Pièces du jalon « Trésor ».
-const TREASURY_MONEY := 1000
 
 ## Un jalon : condition évaluée sur les faits de la journée close.
 class Def:
@@ -43,8 +41,6 @@ class Facts:
 	## Gares desservies par le train.
 	var served_stations := 0
 	var research: Research
-	## Pièces du trésor.
-	var money := 0.0
 	## Part de la demande d'électricité servie.
 	var grid_coverage := 0.0
 	## Pire couverture de la veille entre biens, santé et ordre (0 avant la ville).
@@ -126,10 +122,6 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.tier >= 5 and f.pollution <= 0.0),
 		Def.new(&"datacenter", "Intelligence artificielle", "Construire un datacenter (recherche ×100).",
 			func(f: Facts) -> bool: return f.has_building(&"datacenter")),
-		Def.new(&"market", "Jour de marché", "Construire un marché pour commercer.",
-			func(f: Facts) -> bool: return f.has_building(&"market")),
-		Def.new(&"treasury", "Trésor", "Amasser %d pièces." % TREASURY_MONEY,
-			func(f: Facts) -> bool: return f.money >= TREASURY_MONEY),
 	]
 
 

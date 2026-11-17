@@ -202,8 +202,9 @@ func _build_transport() -> void:
 	_add_header("Transport")
 	_road_button = _tool_button("Route   %s" % _road_cost_text())
 	_road_button.tooltip_text = "\n".join(PackedStringArray(["Route (bourg)",
-		"Glisser pour poser un tracé en L ; %s par tuile, pont sur rivière ×%d ; pas sur l'eau, la montagne ni les zones." % [
+		"Glisser pour poser un tracé en L ; %s par tuile, pont sur rivière ×%d ; pas sur l'eau ni la montagne." % [
 			_road_cost_text(), roundi(TrackNetwork.BRIDGE_FACTOR)],
+		"Elle passe sur les zones, les canaux, les lignes et les voies, et sous les bâtiments du monde.",
 		"Reliée au village (une tuile à %d tuiles du centre ou moins), elle rapproche les tuiles à %d tuiles ou moins d'elle :" % [
 			Labor.FREE_DISTANCE, RoadNetwork.REACH],
 		"%d tuiles de route valent 1 tuile de marche. Sans combustible ; elle peut croiser une voie ferrée." % RoadNetwork.TILES_PER_WALK_TILE,

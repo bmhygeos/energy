@@ -14,7 +14,6 @@ wood_cost = 30
 stone_cost = 50
 iron_cost = 10
 order_coverage = 400
-upkeep_per_day = 6.0
 color = Color(0.62, 0.62, 0.68, 1)
 roof_color = Color(0.25, 0.3, 0.5, 1)
 height = 16.0

@@ -89,7 +89,7 @@ Pour ne pas avoir à tout refaire plus tard, dès la V1 :
   population croît (naissances, arrivants) ; pénurie → mécontentement, puis départs
   et, en cas de famine, déclin rapide.
 - **Satisfaction** (0–100 %) : couverture des besoins sur les derniers jours ;
-  elle module la croissance et, plus tard, l'impôt et les événements.
+  elle module la croissance et le passage des paliers.
 - **Logement** : les maisons (bâtiment simple, coût en bois) fixent la population
   maximale.
 
@@ -160,8 +160,8 @@ des zones ou des bâtiments et améliore l'exploration.
 |---|---|---|---|---|
 | 1 – Hameau | 20 au départ | Nourriture, bois | Agriculture, élevage, coupe du bois ; maisons, grenier ; recherche : **irrigation** | Explorateurs à pied, 1 expédition |
 | 2 – Village | 100 | Pierre (maisons en dur), eau, outils (scies, charrues) | Carrière, puits ; pêche (côte, lac) ; écurie (hippotraction), atelier (recherche ×2) ; mine de fer, forge (outils) | 3 expéditions, plus de vivres, chevaux de bât, prospection du fer |
-| 3 – Bourg | 400 | Vêtements | Champ de lin/laine (élevage) ; routes, marché ; laboratoire (recherche ×5), moulin à eau ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
-| 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans, commerce avec l'extérieur (argent), impôts ; université (recherche ×10) ; **pétrole** : puits, raffinerie, moteurs ; **cuivre** : mine, lignes électriques ; premières centrales électriques et **barrage hydroélectrique**, réseau (repris de la v1) ; **camions** : routes carrossables, dépôts | Bateaux, cartographes, prospection du pétrole et du cuivre |
+| 3 – Bourg | 400 | Vêtements | Champ de lin/laine (élevage) ; routes ; laboratoire (recherche ×5), moulin à eau ; **charbon** : mine, chauffage, machine à vapeur ; **train** : voies ferrées, gares | Éclaireurs à cheval, prospection du charbon |
+| 4 – Ville | 1 500 | Biens variés, santé, ordre, éclairage | Artisans ; université (recherche ×10) ; **pétrole** : puits, raffinerie, moteurs ; **cuivre** : mine, lignes électriques ; premières centrales électriques et **barrage hydroélectrique**, réseau (repris de la v1) ; **camions** : routes carrossables, dépôts | Bateaux, cartographes, prospection du pétrole et du cuivre |
 | 5 – Cité-État | 5 000 | Éducation, culture, électricité | Industrie ; **électronique**, informatique : **centre informatique** (recherche ×20), puis IA : **datacenter** (×100) ; **nucléaire** : mine d'uranium, centrale nucléaire ; **éolienne**, **photovoltaïque** ; **lithium** : mine, batteries, véhicules électriques | Prospection de l'uranium et du lithium ; recherche de la fusée → base de lancement → premier satellite : toute la planète révélée, vue globe |
 
 Les paliers 2 à 5 sont **indicatifs** : seul le palier 1 est détaillé ici, les
@@ -185,7 +185,7 @@ l'arbre :
   | — | 1 – Hameau | — | ×1 | — | Recherche sans bâtiment : irrigation |
   | Atelier | 2 – Village | Palier atteint | ×2 | 100 habitants | Coût en bois et pierre |
   | Laboratoire | 3 – Bourg | Recherche | ×5 | 400 habitants | Demande des outils |
-  | Université | 4 – Ville | Recherche | ×10 | 1 000 habitants | Entretien en argent (impôts) ; prépare le besoin « éducation » du palier 5 |
+  | Université | 4 – Ville | Recherche | ×10 | 1 000 habitants | Prépare le besoin « éducation » du palier 5 |
   | Centre informatique | 5 – Cité-État | Recherche de l'informatique (après l'électronique) | ×20 | 2 000 habitants | Consomme de l'électricité |
   | Datacenter | 5 – Cité-État | Recherche de l'IA (après l'informatique) | ×100 | 10 000 habitants | Gros consommateur d'électricité ; refroidissement par l'eau (rivière, lac, côte), moins coûteux aux latitudes froides |
 
@@ -242,7 +242,7 @@ puits, au village (ou en annexant vers une rivière ou un lac).
   visibles ni de quantité transportée.
 - **Éclaireurs à cheval** (partie 2) : expéditions ×1,5 en vitesse avec un
   cheval par explorateur.
-- Reste : routes et marché, avec l'économie (section 8).
+- Reste : routes (section 7, V10).
 
 ### Palier 2 : inventions, fer et outils (réalisé en V6, partie 3)
 - **Prospection** : le territoire est prospecté au passage d'un palier ; les
@@ -399,13 +399,12 @@ au-delà de laquelle la pénalité de trajet commence, section 5) et augmente la
 - Le lancement débloque la **vue globe** (planète entière, satellite en orbite)
   et ouvre l'ère spatiale (satellites suivants : météo prévue, communications).
 
-## 8. Économie et gouvernance (à partir du palier 3–4)
-Réalisé en V9 au bourg : trésor, impôts selon le taux, la population et la
-satisfaction, marché (achat, vente, surplus), décrets (rationnement, corvée,
-fête), événements ; entretien en argent de l'université en V11.
-- **Argent** : impôts (selon population et satisfaction), commerce des surplus.
+## 8. Gouvernance (à partir du palier 3)
+**Pas d'extérieur** : la cité ne commerce avec personne ; tout ce dont elle a
+besoin, elle le produit. Le trésor, les impôts, le marché et l'entretien en
+pièces, réalisés en V9 et V11, ont été retirés.
 - **Décrets** du gouverneur : rationnement, corvée (plus de travailleurs, moins de
-  satisfaction), fêtes (satisfaction contre stocks).
+  satisfaction), fêtes (satisfaction contre nourriture).
 - **Événements** (adaptés de la v1) : hiver rude, sécheresse (récoltes −50 %),
   épizootie (élevage), incendie de forêt, arrivée de migrants.
 
@@ -464,13 +463,13 @@ effectif, vivres).
 | V7 | Interface et équilibrage | Statistiques, jalons, tutoriel réécrits, rythme des paliers 1–2 (outil `simulate_pacing`, points de recherche mis de côté plafonnés) |
 | V8 (partie 1) | Palier 3, première partie | Charbon (mine, chauffage, coke), vêtements (lin, laine, tissage), laboratoire, moulin à eau — réalisé |
 | V8 (partie 2) | Palier 3, deuxième partie | Machine à vapeur, voies ferrées et gares, éclaireurs à cheval — réalisé |
-| V9 | Économie du bourg | Trésor, impôts, marché (achat, vente, surplus), décrets (rationnement, corvée, fête), événements — réalisé |
+| V9 | Gouvernance du bourg | Décrets (rationnement, corvée, fête), événements — réalisé (trésor, impôts et marché retirés ensuite : pas d'extérieur) |
 | V10 | Routes du bourg | Tracé en L, 2 pierres par tuile, abords rapprochés du village — réalisé |
-| V11 (partie 1) | Palier 4, première partie | Pétrole (puits, raffinerie, carburant), éclairage, université et son entretien — réalisé |
+| V11 (partie 1) | Palier 4, première partie | Pétrole (puits, raffinerie, carburant), éclairage, université — réalisé |
 | V11 (ports) | Pêche et ports | Portée de la pêche, port de pêche, port, navires des expéditions, transport entre ports — réalisé |
 | V11 (partie 2) | Électricité | Cuivre, conductivité, lignes, centrale à charbon, barrage, réseau — réalisé |
 | V11 (partie 3) | Camions | Moteur à explosion, dépôts, portée des routes contre du carburant — réalisé |
-| V11 (partie 4) | Besoins de la ville | Biens variés (atelier d'artisans), santé (médecine, dispensaire, épidémies), ordre (poste de garde, impôts) — réalisé |
+| V11 (partie 4) | Besoins de la ville | Biens variés (atelier d'artisans), santé (médecine, dispensaire, épidémies), ordre (poste de garde) — réalisé |
 | V11 (partie 5) | Fin du palier 4 | Retenue des barrages (tuiles noyées en amont), centrale au fioul, capacité des camions (100 travailleurs par dépôt), cartographes (vue des expéditions) — réalisé |
 | V12 | Palier 5 | Éducation, culture, électricité ; électronique, informatique, IA ; nucléaire, éolien, photovoltaïque, lithium, batteries, véhicules électriques ; incident nucléaire — réalisé (sans pollution ni enrichissement séparé) |
 | V12+ | Palier 5, suite | Pollution et santé (indice de la cité, soins), enrichissement de l'uranium, bornes de recharge — réalisé |

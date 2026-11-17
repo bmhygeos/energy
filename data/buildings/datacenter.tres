@@ -20,7 +20,6 @@ electronics_cost = 300
 research_multiplier = 100.0
 research_coverage = 10000
 power_demand = 200000.0
-upkeep_per_day = 120.0
 needs_water_access = true
 color = Color(0.7, 0.72, 0.76, 1)
 roof_color = Color(0.2, 0.22, 0.28, 1)

@@ -19,7 +19,6 @@ electronics_cost = 60
 research_multiplier = 20.0
 research_coverage = 2000
 power_demand = 20000.0
-upkeep_per_day = 40.0
 color = Color(0.78, 0.8, 0.84, 1)
 roof_color = Color(0.25, 0.3, 0.4, 1)
 height = 22.0
