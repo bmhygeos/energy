@@ -84,7 +84,7 @@ func _make_steps() -> Array[Step]:
 			func() -> bool: return _overlay_used),
 		Step.new("Tracer des zones", "Le gouverneur ne bâtit pas chaque ferme : il [b]trace des zones[/b] où les habitants iront travailler. Dans le menu [b]Construction[/b], choisissez [b]Agriculture[/b] (plaines et berges), [b]Élevage[/b] (prairies, collines) ou [b]Coupe du bois[/b] (forêts), puis glissez sur la carte.\n\nLes habitants actifs s'y répartissent d'eux-mêmes, d'abord sur les meilleures tuiles proches du village. Une forêt coupée à blanc garde sa zone et repousse.",
 			func() -> bool: return not GameState.zones.all_cells().is_empty()),
-		Step.new("Construire", "Le bois se range au [b]Camp d'abattage[/b] : placez-en un (20 bois) depuis le menu [b]Construction[/b].\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas.",
+		Step.new("Construire", "Les maisons, greniers et ateliers se bâtissent sur la [b]carte de la ville[/b] : bouton [b]Ville[/b] du bandeau, touche [b]Tab[/b], ou clic sur la ville au centre de la carte mondiale. Le bois se range au [b]Camp d'abattage[/b] : placez-en un (20 bois) depuis le menu [b]Construction[/b].\n\nLe fantôme est vert quand le placement est valide ; sinon le motif s'affiche en bas. Puits, moulins, ports, gares et centrales restent sur la carte mondiale.",
 			func() -> bool: return _has(&"woodshed")),
 		Step.new("Passer l'hiver", "Les champs ne donnent rien en hiver et le chauffage y double ; en été, il faut deux fois moins de bois. Remplissez le [b]grenier[/b] et le camp d'abattage avant l'hiver (survolez les stocks du bandeau).\n\nLe panneau [b]Main-d'œuvre[/b] (M) montre la production prévue et règle la priorité de chaque activité. Ouvrez-le.",
 			func() -> bool: return _labor_opened),
@@ -111,7 +111,7 @@ func _well_capacity() -> int:
 
 
 func _has(id: StringName) -> bool:
-	return GameState.buildings.all().any(func(b: Building) -> bool: return b.def.id == id)
+	return GameState.all_buildings().any(func(b: Building) -> bool: return b.def.id == id)
 
 
 func _build() -> void:

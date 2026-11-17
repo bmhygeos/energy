@@ -8,6 +8,7 @@ id = &"nuclear_plant"
 display_name = "Centrale nucléaire"
 description = "Réacteur, tour de refroidissement et turbines : l'uranium fissile fait du courant en abondance."
 category = 2
+site = 1
 tier = 5
 research = &"radioactivity"
 size = Vector2i(2, 2)

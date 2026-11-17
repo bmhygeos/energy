@@ -38,6 +38,8 @@ var rails: RailNetwork
 var roads: RoadNetwork
 ## Ports (transport par l'eau).
 var ports: PortNetwork
+## Demi-côté du bloc de la ville : les distances se comptent depuis son bord.
+var city_radius := 0
 ## Priorité par type de zone (0–5 ou AUTO).
 var priorities: Dictionary[ZoneDef, int] = {}
 ## Priorité appliquée en mode automatique, par type de zone.
@@ -221,7 +223,7 @@ func distance(cell: Vector2i) -> int:
 func land_distance(cell: Vector2i) -> int:
 	var w := map.size.x
 	var dx := absi(posmod(cell.x - center.x + w / 2, w) - w / 2)
-	var d := maxi(dx, absi(cell.y - center.y))
+	var d := maxi(0, maxi(dx, absi(cell.y - center.y)) - city_radius)
 	if rails:
 		var via := rails.distance_via(cell)
 		if via >= 0:

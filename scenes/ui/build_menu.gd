@@ -30,6 +30,9 @@ var _horses: SpinBox
 var _horses_row: HBoxContainer
 var _expedition_status: Label
 var _toast_tween: Tween
+## Entrées du menu propres à une carte (vrai : ville ; faux : monde),
+## affichées seulement quand elle est à l'écran.
+var _site_of: Dictionary[Control, bool] = {}
 
 @onready var _list: VBoxContainer = %List
 @onready var _hint_panel: PanelContainer = $HintPanel
@@ -66,6 +69,7 @@ func _ready() -> void:
 
 
 func _build_list() -> void:
+	var first := _list.get_child_count()
 	_add_header("Zones")
 	for def in ZoneDb.DEFS:
 		var button := _tool_button(def.display_name)
@@ -80,18 +84,25 @@ func _build_list() -> void:
 		_select_tool(_erase_zone_button, BuildTool.Mode.ERASE_ZONE, null))
 	_build_territory()
 	_build_transport()
-	for category in BuildingDef.Category.size():
-		var defs := BuildingDb.DEFS.filter(func(d: BuildingDef) -> bool:
-			return d.category == category and d.player_buildable)
-		if defs.is_empty():
-			continue
-		_add_header(BuildingDef.CATEGORY_NAMES[category])
-		for def: BuildingDef in defs:
-			var button := _tool_button("%s   %s" % [def.display_name, def.describe_cost()])
-			button.tooltip_text = _tooltip(def)
-			button.pressed.connect(func() -> void:
-				_select_tool(button, BuildTool.Mode.BUILD, def))
-			_build_buttons[def] = button
+	_mark_site(first, false)
+	for site in BuildingDef.Site.size():
+		for category in BuildingDef.Category.size():
+			var defs := BuildingDb.DEFS.filter(func(d: BuildingDef) -> bool:
+				return d.category == category and d.site == site and d.player_buildable)
+			if defs.is_empty():
+				continue
+			first = _list.get_child_count()
+			_add_header(BuildingDef.CATEGORY_NAMES[category])
+			for def: BuildingDef in defs:
+				var button := _tool_button("%s   %s" % [def.display_name, def.describe_cost()])
+				button.tooltip_text = _tooltip(def)
+				button.pressed.connect(func() -> void:
+					_select_tool(button, BuildTool.Mode.BUILD, def))
+				_build_buttons[def] = button
+			_mark_site(first, site == BuildingDef.Site.CITY)
+	EventBus.view_changed.connect(_refresh_view)
+	EventBus.game_started.connect(func(_s: int) -> void: _refresh_view())
+	_refresh_view.call_deferred()
 	_list.add_child(HSeparator.new())
 	_upgrade_button = _tool_button("Améliorer")
 	_upgrade_button.tooltip_text = "\n".join(PackedStringArray(["Améliore un bâtiment sur place, un niveau par palier ; il reste en service pendant les travaux.",
@@ -108,6 +119,27 @@ func _build_list() -> void:
 	_demolish_button.tooltip_text = "Démolit un bâtiment, annule un chantier ou retire une voie ferrée."
 	_demolish_button.pressed.connect(func() -> void:
 		_select_tool(_demolish_button, BuildTool.Mode.DEMOLISH, null))
+
+
+## Marque les entrées ajoutées depuis l'indice [param first] comme propres à
+## la ville ([param city]) ou au monde.
+func _mark_site(first: int, city: bool) -> void:
+	for k in range(first, _list.get_child_count()):
+		_site_of[_list.get_child(k) as Control] = city
+
+
+## N'affiche que les entrées de la carte à l'écran ; un outil de l'autre carte
+## est abandonné.
+func _refresh_view() -> void:
+	for control: Control in _site_of:
+		control.visible = _site_of[control] == GameState.view_city
+	if _horses_row:
+		_horses_row.visible = _horses_row.visible and GameState.tier.level >= 2
+	var stale := (_mode == BuildTool.Mode.BUILD and _def and (_def.site == BuildingDef.Site.CITY) != GameState.view_city) \
+		or GameState.view_city and _mode in [BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.RAIL,
+			BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.EXPEDITION]
+	if stale:
+		EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
 
 
 ## Zones et bâtiments d'un palier pas encore atteint ou d'une recherche pas
@@ -140,7 +172,7 @@ func _refresh_tier_locks() -> void:
 			CityTier.NAMES[3] if level < 4 else ResearchDb.get_def(&"conductivity").display_name))
 	if _days:
 		_update_days_limit()
-		_horses_row.visible = level >= 2
+		_horses_row.visible = level >= 2 and not GameState.view_city
 
 
 func _lock(button: Button, label: String, needed: int, level: int) -> void:
@@ -393,7 +425,7 @@ func _refresh_hint() -> void:
 				text += "\n[color=%s]%s[/color] · Échap : annuler" % [ERROR_COLOR, _placement.error]
 		BuildTool.Mode.DEMOLISH:
 			text = "[b]Démolition[/b] — cliquez sur un bâtiment · Échap : annuler"
-			var b := GameState.buildings.building_at(_hovered) if _hovered.x >= 0 else null
+			var b := GameState.view_buildings().building_at(_hovered) if _hovered.x >= 0 else null
 			if b:
 				text += "\n[color=%s]%s %s[/color]" % [
 					ERROR_COLOR, "Annuler le chantier" if not b.is_complete() else "Démolir", b.def.display_name]
@@ -412,7 +444,7 @@ func _refresh_hint() -> void:
 						_zone_plan.refused, "s" if _zone_plan.refused > 1 else "", _zone_plan.error]
 		BuildTool.Mode.UPGRADE:
 			text = "[b]Amélioration[/b] — cliquez sur un bâtiment · Échap : annuler"
-			var b := GameState.buildings.building_at(_hovered) if _hovered.x >= 0 else null
+			var b := GameState.view_buildings().building_at(_hovered) if _hovered.x >= 0 else null
 			if b:
 				var error := GameState.upgrade_error(b)
 				if error.is_empty():

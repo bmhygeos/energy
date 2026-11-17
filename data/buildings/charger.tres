@@ -8,6 +8,7 @@ id = &"charger"
 display_name = "Borne de recharge"
 description = "Prises haute puissance au bord de la route : les camions d'un dépôt roulent à l'électricité."
 category = 2
+site = 1
 tier = 5
 research = &"electric_vehicle"
 build_hours = 24

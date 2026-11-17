@@ -58,3 +58,7 @@ signal expedition_target_clicked(cell: Vector2i)
 signal notified(message: String)
 ## Jalon du bac à sable atteint (Milestones.Def).
 signal milestone_reached(milestone: Milestones.Def)
+## Carte affichée changée (ville ou monde : GameState.view_city).
+signal view_changed()
+## Ville agrandie (palier) : cases de la carte de la ville, bloc sur le monde.
+signal city_changed()

@@ -1,6 +1,8 @@
 extends Node2D
-## Rendu des tuiles connues de la planète (sols, décors, brume, overlays,
-## bâtiments), dans le repère de GameState.display_cell, et interactions à la
+## Rendu de la carte affichée : tuiles connues de la planète (sols, décors,
+## brume, overlays, bloc de la ville, bâtiments du monde), dans le repère de
+## GameState.display_cell, ou carte de la ville (plaine et bâtiments de la
+## ville) ; interactions à la
 ## souris selon l'outil actif : sélection, construction, démolition,
 ## peinture et effacement de zones (glisser : rectangle), pose de voies
 ## ferrées (glisser : tracé en L) et choix de la cible d'une expédition
@@ -29,31 +31,51 @@ var _expedition_hover := Vector2i(-1, -1)
 @onready var _fog: FogLayer = $Fog
 @onready var _buildings: BuildingsLayer = $Buildings
 @onready var _expeditions: ExpeditionLayer = $Expeditions
+## Calques propres à la carte mondiale, masqués sur la carte de la ville.
+@onready var _world_only: Array[Node2D] = [$Zones, $Roads, $Rails, $Lines, $Overlay, $Decor, $Fog, $Expeditions]
+var _city_block: CityBlockLayer
 
 
 func _ready() -> void:
 	var tile_set := TerrainTileSet.build()
 	_ground.tile_set = tile_set
 	_decor.tile_set = tile_set
-	EventBus.game_started.connect(func(_seed: int) -> void: _load_map(GameState.world_map))
+	_city_block = CityBlockLayer.new()
+	add_child(_city_block)
+	move_child(_city_block, $Overlay.get_index())
+	_world_only.append(_city_block)
+	EventBus.game_started.connect(func(_seed: int) -> void: _load_map(GameState.view_map()))
+	EventBus.view_changed.connect(func() -> void: _load_map(GameState.view_map()))
+	EventBus.city_changed.connect(func() -> void:
+		if GameState.view_city:
+			_load_map(GameState.view_map()))
 	EventBus.overlay_changed.connect(func(mode: int) -> void:
 		_decor.modulate.a = 1.0 if mode == OverlayLayer.Mode.NONE else DECOR_DIMMED_ALPHA)
 	EventBus.tiles_changed.connect(func(cells: Array[Vector2i]) -> void:
+		if GameState.view_city:
+			return
 		for cell in cells:
 			_paint_cell(cell))
 	EventBus.tool_changed.connect(_on_tool_changed)
+	EventBus.view_changed.connect(_on_view_changed)
 	EventBus.territory_changed.connect(_fog.refresh)
-	_load_map(GameState.world_map)
+	_load_map(GameState.view_map())
 
 
 func _load_map(p_map: WorldMap) -> void:
 	map = p_map
 	_ground.clear()
 	_decor.clear()
-	for cell in GameState.territory.known_cells():
-		_paint_cell(GameState.display_cell(cell))
-	_overlay.set_map(map)
-	_fog.refresh()
+	for layer in _world_only:
+		layer.visible = not GameState.view_city
+	if GameState.view_city:
+		for cell in GameState.city_territory.known_cells():
+			_paint_cell(cell)
+	else:
+		for cell in GameState.territory.known_cells():
+			_paint_cell(GameState.display_cell(cell))
+		_overlay.set_map(map)
+		_fog.refresh()
 	_set_hovered(Vector2i(-1, -1))
 	_set_selected(Vector2i(-1, -1))
 	EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
@@ -61,7 +83,7 @@ func _load_map(p_map: WorldMap) -> void:
 
 ## Peint [param cell] (repère de la vue), ou l'efface si elle est inconnue.
 func _paint_cell(cell: Vector2i) -> void:
-	if not GameState.territory.is_known(cell):
+	if not GameState.view_territory().is_known(cell):
 		_ground.erase_cell(cell)
 		_decor.erase_cell(cell)
 		return
@@ -138,10 +160,11 @@ func _click(cell: Vector2i) -> void:
 				GameState.build(_build_def, cell)
 				_placement = null  # force le recalcul de l'aperçu
 		BuildTool.Mode.DEMOLISH:
-			var b := GameState.buildings.building_at(cell)
-			var rail := cell.x >= 0 and GameState.rails.has_rail(cell)
-			var road := cell.x >= 0 and GameState.roads.has_tile(cell)
-			var line := cell.x >= 0 and GameState.grid.has_tile(cell)
+			var b := GameState.view_buildings().building_at(cell)
+			var world := cell.x >= 0 and not GameState.view_city
+			var rail := world and GameState.rails.has_rail(cell)
+			var road := world and GameState.roads.has_tile(cell)
+			var line := world and GameState.grid.has_tile(cell)
 			if (b or rail or road or line) and GameState.demolish(cell):
 				EventBus.notified.emit("%s démoli" % b.def.display_name if b else "Voie ferrée retirée" if rail else "Route retirée" if road else "Ligne électrique retirée")
 		BuildTool.Mode.UPGRADE:
@@ -157,7 +180,16 @@ func _click(cell: Vector2i) -> void:
 				EventBus.expedition_target_clicked.emit(cell)
 				_expedition_hover = Vector2i(-1, -1)
 		_:
+			# Clic sur le bloc de la ville : la carte de la ville s'ouvre.
+			if cell.x >= 0 and not GameState.view_city and GameState.buildings.in_block(cell):
+				GameState.set_view(true)
+				return
 			_set_selected(Vector2i(-1, -1) if cell == _selected else cell)
+
+
+func _on_view_changed() -> void:
+	_set_hovered(Vector2i(-1, -1))
+	_set_selected(Vector2i(-1, -1))
 
 
 func _on_tool_changed(mode: int, def: Resource) -> void:
@@ -277,7 +309,7 @@ func _cell_under_mouse() -> Vector2i:
 	var cell := _ground.local_to_map(_ground.get_local_mouse_position())
 	if _mode == BuildTool.Mode.EXPEDITION:
 		return cell if map.has_cell(cell) else Vector2i(-1, -1)
-	return cell if GameState.territory.is_known(cell) else Vector2i(-1, -1)
+	return cell if GameState.view_territory().is_known(cell) else Vector2i(-1, -1)
 
 
 func _set_hovered(cell: Vector2i) -> void:

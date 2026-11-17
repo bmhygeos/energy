@@ -8,6 +8,7 @@ id = &"oil_plant"
 display_name = "Centrale au fioul"
 description = "Moteurs et alternateurs : le carburant des raffineries devient du courant, vite démarré quand le charbon ne suffit pas."
 category = 2
+site = 1
 tier = 4
 research = &"combustion_engine"
 build_hours = 96

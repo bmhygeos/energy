@@ -8,6 +8,7 @@ id = &"well"
 display_name = "Puits"
 description = "Puits maçonné : l'eau des habitants, nécessaire à partir du village."
 category = 2
+site = 1
 tier = 2
 build_hours = 36
 wood_cost = 5

@@ -8,6 +8,7 @@ id = &"truck_depot"
 display_name = "Dépôt de camions"
 description = "Hangars, atelier et pompes : les camions prennent la route à la place des charrettes."
 category = 2
+site = 1
 tier = 4
 research = &"combustion_engine"
 size = Vector2i(2, 1)

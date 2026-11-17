@@ -8,6 +8,7 @@ id = &"station"
 display_name = "Gare"
 description = "Quai, entrepôt et château d'eau : les convois chargent ici ce que produisent les environs."
 category = 2
+site = 1
 tier = 3
 research = &"locomotive"
 build_hours = 72

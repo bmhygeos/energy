@@ -1,6 +1,7 @@
 class_name BuildingsLayer
 extends Node2D
-## Sprites des bâtiments (triés en Y avec les décors) et fantôme de placement.
+## Sprites des bâtiments de la carte affichée (ville ou monde ; triés en Y
+## avec les décors) et fantôme de placement.
 
 const GHOST_VALID := Color(0.7, 1.0, 0.7, 0.6)
 const GHOST_INVALID := Color(1.0, 0.45, 0.4, 0.55)
@@ -11,7 +12,10 @@ var _ghost: BuildingSprite
 
 func _ready() -> void:
 	EventBus.game_started.connect(func(_seed: int) -> void: reload())
-	EventBus.building_placed.connect(_add)
+	EventBus.view_changed.connect(reload)
+	EventBus.building_placed.connect(func(b: Building) -> void:
+		if _shown(b):
+			_add(b))
 	EventBus.building_removed.connect(func(b: Building) -> void:
 		if _sprites.has(b.id):
 			_sprites[b.id].queue_free()
@@ -29,8 +33,13 @@ func reload() -> void:
 	_sprites.clear()
 	hide_ghost()
 	if GameState.buildings:
-		for b in GameState.buildings.all():
+		for b in GameState.view_buildings().all():
 			_add(b)
+
+
+## [param b] est-il sur la carte affichée ?
+static func _shown(b: Building) -> bool:
+	return (b.def.site == BuildingDef.Site.CITY) == GameState.view_city
 
 
 ## Affiche le fantôme de [param def] ancré en [param anchor].
@@ -57,6 +66,6 @@ func _add(b: Building) -> void:
 
 
 func _on_tick(_tick: int) -> void:
-	for b in GameState.buildings.all():
-		if not b.is_complete():
+	for b in GameState.view_buildings().all():
+		if not b.is_complete() and _sprites.has(b.id):
 			_sprites[b.id].progress = b.progress_ratio()

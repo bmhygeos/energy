@@ -8,6 +8,7 @@ id = &"wind_turbine"
 display_name = "Éolienne"
 description = "Mât, nacelle et pales : le vent des crêtes et des côtes fait du courant."
 category = 2
+site = 1
 tier = 5
 research = &"wind_power"
 build_hours = 72

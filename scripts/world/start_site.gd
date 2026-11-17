@@ -22,7 +22,7 @@ const STONE_BLOCK := 2
 ## centre (hors des bâtiments de départ) ; à défaut, un gisement de IRON_AMOUNT
 ## tonnes par tuile est placé à cette distance.
 const MIN_IRON := 2
-const IRON_MIN_DISTANCE := 3
+const IRON_MIN_DISTANCE := 4
 const IRON_RADIUS := 5
 const IRON_AMOUNT := 30000.0
 ## Tuiles de charbon (mines du bourg) à COAL_MIN_DISTANCE–COAL_RADIUS tuiles

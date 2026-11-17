@@ -8,6 +8,7 @@ id = &"dam"
 display_name = "Barrage"
 description = "Une rivière retenue fait tourner les turbines : du courant sans combustible, au rythme des saisons."
 category = 2
+site = 1
 tier = 4
 research = &"hydroelectricity"
 build_hours = 240

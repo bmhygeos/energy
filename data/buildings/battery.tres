@@ -8,6 +8,7 @@ id = &"battery"
 display_name = "Batteries"
 description = "Conteneurs de batteries au lithium : le surplus du jour sert la nuit."
 category = 2
+site = 1
 tier = 5
 research = &"lithium_electrochemistry"
 build_hours = 72

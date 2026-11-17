@@ -60,6 +60,7 @@ func _initialize() -> void:
 	_test_city_game()
 	_test_services_game()
 	_test_city_state_game()
+	_test_two_maps()
 	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
@@ -450,19 +451,6 @@ const PLANET := Vector2i(1024, 512)
 
 
 ## Générateur d'une planète de plaine aux attributs contrôlés.
-class FlatGenerator extends MapGenerator:
-	func _init(p_size: Vector2i) -> void:
-		super(0, p_size)
-
-	func generate_chunk(_coord: Vector2i) -> WorldMap.Chunk:
-		var chunk := WorldMap.Chunk.new()
-		chunk.terrain.fill(TerrainDef.Type.PLAIN)
-		chunk.wind.fill(0.3)
-		chunk.sun.fill(0.5)
-		chunk.fertility.fill(0.7)
-		return chunk
-
-
 func _test_planet_generation() -> void:
 	var a := MapGenerator.new(1234, PLANET)
 	var b := MapGenerator.new(1234, PLANET)
@@ -1561,7 +1549,7 @@ func _test_bourg_game() -> void:
 		gs.stockpile.amount[good] = 0.0
 	var placement: BuildingRegistry.Placement
 	for dx in range(-5, 6):
-		placement = gs.check_placement(granary, gs.display_cell(gs.home) + Vector2i(dx, 3))
+		placement = gs.check_placement(granary, gs.city_center() + Vector2i(dx, 3))
 		if placement.error.contains("insuffisant"):
 			break
 	_check(placement.def.id == &"large_granary" and placement.error.contains("insuffisant"), "placement au niveau du palier, matériaux vérifiés (%s)" % placement.error)
@@ -1798,8 +1786,8 @@ func _test_services_game() -> void:
 	stock.amount[Stockpile.Good.IRON] = 100.0
 	stock.amount[Stockpile.Good.TOOLS] = 100.0
 	var dispensary := BuildingDb.get_def(&"dispensary")
-	for cell in gs.territory.territory_cells():
-		if gs.check_placement(dispensary, gs.display_cell(cell)).error.contains("Médecine"):
+	for cell in gs.city_territory.territory_cells():
+		if gs.check_placement(dispensary, cell).error.contains("Médecine"):
 			needs_medicine = true
 			break
 	_check(needs_medicine, "dispensaire : recherche Médecine requise")
@@ -1814,6 +1802,38 @@ func _test_services_game() -> void:
 	gs.upkeep_paid = true
 	gs.apply_event(CityEvents.Kind.EPIDEMIC)
 	_check(gs.population.count == 1000 - floori(1000 * CityEvents.EPIDEMIC_DEATHS * 0.5), "épidémie : moitié moins de morts avec des soins")
+	gs.new_game(4242)
+
+
+## Carte de la ville et carte mondiale : bâtiments de départ, bloc de la
+## ville, agrandissement au palier, vue.
+func _test_two_maps() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	_check(gs.buildings.count() == 0 and gs.city_buildings.count() >= 5 and gs.all_buildings().size() == gs.city_buildings.count(),
+		"départ : grenier et maisons sur la carte de la ville")
+	_check(gs.city_buildings.all()[0].id >= gs.CITY_FIRST_ID, "identifiants de la ville distincts du monde")
+	var center: Vector2i = gs.display_cell(gs.home)
+	var well := BuildingDb.get_def(&"well")
+	var house := BuildingDb.get_def(&"house")
+	_check(well.site == BuildingDef.Site.WORLD and house.site == BuildingDef.Site.CITY, "puits au monde, maison en ville")
+	_check(gs.buildings.check_placement(well, center).error.contains("Ville"), "bloc de la ville : pas de bâtiment du monde")
+	_check(gs.zones.check_cell(ZoneDb.get_def(&"pasture"), center) == "Ville", "bloc de la ville : pas de zone")
+	_check(gs.labor.land_distance(center + Vector2i(5, 0)) == 5 - gs.CITY_BLOCK[0] / 2, "distances depuis le bord de la ville")
+	var before: int = gs.city_territory.count(Territory.State.TERRITORY)
+	gs.tier.level = 5
+	gs._refresh_city_area()
+	_check(before == gs.CITY_SIZES[0] * gs.CITY_SIZES[0] and gs.city_territory.count(Territory.State.TERRITORY) == gs.CITY_SIZES[4] * gs.CITY_SIZES[4]
+		and gs.buildings.block_radius == gs.CITY_BLOCK[4] / 2, "cité-État : ville et bloc agrandis")
+	gs.set_view(true)
+	_check(gs.view_city and gs.view_buildings() == gs.city_buildings and gs.view_map() == gs.city_map, "vue de la ville")
+	var spot: Vector2i = gs.free_city_spot(house)
+	for good in Stockpile.COUNT:
+		gs.stockpile.amount[good] = 1000.0
+	var b: Building = gs.build(house, spot)
+	_check(b != null and gs.city_buildings.building_at(spot) == b and gs.demolish(spot) and gs.city_buildings.building_at(spot) == null,
+		"maison construite puis démolie sur la carte de la ville")
+	gs.set_view(false)
 	gs.new_game(4242)
 
 
@@ -2141,14 +2161,18 @@ func _test_economy_game() -> void:
 
 ## Pose [param def] terminé sur la première tuile libre près du village de
 ## [param gs] ; null si aucune.
+## Pose [param def] terminé au plus près du centre de sa carte (ville ou
+## monde) ; null si aucune place.
 func _place_running(gs: Node, def: BuildingDef) -> Building:
-	var center: Vector2i = gs.display_cell(gs.home)
-	for r in range(1, 6):
+	var city := def.site == BuildingDef.Site.CITY
+	var center: Vector2i = gs.city_center() if city else gs.display_cell(gs.home)
+	var registry: BuildingRegistry = gs.city_buildings if city else gs.buildings
+	for r in range(1, 8):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
-				var placement: BuildingRegistry.Placement = gs.buildings.check_placement(def, center + Vector2i(dx, dy))
+				var placement: BuildingRegistry.Placement = registry.check_placement(def, center + Vector2i(dx, dy))
 				if placement.is_valid():
-					var b: Building = gs.buildings.place(placement)
+					var b: Building = registry.place(placement)
 					b.build_progress = def.build_hours
 					b.status = Building.Status.RUNNING
 					return b

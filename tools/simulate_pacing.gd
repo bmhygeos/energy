@@ -235,6 +235,10 @@ func _build_near(id: StringName, radius := 0, limit := 1000) -> bool:
 	var def := BuildingDb.get_def(id)
 	if def.tier > _gs.tier.level:
 		return false
+	if def.site == BuildingDef.Site.CITY:
+		# Carte de la ville : au plus près de son centre, sans zone ni terrain.
+		var spot: Vector2i = _gs.free_city_spot(_gs.build_level(def))
+		return spot.x >= 0 and _gs.check_placement(def, spot).is_valid() and _gs.build(def, spot) != null
 	for r in range(1, mini(maxi(radius, _build_radius()), limit) + 1):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
@@ -262,6 +266,8 @@ func _build_anywhere(id: StringName) -> bool:
 ## emprise ; renvoie true si posé.
 func _build_clearing(id: StringName) -> bool:
 	var def := BuildingDb.get_def(id)
+	if def.site == BuildingDef.Site.CITY:
+		return false
 	var level: BuildingDef = _gs.build_level(def)
 	var costs: PackedFloat32Array = _gs.build_costs(def)
 	if level.tier > _gs.tier.level:
@@ -284,7 +290,7 @@ func _build_clearing(id: StringName) -> bool:
 
 ## Marchés en chantier.
 func _building_markets() -> int:
-	return _gs.buildings.all().filter(func(b: Building) -> bool: return b.def.id == &"market" and not b.is_complete()).size()
+	return _gs.all_buildings().filter(func(b: Building) -> bool: return b.def.id == &"market" and not b.is_complete()).size()
 
 
 ## Achète au marché ce qui manque : vivres et chauffage d'abord, puis le reste.
@@ -304,9 +310,9 @@ func _buy_shortages() -> void:
 
 ## Plus de place : améliore une maison ; false si aucune ne peut l'être.
 func _upgrade_house() -> bool:
-	for b: Building in _gs.buildings.all():
+	for b: Building in _gs.all_buildings():
 		if b.def.category == BuildingDef.Category.HOUSING and _gs.upgrade_error(b).is_empty():
-			return _gs.upgrade(b.anchor)
+			return _gs.upgrade_building(b)
 	return false
 
 
@@ -324,8 +330,8 @@ func _food_keeps_up() -> bool:
 
 
 func _count(id: StringName) -> int:
-	return _gs.buildings.all().filter(func(b: Building) -> bool: return b.def.id == id).size()
+	return _gs.all_buildings().filter(func(b: Building) -> bool: return b.def.id == id).size()
 
 
 func _has(id: StringName) -> bool:
-	return _gs.buildings.all().any(func(b: Building) -> bool: return b.def.id == id)
+	return _gs.all_buildings().any(func(b: Building) -> bool: return b.def.id == id)

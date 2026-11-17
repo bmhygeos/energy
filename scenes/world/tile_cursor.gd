@@ -84,7 +84,7 @@ func _draw() -> void:
 
 
 func _building_at(cell: Vector2i) -> Building:
-	return GameState.buildings.building_at(cell) if cell.x >= 0 and GameState.buildings else null
+	return GameState.view_buildings().building_at(cell) if cell.x >= 0 and GameState.buildings else null
 
 
 func _building_diamond(b: Building) -> PackedVector2Array:

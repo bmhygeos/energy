@@ -69,6 +69,8 @@ func places(def: ZoneDef) -> int:
 func check_cell(def: ZoneDef, cell: Vector2i) -> String:
 	if not map.has_cell(cell) or not _in_range(def, cell):
 		return "Hors du territoire"
+	if buildings.in_block(cell):
+		return "Ville"
 	var b := buildings.building_at(cell)
 	if b:
 		return "Bâtiment présent (%s)" % b.def.display_name

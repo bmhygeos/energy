@@ -30,6 +30,10 @@ var _buildings: Dictionary[int, Building] = {}
 ## Identifiant du bâtiment par tuile occupée (ramenée sur la planète).
 var _occupancy: Dictionary[Vector2i, int] = {}
 var _next_id := 1
+## Bloc de la ville sur la carte mondiale (centre, demi-côté ; -1 : aucun) :
+## ni bâtiment du monde, ni zone.
+var block_center := Vector2i(-1, -1)
+var block_radius := -1
 
 
 func _init(p_map: WorldMap, p_territory: Territory) -> void:
@@ -74,6 +78,8 @@ func _placement_error(p: Placement) -> String:
 			return "Hors de la carte"
 		if not territory.is_territory(cell):
 			return "Hors du territoire"
+		if in_block(cell):
+			return "Ville : construisez-y depuis la carte de la ville"
 		var occupant := building_at(cell)
 		if occupant:
 			return "Emplacement occupé (%s)" % occupant.def.display_name
@@ -97,6 +103,20 @@ func _placement_error(p: Placement) -> String:
 	if not def.adjacent_terrains.is_empty() and not _has_adjacent(p.cells, def.adjacent_terrains):
 		return "Doit être à côté de : " + BuildingDef._terrain_names(def.adjacent_terrains)
 	return ""
+
+
+## [param cell] est-elle dans le bloc de la ville (longitude bouclée) ?
+func in_block(cell: Vector2i) -> bool:
+	if block_radius < 0:
+		return false
+	var w := map.size.x
+	var dx := absi(posmod(cell.x - block_center.x + w / 2, w) - w / 2)
+	return maxi(dx, absi(cell.y - block_center.y)) <= block_radius
+
+
+## Premier identifiant attribué (registres distincts : ville et monde).
+func start_ids(first: int) -> void:
+	_next_id = first
 
 
 ## Une tuile voisine (8-connexité) hors de l'emprise est-elle d'un de ces

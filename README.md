@@ -15,6 +15,7 @@ godot -e                                   # ouvrir l'éditeur
 godot                                      # lancer le jeu
 godot --headless -s res://tests/run_tests.gd   # tests de la simulation
 godot -s res://tools/ui_click_test.gd          # test de l'interface (vrais clics ; déplace le pointeur)
+godot --headless -s res://tools/view_switch_test.gd   # passage carte de la ville / carte mondiale
 godot --headless --export-release "Windows Desktop" build/windows/Energy.exe
 godot --headless --export-release "Web" build/web/index.html
 python3 -m http.server -d build/web 8060      # tester la version web : http://localhost:8060
@@ -432,6 +433,24 @@ météo et interface conservés.
   charrettes. Panneau Main-d'œuvre, fiche du dépôt et fiche de la tuile
   (« camions ») indiquent la desserte.
 - **Cartographes** : à la ville, les expéditions voient à 5 tuiles au lieu de 3.
+
+### Deux cartes : la ville et le monde
+
+- **Carte de la ville** (bouton « Ville » du bandeau, touche Tab, ou clic sur
+  la ville au centre de la carte mondiale) : une plaine où se bâtissent
+  logements, stockage, ateliers, forges, tissages, artisans, raffineries,
+  usines, laboratoire, université, écoles, théâtres, dispensaires, postes de
+  garde, marchés et centres informatiques. Sa partie constructible grandit
+  avec le palier : 12×12, 16×16, 24×24, 32×32 puis 40×40 cases.
+- **Carte mondiale** : zones, exploration, routes, voies ferrées, lignes
+  électriques, et les bâtiments liés au terrain ou aux réseaux (puits,
+  moulins, ports, gares, barrages, centrales, éoliennes, champs solaires,
+  batteries, dépôts de camions, bornes de recharge, datacenter).
+- La ville y occupe un **bloc** au centre (3×3 au hameau et au village, 5×5 au
+  bourg et à la ville, 7×7 à la cité-État) : ni zone ni bâtiment du monde ;
+  les distances des zones se comptent depuis son bord.
+- Chaque carte garde sa position de caméra ; le menu de construction et la
+  fiche de la case suivent la carte affichée.
 
 ### Chauffage : bois, charbon, fioul, électricité
 

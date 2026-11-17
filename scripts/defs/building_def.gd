@@ -5,6 +5,9 @@ extends Resource
 ## data/buildings/*.tres.
 
 enum Category { HOUSING, STORAGE, OTHER }
+## Carte où il se construit : la ville (logements, ateliers, services) ou le
+## monde (ce qui dépend de l'eau, du relief, du vent ou des réseaux).
+enum Site { CITY, WORLD }
 ## Source d'une centrale : eau (barrage), charbon, fioul (carburant), uranium,
 ## vent (éolienne), soleil (champ solaire).
 enum PowerSource { HYDRO, COAL, FUEL, NUCLEAR, WIND, SOLAR }
@@ -15,6 +18,7 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var display_name := ""
 @export_multiline var description := ""
 @export var category: Category = Category.OTHER
+@export var site: Site = Site.CITY
 ## Proposé dans le menu de construction.
 @export var player_buildable := true
 ## Palier de la ville à partir duquel il se construit (1 : hameau).

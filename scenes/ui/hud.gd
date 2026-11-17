@@ -63,6 +63,7 @@ func _ready() -> void:
 	%ResearchButton.pressed.connect(func() -> void: get_node("../ResearchPanel").toggle())
 	%EconomyButton.pressed.connect(func() -> void: get_node("../EconomyPanel").toggle())
 	_build_game_menu()
+	_build_view_button()
 	EventBus.labor_changed.connect(_refresh_population)
 	EventBus.population_changed.connect(_refresh_population)
 	EventBus.stocks_changed.connect(_refresh_stocks)
@@ -79,6 +80,27 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("overlay_cycle"):
 		EventBus.overlay_changed.emit((_overlay_mode + 1) % OverlayLayer.Mode.size())
 		get_viewport().set_input_as_handled()
+	var key := event as InputEventKey
+	if key and key.pressed and not key.echo and key.keycode == KEY_TAB \
+			and not get_viewport().gui_get_focus_owner() is LineEdit:
+		GameState.set_view(not GameState.view_city)
+		get_viewport().set_input_as_handled()
+
+
+## Bouton « Ville / Monde » du bandeau (touche Tab) : passe d'une carte à
+## l'autre.
+func _build_view_button() -> void:
+	var button := Button.new()
+	button.focus_mode = Control.FOCUS_NONE
+	button.tooltip_text = "Carte de la ville (logements, ateliers, services) ou carte mondiale (zones, ressources, réseaux) — Tab"
+	%StatsButton.add_sibling(button)
+	%StatsButton.get_parent().move_child(button, %StatsButton.get_index())
+	var refresh := func() -> void:
+		button.text = "Monde (Tab)" if GameState.view_city else "Ville (Tab)"
+	button.pressed.connect(func() -> void: GameState.set_view(not GameState.view_city))
+	EventBus.view_changed.connect(refresh)
+	EventBus.game_started.connect(func(_s: int) -> void: refresh.call())
+	refresh.call()
 
 
 ## Menu « Partie » : graine, nouvelle carte et aide (le tutoriel se rouvre

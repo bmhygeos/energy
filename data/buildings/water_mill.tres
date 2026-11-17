@@ -8,6 +8,7 @@ id = &"water_mill"
 display_name = "Moulin à eau"
 description = "La roue à aubes tourne jour et nuit : elle moud le grain et entraîne scies et soufflets de forge."
 category = 2
+site = 1
 tier = 3
 research = &"water_mill"
 build_hours = 96

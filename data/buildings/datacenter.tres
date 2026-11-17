@@ -8,6 +8,7 @@ id = &"datacenter"
 display_name = "Datacenter"
 description = "Halls de serveurs refroidis par l'eau : l'intelligence artificielle cherche pour la cité."
 category = 2
+site = 1
 tier = 5
 research = &"artificial_intelligence"
 size = Vector2i(2, 2)

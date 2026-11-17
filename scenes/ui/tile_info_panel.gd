@@ -23,6 +23,7 @@ func _ready() -> void:
 	for sig: Signal in [EventBus.tiles_changed, EventBus.zones_changed]:
 		sig.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
 	EventBus.labor_changed.connect(_refresh)
+	EventBus.view_changed.connect(_refresh)
 	EventBus.day_changed.connect(func(_d: int) -> void: _refresh())
 	EventBus.tick_advanced.connect(func(_t: int) -> void:
 		if _panel.visible and _shown_building():
@@ -36,11 +37,14 @@ func _shown_cell() -> Vector2i:
 
 func _shown_building() -> Building:
 	var cell := _shown_cell()
-	return GameState.buildings.building_at(cell) if cell.x >= 0 and GameState.buildings else null
+	return GameState.view_buildings().building_at(cell) if cell.x >= 0 and GameState.buildings else null
 
 
 func _refresh() -> void:
 	var cell := _shown_cell()
+	if GameState.view_city:
+		_refresh_city(cell)
+		return
 	var map := GameState.world_map
 	# Les tuiles inconnues (visées par l'outil Expédition) restent secrètes.
 	if cell.x < 0 or map == null or not GameState.territory.is_known(cell):
@@ -122,6 +126,22 @@ func _refresh() -> void:
 		head.append_array(lines)
 		lines = head
 	_body.text = "\n".join(lines)
+
+
+## Carte de la ville : le bâtiment de la case, ou la case libre.
+func _refresh_city(cell: Vector2i) -> void:
+	if cell.x < 0 or not GameState.city_territory.is_known(cell):
+		_panel.hide()
+		return
+	_panel.show()
+	_panel.modulate.a = 1.0 if cell == _selected else 0.8
+	var b := _shown_building()
+	if b == null:
+		_title.text = "Ville (%s)" % GameState.tier.name()
+		_body.text = "Case libre : logements, stockage, ateliers et services s'y construisent.\nLa ville s'agrandit à chaque palier.\nTab : carte mondiale."
+		return
+	_title.text = b.def.display_name
+	_body.text = "\n".join(_building_lines(b))
 
 
 func _building_lines(b: Building) -> PackedStringArray:

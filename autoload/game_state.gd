@@ -3,6 +3,15 @@ extends Node
 
 ## Planète en longitude / latitude (tuiles), multiple de WorldMap.CHUNK_SIZE.
 const PLANET_SIZE := Vector2i(1024, 512)
+## Carte de la ville : plaine (FlatGenerator) dont la partie constructible,
+## centrée, grandit avec le palier (côté en cases).
+const CITY_MAP_SIZE := Vector2i(64, 64)
+const CITY_SIZES: PackedInt32Array = [12, 16, 24, 32, 40]
+## Bloc de la ville sur la carte mondiale, par palier (côté en tuiles) : ni
+## zone ni bâtiment du monde ; les distances se comptent depuis son bord.
+const CITY_BLOCK: PackedInt32Array = [3, 3, 5, 5, 7]
+## Identifiants des bâtiments de la ville (distincts de ceux du monde).
+const CITY_FIRST_ID := 1_000_000
 ## Palier à partir duquel les habitants ont besoin d'eau (puits).
 const WATER_TIER := 2
 ## Forge : fer et bois par outil fabriqué.
@@ -97,7 +106,14 @@ var research: Research
 var draft: DraftAnimals
 ## Centre du village (abscisse ramenée sur la planète).
 var home: Vector2i
+## Bâtiments de la carte mondiale (puits, moulins, ports, gares, centrales…).
 var buildings: BuildingRegistry
+## Carte de la ville et ses bâtiments (logements, ateliers, services…).
+var city_map: WorldMap
+var city_territory: Territory
+var city_buildings: BuildingRegistry
+## Carte affichée : la ville (vrai) ou le monde.
+var view_city := false
 ## Voies ferrées et gares desservies (bourg).
 var rails: RailNetwork
 ## Routes (bourg).
@@ -169,6 +185,12 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	territory.annex(cells)
 	exploration = Exploration.new(territory)
 	buildings = BuildingRegistry.new(world_map, territory)
+	buildings.block_center = home
+	city_map = WorldMap.new(CITY_MAP_SIZE, 0, FlatGenerator.new(CITY_MAP_SIZE))
+	city_territory = Territory.new(city_map)
+	city_buildings = BuildingRegistry.new(city_map, city_territory)
+	city_buildings.start_ids(CITY_FIRST_ID)
+	view_city = false
 	zones = ZoneMap.new(world_map, territory, buildings)
 	rails = RailNetwork.new(world_map, territory, buildings, home)
 	rails.zones = zones
@@ -210,6 +232,7 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	wood_burned_today = 0.0
 	pollution = Pollution.new()
 	GameClock.reset()
+	_refresh_city_area()
 	_found_village()
 	_refresh_capacities()
 	_update_auto_priorities(0)
@@ -217,31 +240,93 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	EventBus.game_started.emit(seed_value)
 
 
-## Bâtiments de départ, déjà construits au plus près du centre du village :
-## un grenier et assez de maisons pour les habitants (repère de la vue,
-## comme les bâtiments posés par le joueur).
+## Bâtiments de départ, déjà construits au centre de la carte de la ville :
+## un grenier et assez de maisons pour les habitants.
 func _found_village() -> void:
-	var center := display_cell(home)
 	var defs: Array[BuildingDef] = [BuildingDb.get_def(&"granary")]
 	for k in ceili(float(Population.START) / BuildingDb.get_def(&"house").housing):
 		defs.append(BuildingDb.get_def(&"house"))
-	var rect := StartSite.territory_rect(center)
-	var spots: Array[Vector2i] = []
-	for y in range(rect.position.y, rect.end.y):
-		for x in range(rect.position.x, rect.end.x):
-			spots.append(Vector2i(x, y))
-	spots.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return a.distance_squared_to(center) < b.distance_squared_to(center))
 	for def in defs:
-		for spot in spots:
-			var placement := buildings.check_placement(def, spot)
-			# Sans défricher (la forêt du départ reste à couper) ni prendre la
-			# colline des futures carrières ou le fer des futures mines.
-			if placement.is_valid() and placement.cleared.is_empty() and not placement.cells.any(_reserved_at_start):
-				var b := buildings.place(placement)
-				b.build_progress = def.build_hours
-				b.status = Building.Status.RUNNING
-				break
+		var b := city_buildings.place(city_buildings.check_placement(def, free_city_spot(def)))
+		b.build_progress = def.build_hours
+		b.status = Building.Status.RUNNING
+
+
+## Centre de la carte de la ville.
+func city_center() -> Vector2i:
+	return CITY_MAP_SIZE / 2
+
+
+## Emplacement libre le plus proche du centre de la ville pour [param def]
+## ((-1, -1) : aucun).
+func free_city_spot(def: BuildingDef) -> Vector2i:
+	var center := city_center()
+	for r in CITY_SIZES[CITY_SIZES.size() - 1] / 2 + 1:
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) == r and city_buildings.check_placement(def, center + Vector2i(dx, dy)).is_valid():
+					return center + Vector2i(dx, dy)
+	return Vector2i(-1, -1)
+
+
+## Agrandit la ville au palier atteint : cases constructibles de la carte de
+## la ville, bloc de la ville sur la carte mondiale (les zones qui s'y
+## trouvaient sont effacées).
+func _refresh_city_area() -> void:
+	var side := CITY_SIZES[clampi(tier.level, 1, CITY_SIZES.size()) - 1]
+	var origin := city_center() - Vector2i.ONE * (side / 2)
+	var cells: Array[Vector2i] = []
+	for y in side:
+		for x in side:
+			cells.append(origin + Vector2i(x, y))
+	city_territory.annex(cells)
+	var radius := CITY_BLOCK[clampi(tier.level, 1, CITY_BLOCK.size()) - 1] / 2
+	buildings.block_radius = radius
+	labor.city_radius = radius
+	var block: Array[Vector2i] = []
+	for dy in range(-radius, radius + 1):
+		for dx in range(-radius, radius + 1):
+			block.append(world_map.wrap_cell(home + Vector2i(dx, dy)))
+	var cleared := zones.clear(block)
+	if not cleared.is_empty():
+		var shown: Array[Vector2i] = []
+		for c in cleared:
+			shown.append(display_cell(c))
+		EventBus.zones_changed.emit(shown)
+	EventBus.city_changed.emit()
+
+
+## Tous les bâtiments, du monde et de la ville (effets, statistiques).
+func all_buildings() -> Array[Building]:
+	var result: Array[Building] = buildings.all()
+	result.append_array(city_buildings.all())
+	return result
+
+
+## Registre, carte et territoire de la carte affichée.
+func view_buildings() -> BuildingRegistry:
+	return city_buildings if view_city else buildings
+
+
+func view_map() -> WorldMap:
+	return city_map if view_city else world_map
+
+
+func view_territory() -> Territory:
+	return city_territory if view_city else territory
+
+
+## Registre où se construit [param def].
+func registry_for(def: BuildingDef) -> BuildingRegistry:
+	return city_buildings if def.site == BuildingDef.Site.CITY else buildings
+
+
+## Affiche la carte de la ville ([param city] vrai) ou la carte mondiale.
+func set_view(city: bool) -> void:
+	if city == view_city:
+		return
+	view_city = city
+	EventBus.view_changed.emit()
 
 
 ## Tuile gardée pour les carrières (colline, montagne) ou les mines
@@ -296,7 +381,8 @@ func build_costs(def: BuildingDef) -> PackedFloat32Array:
 func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Placement:
 	var costs := build_costs(def)
 	def = build_level(def)
-	var placement := buildings.check_placement(def, anchor)
+	var registry := registry_for(def)
+	var placement := registry.check_placement(def, anchor)
 	if placement.is_valid() and def.tier > tier.level:
 		placement.error = "Disponible au palier %s" % CityTier.NAMES[def.tier - 1]
 	if placement.is_valid() and def.research and not research.is_done(def.research):
@@ -305,7 +391,7 @@ func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Pla
 		if placement.is_valid() and not stockpile.has(good, costs[good]):
 			placement.error = "%s insuffisant%s (%d requis)" % [Stockpile.GOOD_NAMES[good],
 				Stockpile.GOOD_AGREEMENT[good], roundi(costs[good])]
-	if placement.is_valid():
+	if placement.is_valid() and registry == buildings:
 		for cell in placement.cells:
 			var zone := zones.zone_at(cell)
 			if zone:
@@ -374,7 +460,7 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 	var costs := build_costs(def)
 	for good in costs.size():
 		stockpile.take(good, costs[good])
-	var b := buildings.place(placement)
+	var b := registry_for(def).place(placement)
 	if not placement.cleared.is_empty():
 		EventBus.tiles_changed.emit(placement.cleared)
 	EventBus.building_placed.emit(b)
@@ -403,10 +489,15 @@ func upgrade_error(b: Building) -> String:
 	return ""
 
 
-## Améliore le bâtiment présent en [param cell] (chantier sur place) ; false
-## (raison notifiée) si c'est impossible.
+## Améliore le bâtiment présent en [param cell] sur la carte affichée
+## (chantier sur place) ; false (raison notifiée) si c'est impossible.
 func upgrade(cell: Vector2i) -> bool:
-	var b := buildings.building_at(cell)
+	return upgrade_building(view_buildings().building_at(cell))
+
+
+## Améliore [param b] (chantier sur place) ; false (raison notifiée) si c'est
+## impossible.
+func upgrade_building(b: Building) -> bool:
 	var error := upgrade_error(b)
 	if not error.is_empty():
 		EventBus.notified.emit(error)
@@ -426,7 +517,9 @@ func upgrade(cell: Vector2i) -> bool:
 ## Démolit le bâtiment présent en [param cell], sinon la voie ferrée, sinon la
 ## route ; false s'il n'y a rien.
 func demolish(cell: Vector2i) -> bool:
-	var b := buildings.building_at(cell)
+	var b := view_buildings().building_at(cell)
+	if b == null and view_city:
+		return false
 	if b == null:
 		if rails.remove(cell):
 			EventBus.rails_changed.emit([cell] as Array[Vector2i])
@@ -441,7 +534,7 @@ func demolish(cell: Vector2i) -> bool:
 			return false
 		_update_labor()
 		return true
-	buildings.remove(b)
+	registry_for(b.def).remove(b)
 	_refresh_capacities()
 	EventBus.building_removed.emit(b)
 	return true
@@ -453,7 +546,7 @@ func _refresh_capacities() -> void:
 	water_supply = 0
 	var horse_capacity := 0
 	var capacity := Stockpile.BASE_CAPACITY.duplicate()
-	for b in buildings.all():
+	for b in all_buildings():
 		# Pendant une amélioration, l'ancien niveau reste en service.
 		var d := b.effective_def()
 		if d:
@@ -476,7 +569,7 @@ func _refresh_capacities() -> void:
 	var steam_drive := 0.0
 	var steam_mine := 0.0
 	var wells: Array[Vector2i] = []
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete() and b.def.grinds_grain:
 			mill = maxf(mill, b.def.grain_bonus)
 		if b.is_complete():
@@ -503,7 +596,7 @@ func _refresh_capacities() -> void:
 	production.wool = tier.level >= CLOTHES_TIER
 	stockpile.spoilage_factor = 0.5 if mill > 0.0 else 1.0
 	var trade := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			trade += b.def.trade_per_day
 	treasury.trade_capacity = trade
@@ -522,7 +615,7 @@ func _apply_steam() -> void:
 ## Charbon brûlé par jour par les machines à vapeur terminées.
 func steam_coal_need() -> float:
 	var total := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			total += b.def.coal_per_day
 	return total
@@ -545,7 +638,7 @@ func _run_steam() -> void:
 func _refresh_trucks() -> void:
 	roads.depots.clear()
 	roads.chargers.clear()
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete() and b.def.truck_depot:
 			roads.depots.append(b)
 		if b.is_complete() and b.def.charger:
@@ -557,7 +650,7 @@ func _refresh_trucks() -> void:
 ## Lignes reliées et centrales raccordées d'après les bâtiments terminés.
 func _refresh_grid() -> void:
 	var plants: Array[Building] = []
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete() and (b.def.power_watts > 0.0 or b.def.storage_kwh > 0.0):
 			plants.append(b)
 	grid.refresh(plants)
@@ -594,7 +687,7 @@ func _run_grid(day_tick: int) -> void:
 func machine_demand() -> float:
 	var total := roads.electric_watts()
 	var cooling := lerpf(POLAR_COOLING, 1.0, cos(deg_to_rad(world_map.latitude(home.y))))
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete() and b.def.power_demand > 0.0:
 			total += b.def.power_demand * (cooling if b.def.needs_water_access else 1.0)
 	return total
@@ -682,7 +775,7 @@ func _floodable(cell: Vector2i, dam_cells: Array[Vector2i]) -> bool:
 func _refresh_ports() -> void:
 	var harbors: Array[Building] = []
 	var reach := ZoneMap.SHORE_REACH
-	for b in buildings.all():
+	for b in all_buildings():
 		var def := b.effective_def()
 		if def:
 			reach = maxi(reach, def.fishing_reach)
@@ -696,7 +789,7 @@ func _refresh_ports() -> void:
 ## Gares desservies d'après les voies et les gares terminées.
 func _refresh_rails() -> void:
 	var stations: Array[Building] = []
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete() and b.def.station:
 			stations.append(b)
 	var before := rails.served.duplicate()
@@ -956,7 +1049,7 @@ func _prospect_territory() -> void:
 ## fabriquent davantage ; un moulin à eau entraîne leurs soufflets.
 func _run_forges() -> void:
 	var rate := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			rate += b.def.tools_per_day
 	rate *= (1.0 + production.drive_bonus) * grid.industry_factor()
@@ -1002,7 +1095,7 @@ func _run_charcoal() -> void:
 ## limite du stock.
 func _run_weavers() -> void:
 	var rate := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			rate += b.def.clothes_per_day
 	rate *= grid.industry_factor()
@@ -1019,7 +1112,7 @@ func _run_weavers() -> void:
 ## stock.
 func _run_refineries() -> void:
 	var rate := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			rate += b.def.fuel_per_day
 	rate *= grid.industry_factor()
@@ -1036,7 +1129,7 @@ func _run_refineries() -> void:
 ## dans la limite du stock (le bois de chauffage d'hiver reste en réserve).
 func _run_artisans() -> void:
 	var rate := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			rate += b.def.goods_per_day
 	if rate <= 0.0:
@@ -1071,7 +1164,7 @@ func _wear_goods() -> float:
 ## (dispensaires, postes de garde, écoles et universités, théâtres).
 func service_capacity(service: Service) -> int:
 	var total := 0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete() and (upkeep_paid or b.def.upkeep_per_day <= 0.0):
 			match service:
 				Service.HEALTH:
@@ -1122,7 +1215,7 @@ func _service_coverage(service: Service, from_tier: int) -> float:
 ## la veille (sans courant, à l'arrêt).
 func _run_enrichment() -> void:
 	var rate := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			rate += b.def.nuclear_fuel_per_day
 	rate *= clampf(grid.coverage, 0.0, 1.0)
@@ -1152,7 +1245,7 @@ func pollution_harm() -> float:
 ## limite du stock.
 func _run_electronics() -> void:
 	var rate := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			rate += b.def.electronics_per_day
 	if rate <= 0.0:
@@ -1191,7 +1284,7 @@ func _burn_light() -> float:
 ## Entretien par jour des bâtiments terminés (pièces).
 func upkeep_need() -> float:
 	var total := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			total += b.def.upkeep_per_day
 	return total
@@ -1255,7 +1348,7 @@ func _wear_tools() -> float:
 ## pour les moulins à vent).
 func _mill_watts(tick: int) -> float:
 	var watts := 0.0
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete():
 			watts += b.def.mechanical_watts * (weather.wind_at(tick) if b.def.wind_powered else 1.0)
 	return watts
@@ -1273,7 +1366,7 @@ func _pasture_quality() -> float:
 ## Points de recherche produits par jour.
 func research_per_day() -> float:
 	var boosts: Array[Vector2] = []
-	for b in buildings.all():
+	for b in all_buildings():
 		if b.is_complete() and b.def.research_coverage > 0 and (upkeep_paid or b.def.upkeep_per_day <= 0.0) \
 				and (b.def.power_demand <= 0.0 or machines_powered()):
 			boosts.append(Vector2(b.def.research_multiplier, b.def.research_coverage))
@@ -1588,6 +1681,7 @@ func hold_feast() -> bool:
 
 func _on_tick(tick: int) -> void:
 	var completed := buildings.advance()
+	completed.append_array(city_buildings.advance())
 	if not completed.is_empty():
 		_refresh_capacities()
 	for b in completed:
@@ -1686,6 +1780,7 @@ func _on_day(day: int) -> void:
 		_prospect_territory()
 		_refresh_capacities()
 		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
+		_refresh_city_area()
 		if tier.level == CLOTHES_TIER:
 			EventBus.notified.emit("Le bourg a besoin de vêtements : champs de lin, laine des pâturages, atelier de tissage")
 		if tier.level == LIGHT_TIER:
@@ -1763,7 +1858,7 @@ func _announce_population(before: int, change: int, coverage: PackedFloat32Array
 func _check_milestones(day: int) -> void:
 	var facts := Milestones.Facts.new()
 	facts.stats = stats
-	facts.buildings = buildings.all()
+	facts.buildings = all_buildings()
 	facts.day = day
 	facts.population = population.count
 	facts.tier = tier.level

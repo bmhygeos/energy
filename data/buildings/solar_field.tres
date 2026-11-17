@@ -8,6 +8,7 @@ id = &"solar_field"
 display_name = "Champ solaire"
 description = "Rangées de panneaux photovoltaïques : la lumière du jour devient courant."
 category = 2
+site = 1
 tier = 5
 research = &"photovoltaics"
 size = Vector2i(2, 2)

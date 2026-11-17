@@ -8,6 +8,7 @@ id = &"power_plant"
 display_name = "Centrale à charbon"
 description = "Chaudières et alternateurs : le charbon devient du courant."
 category = 2
+site = 1
 tier = 4
 research = &"conductivity"
 size = Vector2i(2, 1)

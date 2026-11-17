@@ -1,6 +1,7 @@
 extends SceneTree
-## Test de fumée de l'interface avec de vrais événements souris : choix d'un
-## outil dans le menu, construction et démolition d'un grenier, peinture et
+## Test de fumée de l'interface avec de vrais événements souris : carte de la
+## ville (Tab), choix d'un outil dans le menu, construction et démolition d'un
+## grenier, retour au monde, peinture et
 ## effacement de zones au glisser, Échap,
 ## sélection d'une tuile, calques (O), panneau Main-d'œuvre (M) et fenêtre
 ## des statistiques (G).
@@ -23,17 +24,23 @@ func _initialize() -> void:
 	for i in 5:
 		await process_frame
 
+	root.push_input(_key(KEY_TAB))
+	await process_frame
+	_check(_gs.view_city, "Tab : carte de la ville")
 	await _press_tool("Grenier")
 	_check(_map_view._mode == 1, "outil Construire actif")
-	var start_count: int = _gs.buildings.count()
+	var start_count: int = _gs.city_buildings.count()
 	var spot := await _find_spot(BuildingDb.get_def(&"granary"))
 	await _click(spot)
-	_check(_gs.buildings.count() == start_count + 1, "grenier construit au clic")
+	_check(_gs.city_buildings.count() == start_count + 1, "grenier construit au clic")
 
 	await _press_tool("Démolir")
 	_check(_map_view._mode == 2, "outil Démolir actif")
 	await _click(spot)
-	_check(_gs.buildings.count() == start_count, "grenier démoli au clic")
+	_check(_gs.city_buildings.count() == start_count, "grenier démoli au clic")
+	root.push_input(_key(KEY_TAB))
+	await process_frame
+	_check(not _gs.view_city, "Tab : retour à la carte mondiale")
 
 	await _press_tool("Élevage")
 	_check(_map_view._mode == 3, "outil Zone actif")

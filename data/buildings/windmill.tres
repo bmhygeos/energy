@@ -8,6 +8,7 @@ id = &"windmill"
 display_name = "Moulin à vent"
 description = "Ses ailes entraînent la meule : le grain devient farine, qui se garde mieux."
 category = 2
+site = 1
 tier = 2
 research = &"windmill"
 build_hours = 72

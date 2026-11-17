@@ -9,6 +9,7 @@ id = &"fishing_port"
 display_name = "Port de pêche"
 description = "Un quai et des barques pontées : les pêcheurs s'éloignent du rivage."
 category = 2
+site = 1
 tier = 3
 build_hours = 96
 wood_cost = 60

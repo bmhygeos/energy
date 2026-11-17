@@ -18,29 +18,54 @@ var _select_mode := true
 ## Un geste à deux doigts a eu lieu depuis que le premier doigt s'est posé :
 ## la carte ignore alors le relâchement (pas de zone peinte par erreur).
 var gesture_used := false
+## Position et zoom gardés pour l'autre carte (ville ou monde).
+var _other_view: Array = []
 
 
 func _ready() -> void:
 	EventBus.game_started.connect(func(_seed: int) -> void: reset_view())
 	EventBus.territory_changed.connect(refresh_bounds)
+	EventBus.city_changed.connect(refresh_bounds)
+	EventBus.view_changed.connect(_on_view_changed)
 	EventBus.tool_changed.connect(func(mode: int, _def: Resource) -> void:
 		_select_mode = mode == BuildTool.Mode.SELECT)
 	reset_view()
 
 
-## Zoom par défaut, centré sur le village.
+## Zoom par défaut, centré sur le village (ou le centre de la ville).
 func reset_view() -> void:
 	refresh_bounds()
 	zoom = Vector2.ONE * 0.5
-	position = Iso.map_to_world(Vector2(GameState.display_cell(GameState.home)))
+	position = Iso.map_to_world(Vector2(_center()))
+	_other_view = []
 
 
-## Bornes du déplacement : rectangle englobant les tuiles connues.
+func _center() -> Vector2i:
+	return GameState.city_center() if GameState.view_city else GameState.display_cell(GameState.home)
+
+
+## Changement de carte : chacune garde sa position et son zoom.
+func _on_view_changed() -> void:
+	var previous := [position, zoom]
+	refresh_bounds()
+	if _other_view.is_empty():
+		position = Iso.map_to_world(Vector2(_center()))
+	else:
+		position = _other_view[0]
+		zoom = _other_view[1]
+	_other_view = previous
+	_clamp_position()
+
+
+## Bornes du déplacement : rectangle englobant les tuiles connues de la carte
+## affichée.
 func refresh_bounds() -> void:
-	var cells := GameState.territory.known_cells()
-	var rect := Rect2i(GameState.display_cell(cells[0]), Vector2i.ONE)
+	var city: bool = GameState.view_city
+	var cells: Array[Vector2i] = GameState.view_territory().known_cells()
+	var shown := func(c: Vector2i) -> Vector2i: return c if city else GameState.display_cell(c)
+	var rect := Rect2i(shown.call(cells[0]), Vector2i.ONE)
 	for c in cells:
-		rect = rect.expand(GameState.display_cell(c))
+		rect = rect.expand(shown.call(c))
 	_bounds = Iso.world_bounds(Rect2i(rect.position, rect.size + Vector2i.ONE))
 
 

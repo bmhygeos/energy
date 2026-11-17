@@ -8,6 +8,7 @@ id = &"port"
 display_name = "Port"
 description = "Quais et grands navires : la flotte pêche sur toutes les eaux découvertes, emmène les explorateurs et relie les ports entre eux."
 category = 2
+site = 1
 player_buildable = false
 tier = 4
 build_hours = 168
