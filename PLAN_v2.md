@@ -358,6 +358,22 @@ compteur de puissance par habitant :
 - L'électricité reprend le moteur de la v1 (`PowerGrid`, centrales, lignes),
   mis de côté au départ (section 10).
 
+### Palier 4 : cimenterie et ciment (prévu)
+- **Recherche « Cimenterie »** (palier 4 – Ville ; prérequis proposé : Coke,
+  pour la cuisson au charbon) : débloque la **cimenterie**, bâtiment de la
+  carte de la ville.
+- **Cimenterie** : cuit la pierre (calcaire) au charbon et produit du
+  **ciment**, nouvelle marchandise stockée comme les autres (valeurs de départ
+  à équilibrer : 1 pierre et 0,25 charbon par ciment, 10 ciments par jour).
+- **Le ciment remplace la pierre** : une fois la recherche faite, les
+  bâtiments, les améliorations de maisons et de greniers, et les routes
+  coûtent du ciment au lieu de la pierre (1 ciment pour 2 pierres) ; sans
+  ciment en stock, la pierre reste acceptée.
+- **Chantiers plus rapides** : un bâtiment construit au ciment se bâtit deux
+  fois plus vite (durée du chantier ×0,5).
+- Effet attendu : moins de carrières à la ville, des chantiers d'immeubles et
+  d'usines plus courts, et une nouvelle demande de charbon.
+
 ### Transport : portée et quantité transportée
 Chaque palier apporte un mode de transport qui repousse la **portée** (distance
 au-delà de laquelle la pénalité de trajet commence, section 5) et augmente la
@@ -476,6 +492,7 @@ effectif, vivres).
 | V14 (suite) | Exploration motorisée | Véhicules à moteur à la ville (×3, navires à moteur), avion à la cité-État (60 tuiles/j, survole tout), contre du carburant — réalisé |
 | V14 | Deux cartes | Carte de la ville (plaine qui grandit avec le palier : logements, ateliers, services) et carte mondiale (zones, ressources, réseaux, bloc de la ville au centre) ; bouton Ville / Monde et touche Tab — réalisé |
 | V13 | Équilibrage | Rythme de la ville et de la cité-État (outil `simulate_pacing`) : isolation (chauffage ×0,8 / ×0,5 / ×0,4) et mécanisation des mines (×2 / ×3) — en cours |
+| V15 | Cimenterie | Recherche Cimenterie (palier 4), cimenterie (pierre + charbon → ciment), le ciment remplace la pierre et accélère les chantiers — prévu |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses

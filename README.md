@@ -350,11 +350,13 @@ météo et interface conservés.
 
 ### V11 (partie 1) : ville — pétrole, éclairage, université
 - **Puits de pétrole** (zone sur un gisement prospecté ; 4 tuiles garanties à
-  4–6 tuiles du centre) : sans **réservoir**, le pétrole est perdu.
+  4–6 tuiles du centre, 20 000 de pétrole chacune ; ailleurs 6 000 à 20 000) :
+  2 puisatiers par tuile, 3 pétrole chacun par jour (×2 avec la mécanisation de
+  la ville) ; sans **réservoir**, le pétrole est perdu.
 - **Recherches** :
   | Recherche | Prérequis | Points | Effet |
   |---|---|---|---|
-  | Raffinage du pétrole | Méthode expérimentale | 45 000 | **Raffinerie** (60 pierre, 60 fer, 10 outils) : 10 carburant par jour, un pétrole chacun |
+  | Raffinage du pétrole | Méthode expérimentale | 45 000 | **Raffinerie** (60 pierre, 60 fer, 10 outils) : 25 carburant par jour, un pétrole chacun |
   | Enseignement supérieur | Méthode expérimentale | 50 000 | **Université** (80 bois, 150 pierre, 30 fer, 20 outils) : recherche ×10 pour 1 000 habitants |
 - **Éclairage** (à partir de la ville) : 0,01 carburant par habitant et par
   jour ; sans lui, satisfaction réduite jusqu'à −10 %.

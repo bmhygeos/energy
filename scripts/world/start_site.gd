@@ -36,7 +36,7 @@ const COAL_AMOUNT := 40000.0
 const MIN_OIL := 4
 const OIL_MIN_DISTANCE := 4
 const OIL_RADIUS := 6
-const OIL_AMOUNT := 10000.0
+const OIL_AMOUNT := 20000.0
 ## Tuiles de cuivre (mines de la ville) à COPPER_MIN_DISTANCE–COPPER_RADIUS
 ## tuiles du centre, de COPPER_AMOUNT tonnes chacune à défaut.
 const MIN_COPPER := 2

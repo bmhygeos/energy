@@ -146,7 +146,7 @@ func _play_day(day: int) -> void:
 				< _gs.light_need() + _gs.fuel_heat_need(GameDate.WINTER) + _gs.tractor_fuel_need():
 			_build_near(&"refinery")
 		if _gs.research.is_done(&"university") and not _has(&"university"):
-			_build_clearing(&"university")
+			_build_anywhere(&"university")
 		# Courant : une centrale à charbon de plus tant que la demande n'est pas
 		# couverte (le charbon abonde à la ville).
 		if _gs.research.is_done(&"conductivity") and _gs.grid.coverage < 1.0 \
