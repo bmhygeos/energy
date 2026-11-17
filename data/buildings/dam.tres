@@ -16,6 +16,7 @@ iron_cost = 40
 tools_cost = 10
 copper_cost = 30
 power_watts = 60000.0
+flood_tiles = 8
 adjacent_terrains = Array[int]([4])
 color = Color(0.72, 0.72, 0.7, 1)
 roof_color = Color(0.45, 0.5, 0.55, 1)

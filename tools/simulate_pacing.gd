@@ -4,7 +4,8 @@ extends SceneTree
 ## une expédition à la fois, recherches dans l'ordre, puits, atelier et
 ## carrière au village ; lin, mine de charbon, atelier de tissage,
 ## laboratoire et moulin à eau au bourg ; réservoir, puits de pétrole,
-## raffinerie et université à la ville) et affiche l'évolution mois par mois, puis les jours
+## raffinerie, université, ateliers d'artisans, dispensaires et postes de
+## garde à la ville) et affiche l'évolution mois par mois, puis les jours
 ## où chaque palier et chaque jalon sont atteints.
 ## Les camps d'abattage sont plafonnés et le bois en trop vendu au bourg ; sans
 ## place au centre, un bâtiment remplace une zone.
@@ -147,6 +148,13 @@ func _play_day(day: int) -> void:
 			_build_near(&"refinery")
 		if _gs.research.is_done(&"university") and not _has(&"university") and _gs.treasury.money > 1000.0:
 			_build_clearing(&"university")
+		if _count(&"artisans") * BuildingDb.get_def(&"artisans").goods_per_day < _gs.goods_need():
+			_build_anywhere(&"artisans")
+		if _gs.order_coverage() < 1.0 and _count(&"guard_post") * BuildingDb.get_def(&"guard_post").order_coverage < _gs.population.count:
+			_build_anywhere(&"guard_post")
+		if _gs.research.is_done(&"medicine") and _gs.health_coverage() < 1.0 \
+				and _count(&"dispensary") * BuildingDb.get_def(&"dispensary").health_coverage < _gs.population.count:
+			_build_anywhere(&"dispensary")
 	if _gs.exploration.can_launch() and day % 10 == 0 and _gs.food_days() > 30.0:
 		var dir := DIRECTIONS[_expeditions % DIRECTIONS.size()]
 		var reach := 20 + 8 * (_expeditions / DIRECTIONS.size())
@@ -257,7 +265,7 @@ func _buy_shortages() -> void:
 	var stock: Stockpile = _gs.stockpile
 	var season := GameDate.season(_clock.tick)
 	var needs := {Stockpile.Good.FOOD: _gs.food_need(), Stockpile.Good.WOOD: _gs.wood_need(season), Stockpile.Good.CLOTHES: _gs.clothes_need(),
-		Stockpile.Good.TOOLS: _gs.tools_need(), Stockpile.Good.FUEL: _gs.light_need()}
+		Stockpile.Good.TOOLS: _gs.tools_need(), Stockpile.Good.FUEL: _gs.light_need(), Stockpile.Good.GOODS: _gs.goods_need()}
 	for good: int in needs:
 		var missing: float = needs[good] * BUY_BELOW_DAYS - stock.amount[good]
 		if missing > 0.0:

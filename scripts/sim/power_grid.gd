@@ -4,7 +4,8 @@ extends TrackNetwork
 ## L). Une centrale produit pour la ville si elle est à Labor.FREE_DISTANCE
 ## tuiles du centre ou moins, ou si elle touche une ligne reliée au village.
 ## Les barrages passent d'abord (sans combustible, selon la saison), puis les
-## centrales complètent en brûlant du charbon. Le courant remplace le carburant
+## centrales complètent en brûlant du charbon, et enfin celles au fioul (le
+## carburant des raffineries). Le courant remplace le carburant
 ## des lampes et fait tourner plus vite les ateliers. Pure donnée.
 
 ## Cuivre par tuile de ligne.
@@ -13,6 +14,8 @@ const COPPER_PER_TILE := 1.0
 const WATTS_PER_INHABITANT := 20.0
 ## Puissance moyenne d'un charbon par jour (290 MJ à 30 % de rendement).
 const WATTS_PER_COAL := 1000.0
+## Puissance moyenne d'un carburant par jour (420 MJ à 30 % de rendement).
+const WATTS_PER_FUEL := 1500.0
 ## Forges, tissages et raffineries à pleine couverture : +INDUSTRY_BONUS.
 const INDUSTRY_BONUS := 0.25
 ## Débit des rivières par saison (printemps, été, automne, hiver).
@@ -26,6 +29,8 @@ var connected: Array[Building] = []
 var demand := 0.0
 var supplied := 0.0
 var hydro := 0.0
+## Carburant brûlé le dernier jour par les centrales au fioul.
+var fuel_burnt := 0.0
 var coverage := 0.0
 
 
@@ -75,24 +80,30 @@ func feeds_city(b: Building) -> bool:
 func capacity(season: int) -> float:
 	var total := 0.0
 	for b in connected:
-		total += b.def.power_watts * (1.0 if b.def.burns_coal else HYDRO_SEASON[season])
+		total += b.def.power_watts * (1.0 if b.def.burns_coal or b.def.burns_fuel else HYDRO_SEASON[season])
 	return total
 
 
 ## Bilan du jour pour [param count] habitants : barrages d'abord, puis
-## centrales dans la limite de [param coal] ; renvoie le charbon brûlé.
-func run_day(count: int, season: int, coal: float) -> float:
+## centrales au charbon dans la limite de [param coal], puis au fioul dans la
+## limite de [param fuel] (brûlé : fuel_burnt) ; renvoie le charbon brûlé.
+func run_day(count: int, season: int, coal: float, fuel := 0.0) -> float:
 	demand = count * WATTS_PER_INHABITANT
 	var water := 0.0
 	var thermal := 0.0
+	var oil := 0.0
 	for b in connected:
 		if b.def.burns_coal:
 			thermal += b.def.power_watts
+		elif b.def.burns_fuel:
+			oil += b.def.power_watts
 		else:
 			water += b.def.power_watts * HYDRO_SEASON[season]
 	hydro = minf(water, demand)
 	var burnt := minf(minf(demand - hydro, thermal), coal * WATTS_PER_COAL)
-	supplied = hydro + burnt
+	var oil_burnt := minf(minf(demand - hydro - burnt, oil), fuel * WATTS_PER_FUEL)
+	fuel_burnt = oil_burnt / WATTS_PER_FUEL
+	supplied = hydro + burnt + oil_burnt
 	coverage = supplied / demand if demand > 0.0 else 0.0
 	return burnt / WATTS_PER_COAL
 

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"oil_plant"
+display_name = "Centrale au fioul"
+description = "Moteurs et alternateurs : le carburant des raffineries devient du courant, vite démarré quand le charbon ne suffit pas."
+category = 2
+tier = 4
+research = &"combustion_engine"
+build_hours = 96
+stone_cost = 40
+iron_cost = 40
+tools_cost = 10
+copper_cost = 15
+power_watts = 20000.0
+burns_fuel = true
+color = Color(0.55, 0.56, 0.5, 1)
+roof_color = Color(0.3, 0.34, 0.28, 1)
+height = 22.0

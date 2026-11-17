@@ -31,6 +31,16 @@ const CLOTHES_LIFE_DAYS := 100.0
 ## satisfaction réduite jusqu'à cette part sans lui.
 const LIGHT_PER_DAY := 0.01
 const LIGHT_WEIGHT := 0.1
+## Biens variés (à partir de la ville : meubles, vaisselle, ustensiles) : un
+## par habitant tous les GOODS_LIFE_DAYS jours ; satisfaction réduite jusqu'à
+## cette part sans eux.
+const GOODS_WEIGHT := 0.1
+const GOODS_LIFE_DAYS := 50.0
+## Santé et ordre (à partir de la ville : part des habitants couverts par les
+## dispensaires et les postes de garde) : satisfaction réduite jusqu'à ces
+## parts sans eux.
+const HEALTH_WEIGHT := 0.1
+const ORDER_WEIGHT := 0.1
 ## Croissance par jour (part de la population) à pleine satisfaction.
 const GROWTH_PER_DAY := 0.006
 ## Sous ce seuil de satisfaction, des habitants partent (jusqu'à
@@ -55,6 +65,9 @@ var water_coverage := 1.0
 var tools_coverage := 1.0
 var clothes_coverage := 1.0
 var light_coverage := 1.0
+var goods_coverage := 1.0
+var health_coverage := 1.0
+var order_coverage := 1.0
 var _history: Array[float] = []
 ## Fraction d'habitant accumulée (naissances, départs).
 var _change := 0.0
@@ -85,22 +98,33 @@ func light_need() -> float:
 	return count * LIGHT_PER_DAY
 
 
+## Biens variés usés par jour (à partir de la ville).
+func goods_need() -> float:
+	return count / GOODS_LIFE_DAYS
+
+
 ## Clôt la journée avec la couverture des besoins (0–1 ; l'eau et les outils
-## à partir du village, les vêtements à partir du bourg, l'éclairage à partir
-## de la ville), les logements et l'humeur [param mood] (impôts, décrets : facteur de la satisfaction du
+## à partir du village, les vêtements à partir du bourg, l'éclairage, les
+## biens, la santé et l'ordre à partir de la ville), les logements et
+## l'humeur [param mood] (impôts, décrets : facteur de la satisfaction du
 ## jour) ; renvoie la variation du nombre d'habitants.
 func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int, p_water_coverage := 1.0,
-		p_tools_coverage := 1.0, p_clothes_coverage := 1.0, mood := 1.0, p_light_coverage := 1.0) -> int:
+		p_tools_coverage := 1.0, p_clothes_coverage := 1.0, mood := 1.0, p_light_coverage := 1.0,
+		p_goods_coverage := 1.0, p_health_coverage := 1.0, p_order_coverage := 1.0) -> int:
 	food_coverage = clampf(p_food_coverage, 0.0, 1.0)
 	wood_coverage = clampf(p_wood_coverage, 0.0, 1.0)
 	water_coverage = clampf(p_water_coverage, 0.0, 1.0)
 	tools_coverage = clampf(p_tools_coverage, 0.0, 1.0)
 	clothes_coverage = clampf(p_clothes_coverage, 0.0, 1.0)
 	light_coverage = clampf(p_light_coverage, 0.0, 1.0)
+	goods_coverage = clampf(p_goods_coverage, 0.0, 1.0)
+	health_coverage = clampf(p_health_coverage, 0.0, 1.0)
+	order_coverage = clampf(p_order_coverage, 0.0, 1.0)
 	_history.append((FOOD_WEIGHT * food_coverage + (1.0 - FOOD_WEIGHT) * wood_coverage)
 		* (1.0 - WATER_WEIGHT * (1.0 - water_coverage)) * (1.0 - TOOLS_WEIGHT * (1.0 - tools_coverage))
 		* (1.0 - CLOTHES_WEIGHT * (1.0 - clothes_coverage))
-		* (1.0 - LIGHT_WEIGHT * (1.0 - light_coverage)) * mood)
+		* (1.0 - LIGHT_WEIGHT * (1.0 - light_coverage)) * (1.0 - GOODS_WEIGHT * (1.0 - goods_coverage))
+		* (1.0 - HEALTH_WEIGHT * (1.0 - health_coverage)) * (1.0 - ORDER_WEIGHT * (1.0 - order_coverage)) * mood)
 	_history[-1] = clampf(_history[-1], 0.0, 1.0)
 	if _history.size() > SATISFACTION_DAYS:
 		_history.pop_front()

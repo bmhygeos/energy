@@ -134,6 +134,9 @@ func _refresh() -> void:
 		_needs.text += "  ·  vêtements %s /j" % Format.decimal(GameState.clothes_need())
 	if GameState.light_need() > 0.0:
 		_needs.text += "  ·  carburant %s /j (éclairage)" % Format.decimal(GameState.light_need())
+	if GameState.goods_need() > 0.0:
+		_needs.text += "  ·  biens %s /j  ·  soins %d %%  ·  ordre %d %%" % [Format.decimal(GameState.goods_need()),
+			roundi(GameState.health_coverage() * 100.0), roundi(GameState.order_coverage() * 100.0)]
 	var grid := GameState.grid
 	if not grid.connected.is_empty():
 		_needs.text += "\nÉlectricité : %s sur %s demandés (%d %%)  ·  réseau %s" % [PowerMeter.format(grid.supplied),
@@ -149,7 +152,8 @@ func _refresh() -> void:
 			Format.decimal(rails.coal_need()), "" if rails.running else "  ·  à l'arrêt (plus de charbon)"]
 	var roads := GameState.roads
 	if not roads.served_depots.is_empty():
-		_needs.text += "\nCamions : %d dépôt%s  ·  carburant %s /j%s" % [roads.served_depots.size(), "s" if roads.served_depots.size() > 1 else "",
+		_needs.text += "\nCamions : %d dépôt%s  ·  %d / %d travailleurs desservis  ·  carburant %s /j%s" % [roads.served_depots.size(),
+			"s" if roads.served_depots.size() > 1 else "", roads.truck_load, roads.capacity(),
 			Format.decimal(roads.fuel_need()), "" if roads.running else "  ·  à l'arrêt (plus de carburant)"]
 	if GameState.steam_coal_need() > 0.0:
 		_needs.text += "\nMachines à vapeur : charbon %s /j%s" % [Format.decimal(GameState.steam_coal_need()),

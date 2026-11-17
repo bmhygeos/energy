@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"artisans"
+display_name = "Atelier d'artisans"
+description = "Menuisiers, potiers et chaudronniers : meubles, vaisselle et ustensiles pour les foyers de la ville."
+category = 2
+tier = 4
+build_hours = 72
+wood_cost = 50
+stone_cost = 40
+iron_cost = 10
+tools_cost = 5
+goods_per_day = 10.0
+color = Color(0.74, 0.6, 0.45, 1)
+roof_color = Color(0.5, 0.3, 0.2, 1)
+height = 16.0

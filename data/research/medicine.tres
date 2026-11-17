@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"medicine"
+display_name = "Médecine"
+description = "Hygiène, vaccins et diagnostics : soigner plutôt que subir."
+tier = 4
+cost = 40000.0
+prerequisites = Array[StringName]([&"scientific_method"])
+effect = "Dispensaire : soigne 500 habitants contre un entretien en pièces ; les épidémies emportent moins d'habitants."

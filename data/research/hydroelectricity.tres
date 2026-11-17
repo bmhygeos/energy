@@ -10,4 +10,4 @@ description = "Une chute d'eau captée fait tourner une turbine, sans rien brûl
 tier = 4
 cost = 60000.0
 prerequisites = Array[StringName]([&"conductivity"])
-effect = "Barrage : du courant sans combustible, qui suit le débit des saisons."
+effect = "Barrage : du courant sans combustible, qui suit le débit des saisons ; sa retenue noie jusqu'à 8 tuiles en amont."

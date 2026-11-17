@@ -41,6 +41,12 @@ const ECONOMY_TIER := 3
 const EVENTS_TIER := 3
 ## Palier à partir duquel les habitants s'éclairent au carburant (ville).
 const LIGHT_TIER := 4
+## Palier à partir duquel les habitants veulent des biens variés, des soins
+## et de l'ordre (ville).
+const SERVICES_TIER := 4
+## Atelier d'artisans : bois et fer par unité de biens.
+const GOODS_WOOD := 1.0
+const GOODS_IRON := 0.25
 ## Raffinerie : pétrole par unité de carburant.
 const OIL_PER_FUEL := 1.0
 ## Palier à partir duquel la cité pose des routes (bourg).
@@ -156,6 +162,9 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	milestones.defs = Milestones.standard()
 	_needed_today = Stockpile.zeros()
 	_consumed_today = Stockpile.zeros()
+	upkeep_paid = true
+	steam_running = false
+	coal_burned_today = 0.0
 	GameClock.reset()
 	_found_village()
 	_refresh_capacities()
@@ -285,6 +294,9 @@ func apply_zones(plan: ZoneMap.Plan) -> int:
 	if changed.is_empty() and plan.def and not plan.error.is_empty():
 		EventBus.notified.emit(plan.error)
 	if not changed.is_empty():
+		# Les camions se répartissent entre les tuiles zonées.
+		if roads.has_trucks():
+			roads.refresh()
 		EventBus.zones_changed.emit(changed)
 		_update_labor()
 	return changed.size()
@@ -503,10 +515,84 @@ func _refresh_grid() -> void:
 	EventBus.grid_changed.emit([] as Array[Vector2i])
 
 
-## Électricité du jour : barrages, puis centrales au charbon.
+## Électricité du jour : barrages, puis centrales au charbon, puis au fioul.
 func _run_grid(season: int) -> void:
-	var burnt := grid.run_day(population.count, season, stockpile.amount[Stockpile.Good.COAL])
+	var burnt := grid.run_day(population.count, season, stockpile.amount[Stockpile.Good.COAL],
+		stockpile.amount[Stockpile.Good.FUEL])
 	coal_burned_today += stockpile.take(Stockpile.Good.COAL, burnt)
+	stockpile.take(Stockpile.Good.FUEL, grid.fuel_burnt)
+
+
+## Retenue du barrage [param b] : la rivière en amont (tuiles de rivière qui
+## touchent le barrage, puis celles qui ne descendent pas en dessous de la plus
+## haute d'entre elles) devient un lac, puis les rives les plus basses autour,
+## jusqu'à flood_tiles tuiles du territoire sans bâtiment. Zones, routes, voies
+## et lignes noyées disparaissent. Renvoie les tuiles noyées (repère de la vue).
+func flood_reservoir(b: Building) -> Array[Vector2i]:
+	var limit := b.def.flood_tiles
+	var dam_cells: Array[Vector2i] = []
+	for c in b.cells:
+		dam_cells.append(world_map.wrap_cell(c))
+	var start: Array[Vector2i] = []
+	var level := -INF
+	for c in dam_cells:
+		for o in WorldMap.NEIGHBORS_4:
+			var n := world_map.wrap_cell(c + o)
+			if world_map.get_terrain(n) == TerrainDef.Type.RIVER and n not in start:
+				start.append(n)
+				level = maxf(level, world_map.get_elevation(n))
+	# Rivière en amont : parcours le long du lit, sans redescendre sous la retenue.
+	var river: Array[Vector2i] = []
+	var queue := start.filter(func(c: Vector2i) -> bool: return world_map.get_elevation(c) >= level)
+	while not queue.is_empty() and river.size() < limit:
+		var cell: Vector2i = queue.pop_front()
+		if cell in river or not _floodable(cell, dam_cells):
+			continue
+		river.append(cell)
+		for o in WorldMap.NEIGHBORS_4:
+			var n := world_map.wrap_cell(cell + o)
+			if world_map.get_terrain(n) == TerrainDef.Type.RIVER and world_map.get_elevation(n) >= level and n not in river:
+				queue.append(n)
+	# Rives : les plus basses autour du lit noyé.
+	var banks: Array[Vector2i] = []
+	for cell in river:
+		for o in WorldMap.NEIGHBORS_4:
+			var n := world_map.wrap_cell(cell + o)
+			if not world_map.is_water(n) and n not in banks and _floodable(n, dam_cells):
+				banks.append(n)
+	banks.sort_custom(func(a: Vector2i, c: Vector2i) -> bool:
+		return world_map.get_elevation(a) < world_map.get_elevation(c))
+	var flooded: Array[Vector2i] = river.duplicate()
+	flooded.append_array(banks.slice(0, maxi(0, limit - river.size())))
+	var shown: Array[Vector2i] = []
+	for cell in flooded:
+		world_map.set_terrain(cell, TerrainDef.Type.LAKE)
+		world_map.set_wood(cell, 0.0)
+		rails.remove(cell)
+		roads.remove(cell)
+		grid.remove(cell)
+		shown.append(display_cell(cell))
+	if flooded.is_empty():
+		return shown
+	zones.clear(flooded)
+	roads.refresh()
+	_refresh_rails()
+	_refresh_grid()
+	_refresh_ports()
+	EventBus.tiles_changed.emit(shown)
+	EventBus.zones_changed.emit(shown)
+	EventBus.rails_changed.emit(shown)
+	EventBus.roads_changed.emit(shown)
+	_update_labor()
+	EventBus.notified.emit("Le barrage est en eau : %d tuile%s noyée%s en amont" % [
+		flooded.size(), "s" if flooded.size() > 1 else "", "s" if flooded.size() > 1 else ""])
+	return shown
+
+
+## Tuile que la retenue peut noyer : dans le territoire, ni le barrage ni un
+## autre bâtiment.
+func _floodable(cell: Vector2i, dam_cells: Array[Vector2i]) -> bool:
+	return territory.is_territory(cell) and cell not in dam_cells and buildings.building_at(display_cell(cell)) == null
 
 
 ## Portée de la pêche, navires des expéditions et liaisons entre les ports
@@ -856,6 +942,67 @@ func _run_refineries() -> void:
 	production.produced_today[Stockpile.Good.FUEL] += n
 
 
+## Ateliers d'artisans : bois et fer du jour transformés en biens variés,
+## dans la limite du stock (le bois de chauffage d'hiver reste en réserve).
+func _run_artisans() -> void:
+	var rate := 0.0
+	for b in buildings.all():
+		if b.is_complete():
+			rate += b.def.goods_per_day
+	if rate <= 0.0:
+		return
+	rate *= (1.0 + production.drive_bonus) * grid.industry_factor()
+	var room := stockpile.capacity[Stockpile.Good.GOODS] - stockpile.amount[Stockpile.Good.GOODS]
+	var spare_wood := stockpile.amount[Stockpile.Good.WOOD] - wood_need(GameDate.WINTER) * CHARCOAL_RESERVE_DAYS
+	var n := minf(minf(rate, room), minf(spare_wood / GOODS_WOOD, stockpile.amount[Stockpile.Good.IRON] / GOODS_IRON))
+	if n <= 0.0:
+		return
+	stockpile.take(Stockpile.Good.WOOD, n * GOODS_WOOD)
+	stockpile.take(Stockpile.Good.IRON, n * GOODS_IRON)
+	stockpile.add(Stockpile.Good.GOODS, n)
+	production.produced_today[Stockpile.Good.GOODS] += n
+
+
+## Biens variés usés par jour (à partir de la ville).
+func goods_need() -> float:
+	return population.goods_need() if tier.level >= SERVICES_TIER else 0.0
+
+
+## Usure du jour : prend les biens au stock ; renvoie la part obtenue (1 sans
+## besoin).
+func _wear_goods() -> float:
+	var need := goods_need()
+	if need <= 0.0:
+		return 1.0
+	return stockpile.take(Stockpile.Good.GOODS, need) / need
+
+
+## Habitants couverts par les bâtiments terminés et entretenus (dispensaires :
+## [param health] vrai ; postes de garde : faux).
+func service_capacity(health: bool) -> int:
+	var total := 0
+	for b in buildings.all():
+		if b.is_complete() and (upkeep_paid or b.def.upkeep_per_day <= 0.0):
+			total += b.def.health_coverage if health else b.def.order_coverage
+	return total
+
+
+## Part des habitants soignés (à partir de la ville ; 1 avant).
+func health_coverage() -> float:
+	return _service_coverage(service_capacity(true))
+
+
+## Part des habitants sous la garde des postes (à partir de la ville ; 1 avant).
+func order_coverage() -> float:
+	return _service_coverage(service_capacity(false))
+
+
+func _service_coverage(capacity: int) -> float:
+	if tier.level < SERVICES_TIER or population.count == 0:
+		return 1.0
+	return minf(1.0, float(capacity) / population.count)
+
+
 ## Éclairage voulu par jour, en carburant (à partir de la ville).
 func _light_demand() -> float:
 	return population.light_need() if tier.level >= LIGHT_TIER else 0.0
@@ -891,7 +1038,7 @@ func _pay_upkeep() -> void:
 	var was := upkeep_paid
 	upkeep_paid = need <= 0.0 or treasury.pay_upkeep(need)
 	if was and not upkeep_paid:
-		EventBus.notified.emit("Trésor vide : l'université ferme ses portes faute d'entretien")
+		EventBus.notified.emit("Trésor vide : universités, dispensaires et postes de garde à l'arrêt faute d'entretien")
 
 
 ## Vêtements usés par jour (à partir du bourg).
@@ -1054,7 +1201,7 @@ func _run_events(season: int) -> void:
 		EventBus.notified.emit("Fin de l'événement : %s" % CityEvents.NAMES[kind])
 	if tier.level < EVENTS_TIER:
 		return
-	var kind := events.roll(season)
+	var kind := events.roll(season, tier.level)
 	if kind >= 0:
 		apply_event(kind)
 
@@ -1067,6 +1214,13 @@ func apply_event(kind: int) -> void:
 			draft.horses *= 1.0 - CityEvents.EPIZOOTIC_HORSES_LOST
 		CityEvents.Kind.FOREST_FIRE:
 			text += " : %d tuiles brûlées" % _burn_forest()
+		CityEvents.Kind.EPIDEMIC:
+			var deaths := floori(population.count * CityEvents.EPIDEMIC_DEATHS * (1.0 - health_coverage()))
+			population.count -= deaths
+			text += " : %d morts%s" % [deaths, ", les dispensaires ont soigné tout le monde" if deaths == 0
+				else " (dispensaires : %d %% des habitants soignés)" % roundi(health_coverage() * 100.0)]
+			if deaths > 0:
+				_update_labor()
 		CityEvents.Kind.MIGRANTS:
 			var arrivals := mini(ceili(population.count * CityEvents.MIGRANTS_SHARE), maxi(0, housing - population.count))
 			if arrivals == 0:
@@ -1132,7 +1286,7 @@ func mood() -> float:
 func _run_economy() -> void:
 	if tier.level < ECONOMY_TIER:
 		return
-	treasury.collect_taxes(population.count, population.satisfaction)
+	treasury.collect_taxes(population.count, population.satisfaction, order_coverage())
 	treasury.sell_surplus(stockpile)
 	_pay_upkeep()
 
@@ -1227,6 +1381,8 @@ func _on_tick(tick: int) -> void:
 	if not completed.is_empty():
 		_refresh_capacities()
 	for b in completed:
+		if b.def.flood_tiles > 0:
+			flood_reservoir(b)
 		EventBus.building_completed.emit(b)
 	_step_expeditions()
 	var before := [labor.employed(), labor.in_transit(), labor.assigned.duplicate()]
@@ -1284,16 +1440,21 @@ func _on_day(day: int) -> void:
 	_run_forges()
 	_run_weavers()
 	_run_refineries()
+	_run_artisans()
 	_run_steam()
 	_run_trains()
 	_run_trucks()
 	var tools := _wear_tools()
 	var clothes := _wear_clothes()
 	var light := _burn_light()
+	var goods := _wear_goods()
 	_run_economy()
+	# Après l'entretien : un trésor vide ferme dispensaires et postes de garde.
+	var health := health_coverage()
+	var order := order_coverage()
 	var before := population.count
 	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing,
-		water_coverage(), tools, clothes, mood(), light)
+		water_coverage(), tools, clothes, mood(), light, goods, health, order)
 	decrees.end_day()
 	_run_events(GameDate.season(day_tick))
 	_announce_population(before, change, coverage)
@@ -1307,6 +1468,8 @@ func _on_day(day: int) -> void:
 			EventBus.notified.emit("Le bourg a besoin de vêtements : champs de lin, laine des pâturages, atelier de tissage")
 		if tier.level == LIGHT_TIER:
 			EventBus.notified.emit("La ville veut s'éclairer : puits de pétrole, réservoir et raffinerie (recherche Raffinage du pétrole)")
+		if tier.level == SERVICES_TIER:
+			EventBus.notified.emit("La ville veut des biens, des soins et de l'ordre : atelier d'artisans, dispensaire (recherche Médecine) et poste de garde")
 		if tier.level == ECONOMY_TIER:
 			EventBus.notified.emit("Le bourg lève l'impôt : trésor, marché et décrets dans le panneau Économie (E)")
 		EventBus.tier_changed.emit()
@@ -1335,6 +1498,9 @@ func _on_day(day: int) -> void:
 	stats.add(&"clothes", clothes * 100.0)
 	stats.add(&"light", light * 100.0)
 	stats.add(&"electricity", grid.coverage * 100.0)
+	stats.add(&"goods", goods * 100.0)
+	stats.add(&"health", health * 100.0)
+	stats.add(&"order", order * 100.0)
 	stats.add(&"money", treasury.money)
 	stats.add(&"taxes", treasury.taxes_today)
 	stats.add(&"trade", treasury.sales_today - treasury.purchases_today)
@@ -1380,6 +1546,8 @@ func _check_milestones(day: int) -> void:
 	facts.research = research
 	facts.money = treasury.money
 	facts.grid_coverage = grid.coverage
+	if tier.level >= SERVICES_TIER:
+		facts.services_coverage = minf(population.goods_coverage, minf(population.health_coverage, population.order_coverage))
 	for def in milestones.check(facts, day):
 		EventBus.milestone_reached.emit(def)
 		EventBus.notified.emit("Jalon atteint : %s — %s" % [def.display_name, def.description])

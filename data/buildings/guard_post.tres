@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"guard_post"
+display_name = "Poste de garde"
+description = "Gardes et rondes de nuit : moins de vols, moins de fraude, des rues sûres."
+category = 2
+tier = 4
+build_hours = 48
+wood_cost = 30
+stone_cost = 50
+iron_cost = 10
+order_coverage = 400
+upkeep_per_day = 6.0
+color = Color(0.62, 0.62, 0.68, 1)
+roof_color = Color(0.25, 0.3, 0.5, 1)
+height = 16.0

@@ -1,25 +1,29 @@
 class_name CityEvents
 extends RefCounted
 ## Événements de la cité (à partir du bourg, section 8 du plan) : hiver rude,
-## sécheresse, épizootie, incendie de forêt, arrivée de migrants. Tirés au sort
+## sécheresse, épizootie, incendie de forêt, arrivée de migrants, épidémie
+## (à partir de la ville, d'autant plus meurtrière que la santé manque). Tirés au sort
 ## chaque jour parmi ceux de la saison, avec un écart minimal entre deux ;
 ## la graine de la partie les rend reproductibles. Pure donnée.
 
-enum Kind { HARD_WINTER, DROUGHT, EPIZOOTIC, FOREST_FIRE, MIGRANTS }
+enum Kind { HARD_WINTER, DROUGHT, EPIZOOTIC, FOREST_FIRE, MIGRANTS, EPIDEMIC }
 
-const NAMES: PackedStringArray = ["Hiver rude", "Sécheresse", "Épizootie", "Incendie de forêt", "Migrants"]
+const NAMES: PackedStringArray = ["Hiver rude", "Sécheresse", "Épizootie", "Incendie de forêt", "Migrants", "Épidémie"]
 const START_TEXTS: PackedStringArray = [
 	"Hiver rude : le chauffage demande moitié plus de combustible",
 	"Sécheresse : les champs rendent moitié moins",
 	"Épizootie : les troupeaux dépérissent, des chevaux meurent",
 	"Incendie de forêt",
 	"Des migrants arrivent",
+	"Épidémie",
 ]
 ## Saisons possibles, en masque de bits (1 << saison ; 0 printemps … 3 hiver) :
-## hiver, été, hors hiver, été et automne, hors hiver.
-const SEASON_MASKS: PackedInt32Array = [0b1000, 0b0010, 0b0111, 0b0110, 0b0111]
+## hiver, été, hors hiver, été et automne, hors hiver, automne et hiver.
+const SEASON_MASKS: PackedInt32Array = [0b1000, 0b0010, 0b0111, 0b0110, 0b0111, 0b1100]
 ## Durée en jours (0 : effet immédiat).
-const DURATIONS: PackedInt32Array = [20, 20, 15, 0, 0]
+const DURATIONS: PackedInt32Array = [20, 20, 15, 0, 0, 0]
+## Palier à partir duquel l'événement peut survenir (épidémie : la ville).
+const MIN_TIERS: PackedInt32Array = [0, 0, 0, 0, 0, 4]
 ## Chance par jour une fois l'écart minimal écoulé.
 const CHANCE_PER_DAY := 0.03
 const MIN_GAP_DAYS := 60
@@ -30,6 +34,9 @@ const EPIZOOTIC_FACTOR := 0.5
 const EPIZOOTIC_HORSES_LOST := 0.2
 const FIRE_TILES := 12
 const MIGRANTS_SHARE := 0.05
+## Épidémie : part des habitants emportée sans aucun soin (moins à mesure que
+## les dispensaires couvrent la ville).
+const EPIDEMIC_DEATHS := 0.08
 
 ## Jours restants des événements en cours.
 var active: Dictionary[Kind, int] = {}
@@ -59,14 +66,16 @@ func zone_factor(def: ZoneDef) -> float:
 	return 1.0
 
 
-## Tire l'événement du jour pendant [param season] ; renvoie son genre, ou -1.
-func roll(season: int) -> int:
+## Tire l'événement du jour pendant [param season], au palier
+## [param tier] (sans palier : ceux qui n'en demandent pas) ; renvoie son
+## genre, ou -1.
+func roll(season: int, tier := 0) -> int:
 	_gap -= 1
 	if _gap > 0 or rng.randf() >= CHANCE_PER_DAY:
 		return -1
 	var possible: Array[int] = []
 	for kind in Kind.size():
-		if SEASON_MASKS[kind] & (1 << season):
+		if SEASON_MASKS[kind] & (1 << season) and tier >= MIN_TIERS[kind]:
 			possible.append(kind)
 	if possible.is_empty():
 		return -1

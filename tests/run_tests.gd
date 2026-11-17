@@ -58,6 +58,7 @@ func _initialize() -> void:
 	_test_events_game()
 	_test_roads_game()
 	_test_city_game()
+	_test_services_game()
 	_test_camera_bounds()
 	_test_fishing_reach()
 	_test_ships()
@@ -216,6 +217,14 @@ func _test_power_grid() -> void:
 	burnt = grid.run_day(1000, GameDate.SUMMER, 100.0)
 	_check(burnt == 0.0 and is_equal_approx(grid.coverage, 1.0) and is_equal_approx(grid.hydro, 20000.0)
 		and is_equal_approx(grid.industry_factor(), 1.25), "demande couverte par l'eau : pas de charbon brûlé")
+	var oil: Building = registry.place(registry.check_placement(BuildingDb.get_def(&"oil_plant"), Vector2i(22, 13)))
+	plants.append(oil)
+	grid.refresh(plants)
+	burnt = grid.run_day(5000, GameDate.SUMMER, 10.0, 100.0)
+	_check(oil in grid.connected and is_equal_approx(burnt, 10.0) and is_equal_approx(grid.fuel_burnt, 20000.0 / PowerGrid.WATTS_PER_FUEL)
+		and is_equal_approx(grid.supplied, 72000.0), "centrale au fioul : après le charbon")
+	grid.run_day(1000, GameDate.SUMMER, 100.0, 100.0)
+	_check(grid.fuel_burnt == 0.0, "fioul inutile quand l'eau suffit")
 
 
 func _test_grid_game() -> void:
@@ -270,7 +279,32 @@ func _test_grid_game() -> void:
 	stock.amount[Stockpile.Good.FUEL] = 0.0
 	_check(is_equal_approx(gs._burn_light(), 0.5), "sans carburant : la part du courant seule")
 	_check(gs.grid.base_costs()[Stockpile.Good.COPPER] == PowerGrid.COPPER_PER_TILE and gs.lines_error().is_empty(), "une ligne coûte du cuivre")
+	_test_dam_flood(gs)
 	gs.new_game(4242)
+
+
+## Retenue d'un barrage posé au bord d'une rivière tracée au sud du village.
+func _test_dam_flood(gs: Node) -> void:
+	var center: Vector2i = gs.display_cell(gs.home)
+	var map: WorldMap = gs.world_map
+	for dx in range(-4, 5):
+		map.set_terrain(map.wrap_cell(center + Vector2i(dx, 5)), TerrainDef.Type.RIVER)
+	var dam_def := BuildingDb.get_def(&"dam")
+	var dam: Building = null
+	for dx in range(-3, 4):
+		var placement: BuildingRegistry.Placement = gs.buildings.check_placement(dam_def, center + Vector2i(dx, 4))
+		if placement.is_valid():
+			dam = gs.buildings.place(placement)
+			break
+	_check(dam != null, "barrage posé au bord de la rivière")
+	if dam == null:
+		return
+	var flooded: Array[Vector2i] = gs.flood_reservoir(dam)
+	var ok := flooded.size() >= 1 and flooded.size() <= dam_def.flood_tiles
+	for cell in flooded:
+		ok = ok and map.get_terrain(map.wrap_cell(cell)) == TerrainDef.Type.LAKE and gs.zones.zone_at(cell) == null \
+			and gs.buildings.building_at(cell) == null
+	_check(ok and gs.buildings.building_at(dam.anchor) == dam, "barrage : %d tuiles noyées en amont, sans bâtiment" % flooded.size())
 
 
 func _test_trucks() -> void:
@@ -286,6 +320,12 @@ func _test_trucks() -> void:
 	var roads := RoadNetwork.new(map, territory, registry, Vector2i(2, 10))
 	registry.roads = roads
 	roads.add_cells(TrackNetwork.l_path(Vector2i(3, 10), Vector2i(50, 10)))
+	# Champs le long de la route : plus que les camions d'un dépôt n'en desservent.
+	var zones := ZoneMap.new(map, territory, registry)
+	roads.zones = zones
+	var farm := ZoneDb.get_def(&"agriculture")
+	zones.apply(zones.plan(farm, ZoneMap.rect_between(Vector2i(15, 11), Vector2i(50, 12))))
+	zones.apply(zones.plan(farm, ZoneMap.rect_between(Vector2i(50, 13), Vector2i(50, 13))))
 	roads.refresh()
 	var far := Vector2i(50, 12)
 	var wide := Vector2i(50, 13)
@@ -303,6 +343,11 @@ func _test_trucks() -> void:
 	# Tuile (49, 10), 42e de la route : (42 − 30) / 6 = 2 tuiles de marche, plus 2 ou 3 de côté.
 	_check(roads.has_trucks() and roads.distance_via(far) == 2 + 2 and roads.distance_via(wide) == 2 + 3, "camions : 30 tuiles libres, puis 6 par tuile de marche")
 	_check(is_equal_approx(roads.fuel_need(), 2.0 + 0.05 * 48.0), "carburant : dépôt et tuiles de route")
+	var near := Vector2i(20, 12)
+	_check(zones.tile_count(farm) * farm.workers_per_tile > roads.capacity() and roads.capacity() == 100
+		and roads.truck_load <= 100 and roads.truck_load > 90, "camions : 100 travailleurs desservis par dépôt (%d)" % roads.truck_load)
+	_check(roads.trucked.has(far) and not roads.trucked.has(near) and roads.distance_via(near) == 6 + 2,
+		"camions pour les tuiles qui y gagnent le plus ; les autres en charrette")
 	roads.running = false
 	roads.refresh()
 	_check(roads.distance_via(far) == 21 + 2 and roads.distance_via(wide) == -1, "camions arrêtés : retour aux charrettes")
@@ -609,6 +654,10 @@ func _test_exploration() -> void:
 	var map: WorldMap = flat[0]
 	var territory: Territory = flat[1]
 	var exploration := Exploration.new(territory)
+	_check(exploration.sight_radius() == Exploration.SIGHT_RADIUS, "explorateurs : vue de 3 tuiles")
+	exploration.tier = Exploration.CARTOGRAPHER_TIER
+	_check(exploration.sight_radius() == Exploration.CARTOGRAPHER_SIGHT_RADIUS, "cartographes de la ville : vue plus large")
+	exploration.tier = 1
 	var home := Vector2i(4, 4)
 	var path := exploration.plan_path(home, Vector2i(24, 14))
 	_check(path[0] == home and path[-1] == Vector2i(24, 14) and path.size() == 21, "trajet en ligne droite (%d tuiles)" % path.size())
@@ -956,7 +1005,7 @@ func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
 	stock.amount = Stockpile.zeros()
-	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0, 100.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -1421,7 +1470,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 21 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 22 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1716,6 +1765,56 @@ func _test_city_game() -> void:
 	gs.new_game(4242)
 
 
+func _test_services_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	gs.tier.level = 3
+	gs.population.count = 1000
+	_check(gs.goods_need() == 0.0 and gs._wear_goods() == 1.0 and gs.health_coverage() == 1.0
+		and gs.order_coverage() == 1.0, "avant la ville : ni biens, ni soins, ni ordre")
+	gs.tier.level = 4
+	_check(is_equal_approx(gs.goods_need(), 1000.0 / Population.GOODS_LIFE_DAYS) and gs.health_coverage() == 0.0
+		and gs.order_coverage() == 0.0, "ville : biens, soins et ordre demandés")
+	var stock: Stockpile = gs.stockpile
+	stock.capacity[Stockpile.Good.WOOD] = 10000.0
+	stock.amount[Stockpile.Good.WOOD] = 10000.0
+	stock.amount[Stockpile.Good.IRON] = 1.0
+	var artisans := _place_running(gs, BuildingDb.get_def(&"artisans"))
+	gs._run_artisans()
+	_check(artisans != null and is_equal_approx(stock.amount[Stockpile.Good.GOODS], 4.0)
+		and stock.amount[Stockpile.Good.IRON] == 0.0, "artisans : bois et fer → biens, dans la limite du fer")
+	_check(is_equal_approx(gs._wear_goods(), 4.0 / 20.0) and stock.amount[Stockpile.Good.GOODS] == 0.0, "biens : part couverte")
+	var p := Population.new()
+	p.end_day(1.0, 1.0, 100, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0)
+	_check(is_equal_approx(p.satisfaction, (1.0 - Population.GOODS_WEIGHT) * (1.0 - Population.HEALTH_WEIGHT)
+		* (1.0 - Population.ORDER_WEIGHT)), "sans biens, soins ni ordre : satisfaction réduite")
+	var t := Treasury.new()
+	_check(is_equal_approx(t.taxes_for(1000, 1.0, 0.0), t.taxes_for(1000, 1.0) * (1.0 - Treasury.DISORDER_TAX_LOSS)),
+		"sans ordre : impôts perdus")
+	var needs_medicine := false
+	stock.amount[Stockpile.Good.STONE] = 500.0
+	stock.amount[Stockpile.Good.IRON] = 100.0
+	stock.amount[Stockpile.Good.TOOLS] = 100.0
+	var dispensary := BuildingDb.get_def(&"dispensary")
+	for cell in gs.territory.territory_cells():
+		if gs.check_placement(dispensary, gs.display_cell(cell)).error.contains("Médecine"):
+			needs_medicine = true
+			break
+	_check(needs_medicine, "dispensaire : recherche Médecine requise")
+	_place_running(gs, dispensary)
+	_place_running(gs, BuildingDb.get_def(&"guard_post"))
+	_check(is_equal_approx(gs.health_coverage(), 0.5) and is_equal_approx(gs.order_coverage(), 0.4),
+		"dispensaire et poste de garde : habitants couverts")
+	gs.treasury.money = 0.0
+	gs._pay_upkeep()
+	_check(not gs.upkeep_paid and gs.health_coverage() == 0.0 and gs.order_coverage() == 0.0,
+		"entretien impayé : dispensaire et poste de garde à l'arrêt")
+	gs.upkeep_paid = true
+	gs.apply_event(CityEvents.Kind.EPIDEMIC)
+	_check(gs.population.count == 1000 - floori(1000 * CityEvents.EPIDEMIC_DEATHS * 0.5), "épidémie : moitié moins de morts avec des soins")
+	gs.new_game(4242)
+
+
 func _test_city_events() -> void:
 	var e := CityEvents.new(7)
 	var farm := ZoneDb.get_def(&"agriculture")
@@ -1750,6 +1849,15 @@ func _test_city_events() -> void:
 	for k in 2000:
 		same = same and a.roll(k / 30 % 4) == b.roll(k / 30 % 4)
 	_check(same, "événements reproductibles avec la graine")
+	var c := CityEvents.new(9)
+	var epidemic := [false, false]
+	for k in 20000:
+		for t in 2:
+			c._gap = 0
+			if c.roll(GameDate.WINTER, 3 + t) == CityEvents.Kind.EPIDEMIC:
+				epidemic[t] = true
+			c.active.clear()
+	_check(not epidemic[0] and epidemic[1], "épidémie : seulement à la ville")
 
 
 func _test_events_game() -> void:

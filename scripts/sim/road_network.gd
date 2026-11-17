@@ -7,7 +7,11 @@ extends TrackNetwork
 ## route valent une tuile de marche). Sans combustible : charrettes et
 ## piétons. Un dépôt de camions touchant une route reliée porte la route plus
 ## loin : TRUCK_FREE_TILES tuiles sans pénalité, puis TRUCK_TILES_PER_WALK_TILE
-## tuiles de route par tuile de marche, contre du carburant. Une route peut
+## tuiles de route par tuile de marche, contre du carburant. Les camions
+## d'un dépôt ne transportent que la production de TRUCKS_PER_DEPOT ×
+## PORTERS_PER_TRUCK travailleurs : ils desservent d'abord les tuiles zonées
+## qu'ils rapprochent le plus ; les autres gardent la portée des charrettes.
+## Une route peut
 ## croiser une voie ferrée (passage à niveau). Pure donnée.
 
 ## Pavés par tuile.
@@ -24,6 +28,10 @@ const TRUCK_REACH := 3
 ## Carburant brûlé par jour : par dépôt, et par tuile de route reliée.
 const FUEL_PER_DEPOT_PER_DAY := 2.0
 const FUEL_PER_TILE_PER_DAY := 0.05
+## Camions par dépôt, et travailleurs (porteurs) dont chacun transporte la
+## production.
+const TRUCKS_PER_DEPOT := 5
+const PORTERS_PER_TRUCK := 20
 
 ## Tuiles de route reliées au village → longueur depuis le village.
 var lengths: Dictionary[Vector2i, int] = {}
@@ -33,8 +41,12 @@ var depots: Array[Building] = []
 var running := true
 ## Dépôts qui touchent une route reliée.
 var served_depots: Array[Building] = []
-## Tuiles desservies → distance au village par la route.
+## Tuiles desservies → distance au village par la route, en charrette et en
+## camion ; tuiles zonées desservies par les camions et leurs travailleurs.
 var _reach: Dictionary[Vector2i, int] = {}
+var _truck_reach: Dictionary[Vector2i, int] = {}
+var trucked: Dictionary[Vector2i, bool] = {}
+var truck_load := 0
 
 
 func track_name() -> String:
@@ -66,15 +78,60 @@ func refresh() -> void:
 				lengths[n] = lengths[cell] + 1
 				queue.append(n)
 	served_depots = depots.filter(_touches_road)
-	var reach := TRUCK_REACH if has_trucks() else REACH
+	_reach = _reach_map(false)
+	_truck_reach.clear()
+	if has_trucks():
+		_truck_reach = _reach_map(true)
+	_load_trucks()
+
+
+## Distance au village par la route des tuiles desservies (en camion :
+## [param trucks]).
+func _reach_map(trucks: bool) -> Dictionary[Vector2i, int]:
+	var result: Dictionary[Vector2i, int] = {}
+	var reach := TRUCK_REACH if trucks else REACH
 	for cell: Vector2i in lengths:
-		var base := _walk_tiles(lengths[cell])
+		var base := _walk_tiles(lengths[cell], trucks)
 		for dy in range(-reach, reach + 1):
 			for dx in range(-reach, reach + 1):
 				var n := map.wrap_cell(cell + Vector2i(dx, dy))
 				var d := base + maxi(absi(dx), absi(dy))
-				if not _reach.has(n) or d < _reach[n]:
-					_reach[n] = d
+				if not result.has(n) or d < result[n]:
+					result[n] = d
+	return result
+
+
+## Répartit les camions entre les tuiles zonées qu'ils rapprochent, celles qui
+## y gagnent le plus d'abord, dans la limite de capacity() travailleurs.
+func _load_trucks() -> void:
+	trucked.clear()
+	truck_load = 0
+	if _truck_reach.is_empty() or zones == null:
+		return
+	var gains: Dictionary[Vector2i, int] = {}
+	for cell: Vector2i in _truck_reach:
+		if zones.zone_at(cell) == null:
+			continue
+		var other := mini(cheb(cell, center), _reach.get(cell, cheb(cell, center)))
+		var gain := maxi(0, other - Labor.FREE_DISTANCE) - maxi(0, _truck_reach[cell] - Labor.FREE_DISTANCE)
+		if gain > 0:
+			gains[cell] = gain
+	var cells := gains.keys()
+	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return gains[a] > gains[b] or gains[a] == gains[b] and (a.y < b.y or a.y == b.y and a.x < b.x))
+	var room := capacity()
+	for cell: Vector2i in cells:
+		var workers := zones.zone_at(cell).workers_per_tile
+		if workers > room:
+			continue
+		trucked[cell] = true
+		truck_load += workers
+		room -= workers
+
+
+## Travailleurs dont les camions transportent la production.
+func capacity() -> int:
+	return served_depots.size() * TRUCKS_PER_DEPOT * PORTERS_PER_TRUCK if has_trucks() else 0
 
 
 ## Des camions roulent sur les routes reliées.
@@ -89,9 +146,10 @@ func fuel_need() -> float:
 	return FUEL_PER_DEPOT_PER_DAY * served_depots.size() + FUEL_PER_TILE_PER_DAY * lengths.size()
 
 
-## Tuiles de marche équivalentes à [param length] tuiles de route.
-func _walk_tiles(length: int) -> int:
-	if has_trucks():
+## Tuiles de marche équivalentes à [param length] tuiles de route (en camion :
+## [param trucks]).
+func _walk_tiles(length: int, trucks: bool) -> int:
+	if trucks:
 		return ceili(float(maxi(0, length - TRUCK_FREE_TILES)) / TRUCK_TILES_PER_WALK_TILE)
 	return ceili(float(length) / TILES_PER_WALK_TILE)
 
@@ -104,6 +162,10 @@ func _touches_road(b: Building) -> bool:
 	return false
 
 
-## Distance de [param cell] au village par la route (-1 : non desservie).
+## Distance de [param cell] au village par la route (-1 : non desservie) ;
+## en camion si les camions la desservent.
 func distance_via(cell: Vector2i) -> int:
-	return _reach.get(map.wrap_cell(cell), -1)
+	var w := map.wrap_cell(cell)
+	if trucked.has(w):
+		return _truck_reach[w]
+	return _reach.get(w, -1)

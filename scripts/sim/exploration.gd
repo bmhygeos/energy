@@ -21,8 +21,11 @@ const MOUNTED_SPEED := 1.5
 ## Avec un port : tuiles parcourues par jour sur toute l'eau, mer comprise
 ## (les chevaux restent à quai).
 const SHIP_TILES_PER_DAY := 6.0
-## Rayon de vue (tuiles) autour de l'expédition.
+## Rayon de vue (tuiles) autour de l'expédition ; à partir de la ville, des
+## cartographes (longues-vues, théodolites) relèvent le pays plus loin.
 const SIGHT_RADIUS := 3
+const CARTOGRAPHER_TIER := 4
+const CARTOGRAPHER_SIGHT_RADIUS := 5
 ## Vivres consommés par explorateur et par jour.
 const FOOD_PER_MEMBER_PER_DAY := Population.FOOD_PER_DAY
 ## Tuiles parcourues par jour selon le terrain (0 : infranchissable).
@@ -219,10 +222,15 @@ func step_hour() -> Report:
 	return report
 
 
+## Rayon de vue des expéditions au palier atteint.
+func sight_radius() -> int:
+	return CARTOGRAPHER_SIGHT_RADIUS if tier >= CARTOGRAPHER_TIER else SIGHT_RADIUS
+
+
 ## Annexe au territoire les tuiles en vue de [param e].
 func _reveal(e: Expedition, report: Report) -> void:
 	var center := e.cell()
-	var r := SIGHT_RADIUS
+	var r := sight_radius()
 	var fresh: Array[Vector2i] = []
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):

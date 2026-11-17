@@ -395,6 +395,44 @@ météo et interface conservés.
 - Les camions brûlent 2 carburant/j par dépôt, plus 0,05 par tuile de route.
   Sans carburant, ils s'arrêtent et les routes retrouvent leur portée.
 
+### V11 (partie 4) : biens, santé et ordre de la ville
+
+- **Biens variés** (à partir de la ville) : un par habitant tous les 50 jours
+  (meubles, vaisselle, ustensiles). **Atelier d'artisans** (50 bois, 40
+  pierre, 10 fer, 5 outils) : 10 biens par jour, chacun pour 1 bois et 0,25
+  fer ; il garde 10 jours de chauffage d'hiver en bois. Moulin à eau, machine
+  à vapeur et électricité l'accélèrent comme les forges. Stock de 200 biens,
+  vendus 6 pièces au marché.
+- **Santé** : **Médecine** (40 000 points, après la méthode expérimentale)
+  débloque le **dispensaire** (40 bois, 80 pierre, 10 fer, 10 outils) : 500
+  habitants soignés, 10 pièces d'entretien par jour.
+- **Ordre** : **poste de garde** (30 bois, 50 pierre, 10 fer) : 400 habitants
+  sous la garde, 6 pièces d'entretien par jour. Sans ordre, jusqu'à 30 % des
+  impôts se perdent (fraude, vols).
+- Chaque besoin manquant réduit la satisfaction jusqu'à −10 %. Trésor vide :
+  universités, dispensaires et postes de garde s'arrêtent tous.
+- **Épidémie** (événement de la ville, automne et hiver) : emporte jusqu'à 8 %
+  des habitants, d'autant moins que les dispensaires en soignent.
+- Bandeau (« Manque : biens, soins, ordre ») et détail au survol, panneau
+  Main-d'œuvre, statistiques ; jalon « Ville bien tenue ».
+
+### V11 (partie 5) : fin du palier 4 — retenues, fioul, capacité des camions, cartographes
+
+- **Retenue des barrages** : à la fin du chantier, la rivière en amont du
+  barrage (sans redescendre sous la plus haute de ses tuiles voisines) devient
+  un lac, puis les rives les plus basses autour, jusqu'à 8 tuiles du
+  territoire. Zones, routes, voies et lignes noyées disparaissent ; les
+  bâtiments restent hors de l'eau.
+- **Centrale au fioul** (après le moteur à explosion ; 40 pierre, 40 fer, 10
+  outils, 15 cuivre) : 20 kW pour 13,3 carburant/j à plein régime. Elle
+  complète après les barrages et les centrales au charbon.
+- **Capacité des camions** : un dépôt a 5 camions de 20 porteurs, soit la
+  production de 100 travailleurs. Les camions desservent d'abord les tuiles
+  zonées qu'ils rapprochent le plus ; les autres gardent la portée des
+  charrettes. Panneau Main-d'œuvre, fiche du dépôt et fiche de la tuile
+  (« camions ») indiquent la desserte.
+- **Cartographes** : à la ville, les expéditions voient à 5 tuiles au lieu de 3.
+
 ### Ports : pêche au large, navires et transport par l'eau
 
 - **Pêche** : au village, à une tuile du rivage au plus.

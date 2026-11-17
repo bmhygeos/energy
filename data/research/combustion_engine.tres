@@ -10,4 +10,4 @@ description = "Le carburant brûle dans le cylindre : un moteur léger, assez pe
 tier = 4
 cost = 50000.0
 prerequisites = Array[StringName]([&"refining"])
-effect = "Dépôt de camions : les routes reliées portent bien plus loin, contre du carburant."
+effect = "Dépôt de camions : les routes reliées portent bien plus loin, contre du carburant (100 travailleurs desservis par dépôt). Centrale au fioul : du courant à partir du carburant."

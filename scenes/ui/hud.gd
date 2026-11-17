@@ -282,6 +282,24 @@ func _refresh_stone() -> void:
 		_stone_label.tooltip_text += "\nCarburant : %d / %d (raffineries)\nÉclairage : %s /j%s" % [
 			roundi(stock.amount[fuel]), roundi(stock.capacity[fuel]), Format.decimal(GameState.light_need()),
 			"\nÉclairage manquant : satisfaction réduite." if dark else ""]
+	# Ville : biens variés, soins et ordre.
+	if GameState.tier.level >= GameState.SERVICES_TIER:
+		var goods := Stockpile.Good.GOODS
+		var population := GameState.population
+		var lacking := PackedStringArray()
+		if population.goods_coverage < 1.0:
+			lacking.append("biens")
+		if population.health_coverage < 1.0:
+			lacking.append("soins")
+		if population.order_coverage < 1.0:
+			lacking.append("ordre")
+		if not lacking.is_empty():
+			_stone_label.text += " · Manque : " + ", ".join(lacking)
+			_stone_label.add_theme_color_override("font_color", WARNING_COLOR)
+		_stone_label.tooltip_text += "\nBiens : %d / %d (ateliers d'artisans) · usure %s /j\nSoins : %d %% des habitants (dispensaires)\nOrdre : %d %% des habitants (postes de garde)%s" % [
+			roundi(stock.amount[goods]), roundi(stock.capacity[goods]), Format.decimal(GameState.goods_need()),
+			roundi(GameState.health_coverage() * 100.0), roundi(GameState.order_coverage() * 100.0),
+			"\nBiens, soins ou ordre manquants : satisfaction réduite (et impôts sans ordre)." if not lacking.is_empty() else ""]
 
 
 ## Bouton du trésor (à partir du bourg) : pièces ; impôts et commerce

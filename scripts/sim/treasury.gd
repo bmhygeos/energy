@@ -14,9 +14,11 @@ const TAX_MOOD: PackedFloat32Array = [1.0, 1.0, 0.95, 0.85]
 ## satisfaction.
 const TAX_MIN_SATISFACTION_FACTOR := 0.5
 const DEFAULT_TAX := 1
+## Part des impôts perdue quand l'ordre manque tout à fait.
+const DISORDER_TAX_LOSS := 0.3
 ## Prix de vente d'une unité, en pièces (Stockpile.Good) ; à l'achat,
 ## BUY_MARKUP fois plus.
-const PRICES: PackedFloat32Array = [1.0, 1.0, 2.0, 4.0, 8.0, 3.0, 6.0, 1.0, 5.0, 10.0, 6.0]
+const PRICES: PackedFloat32Array = [1.0, 1.0, 2.0, 4.0, 8.0, 3.0, 6.0, 1.0, 5.0, 10.0, 6.0, 6.0]
 const BUY_MARKUP := 1.5
 ## Surplus vendus automatiquement : ce qui dépasse cette part de la capacité.
 const AUTO_SELL_RATIO := 0.75
@@ -51,15 +53,18 @@ static func buy_price(good: int) -> float:
 	return PRICES[good] * BUY_MARKUP
 
 
-## Impôts du jour pour [param count] habitants à [param satisfaction] (0–1).
-func taxes_for(count: int, satisfaction: float) -> float:
+## Impôts du jour pour [param count] habitants à [param satisfaction] (0–1),
+## avec l'ordre [param order] (0–1, à partir de la ville) : sans gardes, la
+## fraude et les vols en emportent jusqu'à DISORDER_TAX_LOSS.
+func taxes_for(count: int, satisfaction: float, order := 1.0) -> float:
 	var factor := lerpf(TAX_MIN_SATISFACTION_FACTOR, 1.0, clampf(satisfaction, 0.0, 1.0))
+	factor *= 1.0 - DISORDER_TAX_LOSS * (1.0 - clampf(order, 0.0, 1.0))
 	return count * TAX_PER_INHABITANT[tax_level] * factor
 
 
 ## Encaisse les impôts du jour ; renvoie le montant.
-func collect_taxes(count: int, satisfaction: float) -> float:
-	var amount := taxes_for(count, satisfaction)
+func collect_taxes(count: int, satisfaction: float, order := 1.0) -> float:
+	var amount := taxes_for(count, satisfaction, order)
 	money += amount
 	taxes_today += amount
 	return amount

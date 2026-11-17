@@ -58,7 +58,14 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var clothes_per_day := 0.0
 ## Raffinerie : carburant raffiné par jour (un pétrole chacun).
 @export var fuel_per_day := 0.0
-## Entretien en pièces par jour ; impayé, ses effets de recherche cessent.
+## Atelier d'artisans : biens variés fabriqués par jour (bois et fer :
+## GameState.GOODS_WOOD et GOODS_IRON chacun).
+@export var goods_per_day := 0.0
+## Dispensaire et poste de garde : habitants soignés, habitants surveillés.
+@export var health_coverage := 0
+@export var order_coverage := 0
+## Entretien en pièces par jour ; impayé, ses effets (recherche, soins,
+## gardes) cessent.
 @export var upkeep_per_day := 0.0
 ## Moulin : moud le grain (agriculture : bonus grain_bonus, le meilleur
 ## compte ; gâchis) ; puissance mécanique moyenne (W), à vent normal pour un
@@ -85,6 +92,11 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## charbon (PowerGrid.WATTS_PER_COAL) ; un barrage suit le débit des saisons.
 @export var power_watts := 0.0
 @export var burns_coal := false
+## Centrale au fioul : brûle du carburant (PowerGrid.WATTS_PER_FUEL), après
+## les centrales au charbon.
+@export var burns_fuel := false
+## Barrage : tuiles noyées en amont à la fin du chantier (la retenue).
+@export var flood_tiles := 0
 ## Dépôt de camions : les routes reliées portent plus loin, contre du carburant.
 @export var truck_depot := false
 ## Port de pêche : les zones de pêche vont jusqu'à ce nombre de tuiles du
@@ -170,6 +182,12 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Tisse %s vêtements par jour (une fibre chacun)" % Format.decimal(clothes_per_day))
 	if fuel_per_day > 0.0:
 		lines.append("Raffine %s carburant par jour (un pétrole chacun)" % Format.decimal(fuel_per_day))
+	if goods_per_day > 0.0:
+		lines.append("Fabrique %s biens par jour (bois et fer)" % Format.decimal(goods_per_day))
+	if health_coverage > 0:
+		lines.append("Soigne %d habitants" % health_coverage)
+	if order_coverage > 0:
+		lines.append("Garde l'ordre pour %d habitants (impôts et satisfaction)" % order_coverage)
 	if grinds_grain:
 		lines.append("Moud le grain : agriculture +%d %%, gâchis de la nourriture moitié moindre" % roundi(grain_bonus * 100.0))
 	if drive_bonus > 0.0:
@@ -183,11 +201,19 @@ func describe_effects() -> PackedStringArray:
 	if station:
 		lines.append("Gare : reliée par la voie à une gare du village, elle rapproche les tuiles autour d'elle")
 	if power_watts > 0.0:
-		lines.append("Électricité : %s%s" % [PowerMeter.format(power_watts), " pour %s charbon par jour à plein régime" % Format.decimal(
-			power_watts / PowerGrid.WATTS_PER_COAL) if burns_coal else " selon le débit, sans combustible"])
+		var fuel_text := " selon le débit, sans combustible"
+		if burns_coal:
+			fuel_text = " pour %s charbon par jour à plein régime" % Format.decimal(power_watts / PowerGrid.WATTS_PER_COAL)
+		elif burns_fuel:
+			fuel_text = " pour %s carburant par jour à plein régime (après le charbon)" % Format.decimal(power_watts / PowerGrid.WATTS_PER_FUEL)
+		lines.append("Électricité : %s%s" % [PowerMeter.format(power_watts), fuel_text])
 		lines.append("À %d tuiles du centre ou moins, ou raccordé par une ligne électrique" % Labor.FREE_DISTANCE)
+	if flood_tiles > 0:
+		lines.append("Retenue : noie jusqu'à %d tuiles en amont (rivière et rives basses ; zones, routes et voies effacées)" % flood_tiles)
 	if truck_depot:
 		lines.append("Camions : à côté d'une route reliée au village, %d tuiles de route sans pénalité, −0,5 %% par tuile ensuite" % RoadNetwork.TRUCK_FREE_TILES)
+		lines.append("%d camions : la production de %d travailleurs" % [RoadNetwork.TRUCKS_PER_DEPOT,
+			RoadNetwork.TRUCKS_PER_DEPOT * RoadNetwork.PORTERS_PER_TRUCK])
 		lines.append("Brûlent %s carburant par jour, plus %s par tuile de route" % [Format.decimal(RoadNetwork.FUEL_PER_DEPOT_PER_DAY),
 			Format.decimal(RoadNetwork.FUEL_PER_TILE_PER_DAY, 2)])
 	if fishing_reach > 0:
