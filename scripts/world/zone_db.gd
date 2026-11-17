@@ -13,6 +13,8 @@ const DEFS: Array[ZoneDef] = [
 	preload("res://data/zones/coal_mine.tres"),
 	preload("res://data/zones/copper_mine.tres"),
 	preload("res://data/zones/oil_well.tres"),
+	preload("res://data/zones/uranium_mine.tres"),
+	preload("res://data/zones/lithium_mine.tres"),
 ]
 
 

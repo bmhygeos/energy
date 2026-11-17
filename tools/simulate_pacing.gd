@@ -5,14 +5,15 @@ extends SceneTree
 ## carrière au village ; lin, mine de charbon, atelier de tissage,
 ## laboratoire et moulin à eau au bourg ; réservoir, puits de pétrole,
 ## raffinerie, université, ateliers d'artisans, dispensaires et postes de
-## garde à la ville) et affiche l'évolution mois par mois, puis les jours
+## garde à la ville ; écoles, théâtres, centrales et centres de calcul à la
+## cité-État) et affiche l'évolution mois par mois, puis les jours
 ## où chaque palier et chaque jalon sont atteints.
 ## Les camps d'abattage sont plafonnés et le bois en trop vendu au bourg ; sans
 ## place au centre, un bâtiment remplace une zone.
 ## Lancer : godot --headless -s res://tools/simulate_pacing.gd -- [graine] [années]
 
 const ZONE_ORDER: Array[StringName] = [&"pasture", &"agriculture", &"forestry", &"quarry", &"fishing", &"iron_mine",
-	&"coal_mine", &"oil_well"]
+	&"coal_mine", &"oil_well", &"uranium_mine", &"lithium_mine"]
 ## Bourg : carré de lin (demi-côté) au sud-est du village.
 const FLAX_RADIUS := 2
 const FLAX_OFFSET := Vector2i(10, 10)
@@ -144,7 +145,8 @@ func _play_day(day: int) -> void:
 	if _gs.tier.level >= 4:
 		if not _has(&"oil_tank"):
 			_build_near(&"oil_tank")
-		if _gs.research.is_done(&"refining") and _count(&"refinery") * BuildingDb.get_def(&"refinery").fuel_per_day < _gs.light_need():
+		if _gs.research.is_done(&"refining") and _count(&"refinery") * BuildingDb.get_def(&"refinery").fuel_per_day \
+				< _gs.light_need() + _gs.fuel_heat_need(GameDate.WINTER):
 			_build_near(&"refinery")
 		if _gs.research.is_done(&"university") and not _has(&"university") and _gs.treasury.money > 1000.0:
 			_build_clearing(&"university")
@@ -155,6 +157,20 @@ func _play_day(day: int) -> void:
 		if _gs.research.is_done(&"medicine") and _gs.health_coverage() < 1.0 \
 				and _count(&"dispensary") * BuildingDb.get_def(&"dispensary").health_coverage < _gs.population.count:
 			_build_anywhere(&"dispensary")
+	if _gs.tier.level >= 5:
+		for service: Array in [[&"school", _gs.education_coverage()], [&"theater", _gs.culture_coverage()]]:
+			if service[1] < 1.0:
+				_build_anywhere(service[0])
+		if _gs.grid.coverage < 1.0 and _gs.research.is_done(&"radioactivity") and not _has(&"nuclear_plant"):
+			_build_anywhere(&"nuclear_plant")
+		elif _gs.grid.coverage < 1.0 and _gs.research.is_done(&"wind_power"):
+			_build_anywhere(&"wind_turbine")
+		elif _gs.grid.coverage < 1.0 and _gs.research.is_done(&"conductivity"):
+			_build_anywhere(&"power_plant")
+		if _gs.research.is_done(&"electronics") and not _has(&"electronics_factory"):
+			_build_anywhere(&"electronics_factory")
+		if _gs.research.is_done(&"computing") and not _has(&"computer_center"):
+			_build_anywhere(&"computer_center")
 	if _gs.exploration.can_launch() and day % 10 == 0 and _gs.food_days() > 30.0:
 		var dir := DIRECTIONS[_expeditions % DIRECTIONS.size()]
 		var reach := 20 + 8 * (_expeditions / DIRECTIONS.size())
@@ -265,7 +281,8 @@ func _buy_shortages() -> void:
 	var stock: Stockpile = _gs.stockpile
 	var season := GameDate.season(_clock.tick)
 	var needs := {Stockpile.Good.FOOD: _gs.food_need(), Stockpile.Good.WOOD: _gs.wood_need(season), Stockpile.Good.CLOTHES: _gs.clothes_need(),
-		Stockpile.Good.TOOLS: _gs.tools_need(), Stockpile.Good.FUEL: _gs.light_need(), Stockpile.Good.GOODS: _gs.goods_need()}
+		Stockpile.Good.TOOLS: _gs.tools_need(), Stockpile.Good.FUEL: _gs.light_need() + _gs.fuel_heat_need(season), Stockpile.Good.GOODS: _gs.goods_need(),
+		Stockpile.Good.COAL: _gs.coal_heat_need(season)}
 	for good: int in needs:
 		var missing: float = needs[good] * BUY_BELOW_DAYS - stock.amount[good]
 		if missing > 0.0:

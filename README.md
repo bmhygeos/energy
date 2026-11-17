@@ -433,6 +433,58 @@ météo et interface conservés.
   (« camions ») indiquent la desserte.
 - **Cartographes** : à la ville, les expéditions voient à 5 tuiles au lieu de 3.
 
+### Chauffage : bois, charbon, fioul, électricité
+
+Le besoin de chauffage (0,2 bois par habitant et par jour, ×0,5 en été, ×2
+en hiver) se partage entre les sources du palier :
+
+| Palier | Bois | Charbon | Fioul (carburant) | Électricité |
+|---|---|---|---|---|
+| Hameau, Village | 100 % | — | — | — |
+| Bourg | 50 % | 50 % | — | — |
+| Ville | 10 % | 50 % | 40 % | — |
+| Cité-État | 5 % | 20 % | 15 % | 60 % |
+
+- Équivalences pour la chaleur d'un bois : 0,5 charbon, 0,36 carburant, 290 W
+  de courant pendant une journée (pompes à chaleur).
+- Une source qui manque (stock vide, réseau insuffisant la veille) est
+  remplacée par le charbon et le fioul disponibles, au prorata de leurs parts,
+  sinon par le bois.
+- Panneau Main-d'œuvre : parts du jour et quantités ; le chauffage électrique
+  s'ajoute à la demande du réseau.
+
+### V12 : palier 5 — cité-État
+
+- **Besoins** (à partir de 5 000 habitants) : **éducation** (**École** : 500
+  habitants, 8 pièces/j ; l'**Université** instruit aussi 1 000 habitants),
+  **culture** (**Théâtre** : 1 000 habitants, 15 pièces/j) et **électricité**
+  (part de la demande servie). Chacun réduit la satisfaction jusqu'à −10 %
+  (−15 % pour le courant).
+- **Uranium et lithium** : prospectés à la cité-État, 2 tuiles de chaque
+  garanties à 5–7 tuiles du centre ; **mines** (zones, 2 mineurs, 0,5/j
+  chacun). Stocks de base : 100 uranium, 200 lithium.
+- **Recherches** :
+  | Recherche | Prérequis | Points | Effet |
+  |---|---|---|---|
+  | Électronique | Conductivité | 120 000 | **Usine d'électronique** : 10 composants/j, un cuivre chacun |
+  | Informatique | Électronique, Enseignement supérieur | 150 000 | **Centre informatique** : recherche ×20 pour 2 000 habitants, 20 kW, 40 pièces/j |
+  | Intelligence artificielle | Informatique | 400 000 | **Datacenter** (près de l'eau) : ×100 pour 10 000 habitants, 200 kW (60 % aux pôles : refroidissement), 120 pièces/j |
+  | Radioactivité | Conductivité | 200 000 | **Centrale nucléaire** (près de l'eau) : 200 kW pour 2 uranium/j |
+  | Énergie éolienne | Conductivité | 100 000 | **Éolienne** : 15 kW par grand vent ; crêtes et côtes à plein rendement, ailleurs ×0,6 |
+  | Photovoltaïque | Électronique | 150 000 | **Champ solaire** : 30 kW en plein soleil, de jour, × cos(latitude) |
+  | Électrochimie du lithium | Électronique | 150 000 | **Batteries** : 500 kWh, le surplus du jour sert la nuit |
+  | Véhicule électrique | Électrochimie du lithium, Moteur à explosion | 150 000 | Camions au courant (30 % de l'énergie du carburant), plus de carburant |
+- **Réseau, bilan du jour** : l'eau et le vent servent jour et nuit, le
+  soleil le jour seulement (durée du jour selon la saison) ; les batteries
+  rendent la nuit le surplus du jour ; puis uranium, charbon et fioul. Centres
+  informatiques et datacenters s'arrêtent sous 90 % de la demande servie, les
+  camions électriques sous 50 %.
+- **Incident nucléaire** (événement, avec une centrale) : centrales nucléaires
+  à l'arrêt 15 jours.
+- Compteur de puissance : uranium extrait, éoliennes et solaire. Jalons
+  Cité-État, L'atome, Énergie verte (moitié du courant par l'eau, le vent et le
+  soleil), Intelligence artificielle.
+
 ### Ports : pêche au large, navires et transport par l'eau
 
 - **Pêche** : au village, à une tuile du rivage au plus.

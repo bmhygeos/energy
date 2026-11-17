@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"computer_center"
+display_name = "Centre informatique"
+description = "Armoires de calculateurs et opérateurs : la recherche s'automatise."
+category = 2
+tier = 5
+research = &"computing"
+size = Vector2i(2, 2)
+build_hours = 168
+stone_cost = 100
+iron_cost = 40
+copper_cost = 20
+electronics_cost = 60
+research_multiplier = 20.0
+research_coverage = 2000
+power_demand = 20000.0
+upkeep_per_day = 40.0
+color = Color(0.78, 0.8, 0.84, 1)
+roof_color = Color(0.25, 0.3, 0.4, 1)
+height = 22.0

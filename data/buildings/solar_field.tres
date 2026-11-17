@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"solar_field"
+display_name = "Champ solaire"
+description = "Rangées de panneaux photovoltaïques : la lumière du jour devient courant."
+category = 2
+tier = 5
+research = &"photovoltaics"
+size = Vector2i(2, 2)
+build_hours = 96
+iron_cost = 20
+copper_cost = 10
+electronics_cost = 20
+power_watts = 30000.0
+power_source = 5
+color = Color(0.2, 0.28, 0.45, 1)
+roof_color = Color(0.25, 0.35, 0.6, 1)
+height = 4.0

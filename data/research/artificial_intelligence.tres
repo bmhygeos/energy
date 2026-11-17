@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"artificial_intelligence"
+display_name = "Intelligence artificielle"
+description = "Réseaux de neurones entraînés sur des montagnes de données."
+tier = 5
+cost = 400000.0
+prerequisites = Array[StringName]([&"computing"])
+effect = "Datacenter : recherche ×100 pour 10 000 habitants ; gros consommateur de courant, refroidi par l'eau (moins aux latitudes froides)."

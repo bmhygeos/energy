@@ -3,10 +3,11 @@ extends TrackNetwork
 ## Réseau électrique de la ville : lignes en cuivre posées au glisser (tracé en
 ## L). Une centrale produit pour la ville si elle est à Labor.FREE_DISTANCE
 ## tuiles du centre ou moins, ou si elle touche une ligne reliée au village.
-## Les barrages passent d'abord (sans combustible, selon la saison), puis les
-## centrales complètent en brûlant du charbon, et enfin celles au fioul (le
-## carburant des raffineries). Le courant remplace le carburant
-## des lampes et fait tourner plus vite les ateliers. Pure donnée.
+## Bilan journalier (puissances moyennes) : l'eau et le vent servent jour et
+## nuit, le soleil de jour seulement ; les batteries rendent la nuit le surplus
+## du jour. Les centrales complètent ensuite : uranium, puis charbon, puis
+## fioul (le carburant des raffineries). Le courant remplace le carburant des
+## lampes et fait tourner plus vite les ateliers. Pure donnée.
 
 ## Cuivre par tuile de ligne.
 const COPPER_PER_TILE := 1.0
@@ -16,21 +17,46 @@ const WATTS_PER_INHABITANT := 20.0
 const WATTS_PER_COAL := 1000.0
 ## Puissance moyenne d'un carburant par jour (420 MJ à 30 % de rendement).
 const WATTS_PER_FUEL := 1500.0
+## Puissance moyenne d'un uranium par jour (combustible enrichi).
+const WATTS_PER_URANIUM := 100000.0
 ## Forges, tissages et raffineries à pleine couverture : +INDUSTRY_BONUS.
 const INDUSTRY_BONUS := 0.25
 ## Débit des rivières par saison (printemps, été, automne, hiver).
 const HYDRO_SEASON: PackedFloat32Array = [1.3, 0.7, 1.0, 0.8]
+## Éolienne à l'abri (ni crête, ni côte) : part du rendement.
+const SHELTERED_WIND := 0.6
+## Ensoleillement minimal (hautes latitudes) : part de celui de l'équateur.
+const MIN_SUN_LATITUDE := 0.2
 
 ## Tuiles de ligne reliées au village.
 var linked: Dictionary[Vector2i, bool] = {}
-## Centrales et barrages raccordés.
+## Centrales, barrages et batteries raccordés.
 var connected: Array[Building] = []
+## Conditions du jour, posées par GameState avant run_day : vent moyen
+## (Weather.wind_at), soleil moyen (Weather.sun_at, nuits comprises), part de
+## la journée éclairée, demande des machines (W, centres de calcul, camions
+## électriques) et centrales nucléaires à l'arrêt (incident).
+var wind := 0.0
+var sun := 0.0
+var day_share := 0.5
+var machine_demand := 0.0
+## Chauffage électrique demandé (W, pompes à chaleur de la cité-État).
+var heat_demand := 0.0
+var nuclear_stopped := false
 ## Bilan du dernier jour (W) ; coverage : part de la demande servie (0–1).
 var demand := 0.0
 var supplied := 0.0
+## Courant servi par source (W) : eau, vent, soleil (batteries comprises),
+## uranium.
 var hydro := 0.0
-## Carburant brûlé le dernier jour par les centrales au fioul.
+var wind_power := 0.0
+var solar := 0.0
+var nuclear := 0.0
+## Courant rendu la nuit par les batteries (W).
+var stored := 0.0
+## Combustibles brûlés le dernier jour.
 var fuel_burnt := 0.0
+var uranium_burnt := 0.0
 var coverage := 0.0
 
 
@@ -76,34 +102,99 @@ func feeds_city(b: Building) -> bool:
 	return false
 
 
-## Puissance que le réseau peut fournir pendant [param season] (W).
+## Facteur de site d'une éolienne : crêtes (collines, montagnes) et côtes à
+## plein rendement.
+func wind_site(b: Building) -> float:
+	for cell in b.cells:
+		var t := map.get_terrain(cell)
+		if t == TerrainDef.Type.HILL or t == TerrainDef.Type.MOUNTAIN or map.is_coastal(cell):
+			return 1.0
+	return SHELTERED_WIND
+
+
+## Ensoleillement selon la latitude de [param b] (1 à l'équateur).
+func sun_site(b: Building) -> float:
+	return maxf(MIN_SUN_LATITUDE, cos(deg_to_rad(map.latitude(map.wrap_cell(b.anchor).y))))
+
+
+## Puissance moyenne de [param b] aujourd'hui (W), selon sa source (pour les
+## centrales à combustible : à plein régime).
+func output_of(b: Building, season: int) -> float:
+	match b.def.power_source:
+		BuildingDef.PowerSource.HYDRO:
+			return b.def.power_watts * HYDRO_SEASON[season]
+		BuildingDef.PowerSource.WIND:
+			return b.def.power_watts * wind * wind_site(b)
+		BuildingDef.PowerSource.SOLAR:
+			return b.def.power_watts * sun * sun_site(b)
+		BuildingDef.PowerSource.NUCLEAR:
+			return 0.0 if nuclear_stopped else b.def.power_watts
+	return b.def.power_watts
+
+
+## Puissance que le réseau peut fournir pendant [param season] (W), aux
+## conditions du jour.
 func capacity(season: int) -> float:
 	var total := 0.0
 	for b in connected:
-		total += b.def.power_watts * (1.0 if b.def.burns_coal or b.def.burns_fuel else HYDRO_SEASON[season])
+		total += output_of(b, season)
 	return total
 
 
-## Bilan du jour pour [param count] habitants : barrages d'abord, puis
-## centrales au charbon dans la limite de [param coal], puis au fioul dans la
-## limite de [param fuel] (brûlé : fuel_burnt) ; renvoie le charbon brûlé.
-func run_day(count: int, season: int, coal: float, fuel := 0.0) -> float:
-	demand = count * WATTS_PER_INHABITANT
+## Bilan du jour pour [param count] habitants pendant [param season] : eau et
+## vent, soleil de jour, batteries, puis uranium, charbon et fioul dans la
+## limite des stocks [param uranium], [param coal] et [param fuel] (brûlés :
+## uranium_burnt, fuel_burnt) ; renvoie le charbon brûlé.
+func run_day(count: int, season: int, coal: float, fuel := 0.0, uranium := 0.0) -> float:
+	demand = count * WATTS_PER_INHABITANT + machine_demand + heat_demand
 	var water := 0.0
+	var air := 0.0
+	var sunlight := 0.0
 	var thermal := 0.0
 	var oil := 0.0
+	var atom := 0.0
+	var battery := 0.0
 	for b in connected:
-		if b.def.burns_coal:
-			thermal += b.def.power_watts
-		elif b.def.burns_fuel:
-			oil += b.def.power_watts
-		else:
-			water += b.def.power_watts * HYDRO_SEASON[season]
-	hydro = minf(water, demand)
-	var burnt := minf(minf(demand - hydro, thermal), coal * WATTS_PER_COAL)
-	var oil_burnt := minf(minf(demand - hydro - burnt, oil), fuel * WATTS_PER_FUEL)
+		var w := output_of(b, season)
+		match b.def.power_source:
+			BuildingDef.PowerSource.HYDRO:
+				water += w
+			BuildingDef.PowerSource.WIND:
+				air += w
+			BuildingDef.PowerSource.SOLAR:
+				sunlight += w
+			BuildingDef.PowerSource.COAL:
+				thermal += w
+			BuildingDef.PowerSource.FUEL:
+				oil += w
+			BuildingDef.PowerSource.NUCLEAR:
+				atom += w
+		battery += b.def.storage_kwh * 1000.0 / GameDate.HOURS_PER_DAY
+	# Jour et nuit : l'eau et le vent servent les deux, le soleil le jour seul.
+	var share := clampf(day_share, 0.0, 1.0)
+	var steady := water + air
+	var day_need := demand * share
+	var night_need := demand - day_need
+	var day_served := minf(day_need, steady * share + sunlight)
+	var night_served := minf(night_need, steady * (1.0 - share))
+	var surplus := steady * share + sunlight - day_served
+	stored = minf(minf(surplus, battery), night_need - night_served)
+	night_served += stored
+	var green := day_served + night_served
+	# Parts servies par source, au prorata de la production.
+	var produced := steady + sunlight
+	hydro = green * water / produced if produced > 0.0 else 0.0
+	wind_power = green * air / produced if produced > 0.0 else 0.0
+	solar = green - hydro - wind_power
+	var left := demand - green
+	nuclear = minf(minf(left, atom), uranium * WATTS_PER_URANIUM)
+	uranium_burnt = nuclear / WATTS_PER_URANIUM
+	left -= nuclear
+	var burnt := minf(minf(left, thermal), coal * WATTS_PER_COAL)
+	left -= burnt
+	var oil_burnt := minf(minf(left, oil), fuel * WATTS_PER_FUEL)
 	fuel_burnt = oil_burnt / WATTS_PER_FUEL
-	supplied = hydro + burnt + oil_burnt
+	supplied = green + nuclear + burnt + oil_burnt
 	coverage = supplied / demand if demand > 0.0 else 0.0
 	return burnt / WATTS_PER_COAL
 

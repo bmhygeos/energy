@@ -130,6 +130,12 @@ func _refresh() -> void:
 		Format.decimal(GameState.wood_need(season)), {GameDate.SUMMER: " (été)", GameDate.WINTER: " (hiver)"}.get(season, "")]
 	if GameState.coal_heat_need(season) > 0.0:
 		_needs.text += "  ·  charbon %s /j (chauffage)" % Format.decimal(GameState.coal_heat_need(season))
+	if GameState.fuel_heat_need(season) > 0.0:
+		_needs.text += "  ·  fioul %s /j (chauffage)" % Format.decimal(GameState.fuel_heat_need(season))
+	var mix := GameState.heat_mix()
+	if mix[GameState.Heat.WOOD] < 1.0:
+		_needs.text += "  ·  chauffage : bois %d %%, charbon %d %%, fioul %d %%, courant %d %%" % [roundi(mix[0] * 100.0),
+			roundi(mix[1] * 100.0), roundi(mix[2] * 100.0), roundi(mix[3] * 100.0)]
 	if GameState.clothes_need() > 0.0:
 		_needs.text += "  ·  vêtements %s /j" % Format.decimal(GameState.clothes_need())
 	if GameState.light_need() > 0.0:
@@ -137,10 +143,25 @@ func _refresh() -> void:
 	if GameState.goods_need() > 0.0:
 		_needs.text += "  ·  biens %s /j  ·  soins %d %%  ·  ordre %d %%" % [Format.decimal(GameState.goods_need()),
 			roundi(GameState.health_coverage() * 100.0), roundi(GameState.order_coverage() * 100.0)]
+	if GameState.tier.level >= GameState.CITY_STATE_TIER:
+		_needs.text += "  ·  éducation %d %%  ·  culture %d %%" % [roundi(GameState.education_coverage() * 100.0),
+			roundi(GameState.culture_coverage() * 100.0)]
 	var grid := GameState.grid
 	if not grid.connected.is_empty():
 		_needs.text += "\nÉlectricité : %s sur %s demandés (%d %%)  ·  réseau %s" % [PowerMeter.format(grid.supplied),
 			PowerMeter.format(grid.demand), roundi(grid.coverage * 100.0), PowerMeter.format(grid.capacity(season))]
+		var sources := PackedStringArray()
+		for part: Array in [["eau", grid.hydro], ["vent", grid.wind_power], ["soleil", grid.solar], ["uranium", grid.nuclear]]:
+			if part[1] > 0.0:
+				sources.append("%s %s" % [part[0], PowerMeter.format(part[1])])
+		if grid.stored > 0.0:
+			sources.append("batteries la nuit %s" % PowerMeter.format(grid.stored))
+		if grid.heat_demand > 0.0:
+			sources.append("chauffage %s" % PowerMeter.format(grid.heat_demand))
+		if grid.machine_demand > 0.0:
+			sources.append("machines %s%s" % [PowerMeter.format(grid.machine_demand), "" if GameState.machines_powered() else " (à l'arrêt)"])
+		if not sources.is_empty():
+			_needs.text += "  ·  " + ", ".join(sources)
 	var draft := GameState.draft
 	if draft.capacity > 0 or draft.count() > 0:
 		_needs.text += "\nChevaux %d / %d (écuries)  ·  attelés %d  ·  en expédition %d  ·  fourrage %s /j" % [
@@ -152,9 +173,10 @@ func _refresh() -> void:
 			Format.decimal(rails.coal_need()), "" if rails.running else "  ·  à l'arrêt (plus de charbon)"]
 	var roads := GameState.roads
 	if not roads.served_depots.is_empty():
-		_needs.text += "\nCamions : %d dépôt%s  ·  %d / %d travailleurs desservis  ·  carburant %s /j%s" % [roads.served_depots.size(),
+		_needs.text += "\nCamions : %d dépôt%s  ·  %d / %d travailleurs desservis  ·  %s%s" % [roads.served_depots.size(),
 			"s" if roads.served_depots.size() > 1 else "", roads.truck_load, roads.capacity(),
-			Format.decimal(roads.fuel_need()), "" if roads.running else "  ·  à l'arrêt (plus de carburant)"]
+			("courant %s" % PowerMeter.format(roads.electric_watts())) if roads.electric else "carburant %s /j" % Format.decimal(roads.fuel_need()),
+			"" if roads.running else "  ·  à l'arrêt"]
 	if GameState.steam_coal_need() > 0.0:
 		_needs.text += "\nMachines à vapeur : charbon %s /j%s" % [Format.decimal(GameState.steam_coal_need()),
 			"" if GameState.steam_running else "  ·  à l'arrêt"]

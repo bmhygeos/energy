@@ -43,6 +43,13 @@ const MIN_COPPER := 2
 const COPPER_MIN_DISTANCE := 4
 const COPPER_RADIUS := 6
 const COPPER_AMOUNT := 20000.0
+## Tuiles d'uranium et de lithium (mines de la cité-État) à
+## ATOM_MIN_DISTANCE–ATOM_RADIUS tuiles du centre, de ATOM_AMOUNT chacune.
+const MIN_URANIUM := 2
+const MIN_LITHIUM := 2
+const ATOM_MIN_DISTANCE := 5
+const ATOM_RADIUS := 7
+const ATOM_AMOUNT := 2000.0
 ## Tuiles de pierre (carrières hors des collines) à STONE_DEPOSIT_MIN_DISTANCE–
 ## STONE_DEPOSIT_RADIUS tuiles du centre, avec STONE_DEPOSIT_AMOUNT de pierre.
 const MIN_STONE_DEPOSIT := 6
@@ -114,6 +121,8 @@ static func ensure(map: WorldMap, rect: Rect2i) -> Array[Vector2i]:
 			+ _ensure_deposit(map, rect, WorldMap.Deposit.COAL, MIN_COAL, COAL_MIN_DISTANCE, COAL_RADIUS, COAL_AMOUNT) \
 			+ _ensure_deposit(map, rect, WorldMap.Deposit.OIL, MIN_OIL, OIL_MIN_DISTANCE, OIL_RADIUS, OIL_AMOUNT) \
 			+ _ensure_deposit(map, rect, WorldMap.Deposit.COPPER, MIN_COPPER, COPPER_MIN_DISTANCE, COPPER_RADIUS, COPPER_AMOUNT) \
+			+ _ensure_deposit(map, rect, WorldMap.Deposit.URANIUM, MIN_URANIUM, ATOM_MIN_DISTANCE, ATOM_RADIUS, ATOM_AMOUNT) \
+			+ _ensure_deposit(map, rect, WorldMap.Deposit.LITHIUM, MIN_LITHIUM, ATOM_MIN_DISTANCE, ATOM_RADIUS, ATOM_AMOUNT) \
 			+ _ensure_deposit(map, rect, WorldMap.Deposit.STONE, MIN_STONE_DEPOSIT, STONE_DEPOSIT_MIN_DISTANCE, STONE_DEPOSIT_RADIUS,
 				STONE_DEPOSIT_AMOUNT):
 		if c not in changed:

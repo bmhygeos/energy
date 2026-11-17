@@ -59,6 +59,8 @@ func _initialize() -> void:
 	_test_roads_game()
 	_test_city_game()
 	_test_services_game()
+	_test_city_state_game()
+	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
 	_test_ships()
@@ -1005,7 +1007,7 @@ func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
 	stock.amount = Stockpile.zeros()
-	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0, 100.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -1470,7 +1472,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 22 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 26 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1577,8 +1579,8 @@ func _test_bourg_game() -> void:
 	gs.tier.level = 3
 	stock.amount[Stockpile.Good.COAL] = 50.0
 	var heat: float = gs.population.wood_need(season)
-	_check(is_equal_approx(gs.coal_heat_need(season), heat * gs.COAL_HEAT_SHARE / gs.COAL_WOOD_EQUIVALENT)
-		and is_equal_approx(gs.wood_need(season), heat * (1.0 - gs.COAL_HEAT_SHARE)), "bourg : le charbon chauffe la moitié")
+	_check(is_equal_approx(gs.coal_heat_need(season), heat * 0.5 / gs.COAL_WOOD_EQUIVALENT)
+		and is_equal_approx(gs.wood_need(season), heat * 0.5), "bourg : le charbon chauffe la moitié")
 	stock.amount[Stockpile.Good.WOOD] = 100.0
 	gs._consume(GameDate.WINTER * GameDate.DAYS_PER_SEASON * GameDate.HOURS_PER_DAY)
 	_check(is_equal_approx(stock.amount[Stockpile.Good.WOOD], 100.0 - heat / 2.0 / GameDate.HOURS_PER_DAY)
@@ -1813,6 +1815,157 @@ func _test_services_game() -> void:
 	gs.apply_event(CityEvents.Kind.EPIDEMIC)
 	_check(gs.population.count == 1000 - floori(1000 * CityEvents.EPIDEMIC_DEATHS * 0.5), "épidémie : moitié moins de morts avec des soins")
 	gs.new_game(4242)
+
+
+func _test_green_grid() -> void:
+	var flat := _sea_map()
+	var map: WorldMap = flat[0]
+	var territory: Territory = flat[1]
+	var registry := BuildingRegistry.new(map, territory)
+	var grid := PowerGrid.new(map, territory, registry, Vector2i(25, 10))
+	registry.lines = grid
+	var place := func(id: StringName, anchor: Vector2i) -> Building:
+		return registry.place(registry.check_placement(BuildingDb.get_def(id), anchor))
+	var coast: Building = place.call(&"wind_turbine", Vector2i(20, 10))
+	var inland: Building = place.call(&"wind_turbine", Vector2i(28, 10))
+	var solar: Building = place.call(&"solar_field", Vector2i(27, 14))
+	var battery: Building = place.call(&"battery", Vector2i(24, 7))
+	_check(coast != null and inland != null and solar != null and battery != null, "éoliennes, champ solaire et batteries posés")
+	_check(grid.wind_site(coast) == 1.0 and grid.wind_site(inland) == PowerGrid.SHELTERED_WIND, "éolienne : plein vent sur la côte")
+	var plants: Array[Building] = [coast, inland, solar]
+	grid.refresh(plants)
+	grid.wind = 0.0
+	grid.sun = 0.5
+	grid.day_share = 0.5
+	# 1 000 habitants : 20 kW, 10 kW de jour ; soleil 15 kW × latitude.
+	var sun_watts := 30000.0 * grid.sun * grid.sun_site(solar)
+	grid.run_day(1000, GameDate.SUMMER, 0.0)
+	_check(is_equal_approx(grid.solar, minf(10000.0, sun_watts)) and is_equal_approx(grid.coverage, grid.solar / 20000.0),
+		"soleil : de jour seulement (%s)" % grid.coverage)
+	plants.append(battery)
+	grid.refresh(plants)
+	grid.sun = 2.0
+	sun_watts = 30000.0 * grid.sun * grid.sun_site(solar)
+	grid.run_day(1000, GameDate.SUMMER, 0.0)
+	var night := minf(minf(sun_watts - 10000.0, 500.0 * 1000.0 / 24.0), 10000.0)
+	_check(is_equal_approx(grid.stored, night) and is_equal_approx(grid.supplied, 10000.0 + night), "batteries : le surplus du jour sert la nuit")
+	grid.sun = 0.0
+	grid.wind = 1.0
+	grid.run_day(1000, GameDate.SUMMER, 0.0)
+	_check(is_equal_approx(grid.wind_power, 20000.0) and is_equal_approx(grid.coverage, 1.0), "vent : jour et nuit")
+	var plant: Building = place.call(&"nuclear_plant", Vector2i(21, 13))
+	_check(plant != null, "centrale nucléaire au bord de l'eau")
+	plants = [plant]
+	grid.refresh(plants)
+	grid.machine_demand = 50000.0
+	grid.run_day(5000, GameDate.SUMMER, 0.0, 0.0, 1.0)
+	_check(is_equal_approx(grid.demand, 150000.0) and is_equal_approx(grid.nuclear, 100000.0)
+		and is_equal_approx(grid.uranium_burnt, 1.0), "nucléaire : limité par l'uranium ; machines dans la demande")
+	grid.nuclear_stopped = true
+	grid.run_day(5000, GameDate.SUMMER, 0.0, 0.0, 10.0)
+	_check(grid.nuclear == 0.0, "incident : centrale à l'arrêt")
+
+
+func _test_city_state_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var site := StartSite.territory_rect(gs.home)
+	var found := {WorldMap.Deposit.URANIUM: 0, WorldMap.Deposit.LITHIUM: 0}
+	for y in range(site.position.y, site.end.y):
+		for x in range(site.position.x, site.end.x):
+			var d: int = gs.world_map.get_deposit(Vector2i(x, y))
+			if found.has(d):
+				found[d] += 1
+	_check(found[WorldMap.Deposit.URANIUM] >= StartSite.MIN_URANIUM and found[WorldMap.Deposit.LITHIUM] >= StartSite.MIN_LITHIUM,
+		"uranium et lithium près du village (%s)" % found)
+	gs.tier.level = 4
+	gs.population.count = 1000
+	_check(gs.education_coverage() == 1.0 and gs.culture_coverage() == 1.0 and gs.electricity_coverage() == 1.0,
+		"avant la cité-État : ni écoles, ni culture, ni courant demandés")
+	gs.tier.level = 5
+	_check(gs.education_coverage() == 0.0 and gs.culture_coverage() == 0.0 and gs.electricity_coverage() == 0.0,
+		"cité-État : éducation, culture et courant demandés")
+	_place_running(gs, BuildingDb.get_def(&"school"))
+	_place_running(gs, BuildingDb.get_def(&"theater"))
+	_check(is_equal_approx(gs.education_coverage(), 0.5) and is_equal_approx(gs.culture_coverage(), 1.0), "école et théâtre")
+	var p := Population.new()
+	p.end_day(1.0, 1.0, 100, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0)
+	_check(is_equal_approx(p.satisfaction, (1.0 - Population.EDUCATION_WEIGHT) * (1.0 - Population.CULTURE_WEIGHT)
+		* (1.0 - Population.ELECTRICITY_WEIGHT)), "sans école, culture ni courant : satisfaction réduite")
+	var stock: Stockpile = gs.stockpile
+	stock.amount[Stockpile.Good.COPPER] = 4.0
+	var factory := _place_running(gs, BuildingDb.get_def(&"electronics_factory"))
+	gs._run_electronics()
+	_check(factory != null and is_equal_approx(stock.amount[Stockpile.Good.ELECTRONICS], 4.0)
+		and stock.amount[Stockpile.Good.COPPER] == 0.0, "usine : cuivre → électronique")
+	var center := _place_running(gs, BuildingDb.get_def(&"computer_center"))
+	gs.grid.coverage = 1.0
+	var powered: float = gs.research_per_day()
+	gs.grid.coverage = 0.0
+	_check(center != null and gs.machine_demand() >= 20000.0 and gs.research_per_day() < powered,
+		"centre informatique : sans courant, à l'arrêt")
+	_check(gs.roads.electric_watts() == 0.0, "pas de camion électrique sans recherche")
+	gs.research._done[&"electric_vehicle"] = true
+	gs._refresh_capacities()
+	var depot := _place_running(gs, BuildingDb.get_def(&"truck_depot"))
+	var road: Array[Vector2i] = []
+	for cell in depot.cells:
+		for o in WorldMap.NEIGHBORS_4:
+			if road.is_empty() and not gs.buildings.building_at(cell + o):
+				road.append(cell + o)
+	gs.roads.add_cells(road)
+	gs._refresh_capacities()
+	_check(gs.roads.electric and gs.roads.fuel_need() == 0.0 and gs.roads.electric_watts() > 0.0,
+		"véhicules électriques : du courant au lieu du carburant")
+	var e := CityEvents.new(3)
+	var seen := [false, false]
+	for k in 20000:
+		for n in 2:
+			e._gap = 0
+			if e.roll(GameDate.SUMMER, 5, n == 1) == CityEvents.Kind.NUCLEAR_INCIDENT:
+				seen[n] = true
+			e.active.clear()
+	_check(not seen[0] and seen[1], "incident nucléaire : seulement avec une centrale")
+	_test_heat_mix(gs)
+	gs.new_game(4242)
+
+
+## Chauffage de la ville et de la cité-État : parts, remplacements, courant.
+func _test_heat_mix(gs: Node) -> void:
+	var stock: Stockpile = gs.stockpile
+	var winter := GameDate.WINTER
+	var heat: float = gs.heat_need(winter)
+	gs.tier.level = 4
+	stock.amount[Stockpile.Good.COAL] = 1000.0
+	stock.amount[Stockpile.Good.FUEL] = 1000.0
+	_check(is_equal_approx(gs.wood_need(winter), heat * 0.1) and is_equal_approx(gs.coal_heat_need(winter), heat * 0.5 / 2.0)
+		and is_equal_approx(gs.fuel_heat_need(winter), heat * 0.4 / gs.FUEL_WOOD_EQUIVALENT), "ville : bois 10 %, charbon 50 %, fioul 40 %")
+	stock.amount[Stockpile.Good.FUEL] = 0.0
+	_check(is_equal_approx(gs.coal_heat_need(winter), heat * 0.9 / 2.0) and is_equal_approx(gs.wood_need(winter), heat * 0.1),
+		"sans fioul : le charbon prend sa part")
+	stock.amount[Stockpile.Good.COAL] = 0.0
+	_check(is_equal_approx(gs.wood_need(winter), heat), "sans charbon ni fioul : tout au bois")
+	gs.tier.level = 5
+	stock.amount[Stockpile.Good.COAL] = 1000.0
+	stock.amount[Stockpile.Good.FUEL] = 1000.0
+	_place_running(gs, BuildingDb.get_def(&"power_plant"))
+	gs._refresh_grid()
+	gs.grid.coverage = 1.0
+	_check(not gs.grid.connected.is_empty(), "réseau raccordé pour le chauffage")
+	var mix: PackedFloat32Array = gs.heat_mix()
+	_check(is_equal_approx(mix[0], 0.05) and is_equal_approx(mix[1], 0.2) and is_equal_approx(mix[2], 0.15)
+		and is_equal_approx(mix[3], 0.6) and is_equal_approx(gs.electric_heat_watts(winter), heat * 0.6 * gs.WATTS_PER_HEAT_WOOD),
+		"cité-État : bois 5 %, charbon 20 %, fioul 15 %, courant 60 %")
+	gs.grid.coverage = 0.5
+	mix = gs.heat_mix()
+	_check(is_equal_approx(mix[3], 0.3) and is_equal_approx(mix[1], 0.2 + 0.3 * 0.2 / 0.35)
+		and is_equal_approx(mix[0], 0.05), "courant à moitié : charbon et fioul compensent")
+	stock.amount[Stockpile.Good.WOOD] = 1000.0
+	gs._needed_today = Stockpile.zeros()
+	gs._consumed_today = Stockpile.zeros()
+	gs._consume(winter * GameDate.DAYS_PER_SEASON * GameDate.HOURS_PER_DAY)
+	_check(is_equal_approx(gs._consumed_today[Stockpile.Good.WOOD], gs._needed_today[Stockpile.Good.WOOD]),
+		"chauffage de l'heure couvert par les quatre sources")
 
 
 func _test_city_events() -> void:

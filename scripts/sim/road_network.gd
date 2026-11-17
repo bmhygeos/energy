@@ -30,6 +30,10 @@ const FUEL_PER_DEPOT_PER_DAY := 2.0
 const FUEL_PER_TILE_PER_DAY := 0.05
 ## Camions par dépôt, et travailleurs (porteurs) dont chacun transporte la
 ## production.
+## Véhicules électriques (cité-État, batteries au lithium) : plus de
+## carburant, mais du courant, EV_EFFICIENCY fois l'énergie utile du carburant
+## qu'ils auraient brûlé.
+const EV_EFFICIENCY := 0.3
 const TRUCKS_PER_DEPOT := 5
 const PORTERS_PER_TRUCK := 20
 
@@ -37,8 +41,10 @@ const PORTERS_PER_TRUCK := 20
 var lengths: Dictionary[Vector2i, int] = {}
 ## Dépôts terminés (posés par GameState avant refresh).
 var depots: Array[Building] = []
-## Les camions roulent (assez de carburant la veille).
+## Les camions roulent (assez de carburant ou de courant la veille).
 var running := true
+## Véhicules électriques : les camions roulent au courant.
+var electric := false
 ## Dépôts qui touchent une route reliée.
 var served_depots: Array[Building] = []
 ## Tuiles desservies → distance au village par la route, en charrette et en
@@ -141,9 +147,21 @@ func has_trucks() -> bool:
 
 ## Carburant brûlé par jour par les camions (0 : aucun dépôt desservi).
 func fuel_need() -> float:
-	if served_depots.is_empty():
+	if served_depots.is_empty() or electric:
 		return 0.0
+	return _energy_need()
+
+
+## Carburant qu'il faudrait aux camions (moteurs à explosion).
+func _energy_need() -> float:
 	return FUEL_PER_DEPOT_PER_DAY * served_depots.size() + FUEL_PER_TILE_PER_DAY * lengths.size()
+
+
+## Courant demandé par les véhicules électriques (W ; 0 sans eux).
+func electric_watts() -> float:
+	if served_depots.is_empty() or not electric:
+		return 0.0
+	return _energy_need() * PowerGrid.WATTS_PER_FUEL * EV_EFFICIENCY
 
 
 ## Tuiles de marche équivalentes à [param length] tuiles de route (en camion :

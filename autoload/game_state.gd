@@ -22,14 +22,27 @@ const CHARCOAL_RESERVE_DAYS := 10.0
 const GEARS_WATER_BONUS := 1.15
 ## Pompe à eau : puits plus efficaces.
 const PUMP_WATER_BONUS := 1.5
-## Palier à partir duquel les habitants ont besoin de vêtements et se
-## chauffent aussi au charbon (bourg).
+## Palier à partir duquel les habitants ont besoin de vêtements (bourg).
 const CLOTHES_TIER := 3
-const COAL_HEAT_TIER := 3
-## Chauffage : part du bois remplaçable par le charbon, et bois remplacé par
-## unité de charbon (290 MJ contre 150 MJ).
-const COAL_HEAT_SHARE := 0.5
+## Chauffage : sources (HEAT_SHARES), parts du besoin par palier (bois,
+## charbon, fioul, électricité ; hameau → cité-État). Une source qui manque
+## (stock vide, réseau insuffisant) est remplacée par le charbon et le fioul
+## disponibles, au prorata de leurs parts, sinon par le bois.
+enum Heat { WOOD, COAL, FUEL, ELECTRICITY }
+const HEAT_SOURCES := 4
+const HEAT_SHARES: PackedFloat32Array = [
+	1.0, 0.0, 0.0, 0.0,
+	1.0, 0.0, 0.0, 0.0,
+	0.5, 0.5, 0.0, 0.0,
+	0.1, 0.5, 0.4, 0.0,
+	0.05, 0.2, 0.15, 0.6,
+]
+## Bois remplacé par unité de charbon (290 MJ contre 150 MJ) et de carburant
+## (420 MJ) ; courant (W pendant une journée) qui remplace un bois : pompes à
+## chaleur, trois fois l'énergie consommée.
 const COAL_WOOD_EQUIVALENT := 2.0
+const FUEL_WOOD_EQUIVALENT := 2.8
+const WATTS_PER_HEAT_WOOD := 290.0
 ## Coke : les forges brûlent du charbon (COAL_WOOD_EQUIVALENT fois moins que
 ## de bois) et fabriquent davantage.
 const COKE_FORGE_BONUS := 1.5
@@ -44,6 +57,21 @@ const LIGHT_TIER := 4
 ## Palier à partir duquel les habitants veulent des biens variés, des soins
 ## et de l'ordre (ville).
 const SERVICES_TIER := 4
+## Palier de la cité-État : éducation, culture et électricité deviennent des
+## besoins.
+const CITY_STATE_TIER := 5
+## Services publics : habitants couverts par les bâtiments.
+enum Service { HEALTH, ORDER, EDUCATION, CULTURE }
+## Usine d'électronique : cuivre par composant.
+const ELECTRONICS_COPPER := 1.0
+## Part de la demande d'électricité servie la veille au-dessous de laquelle
+## centres informatiques et datacenters s'arrêtent, et camions électriques
+## aussi.
+const POWERED_COVERAGE := 0.9
+const EV_MIN_COVERAGE := 0.5
+## Refroidissement des datacenters : part de leur consommation à l'équateur
+## gardée aux pôles (le froid refroidit gratuitement).
+const POLAR_COOLING := 0.6
 ## Atelier d'artisans : bois et fer par unité de biens.
 const GOODS_WOOD := 1.0
 const GOODS_IRON := 0.25
@@ -465,6 +493,7 @@ func _refresh_capacities() -> void:
 	treasury.trade_capacity = trade
 	draft.collar = research.is_done(&"harness_collar")
 	production.regrowth_factor = SYLVICULTURE_REGROWTH if research.is_done(&"sylviculture") else 1.0
+	roads.electric = research.is_done(&"electric_vehicle")
 
 
 ## Bonus des machines (moulin à eau ; machines à vapeur si alimentées).
@@ -509,18 +538,51 @@ func _refresh_trucks() -> void:
 func _refresh_grid() -> void:
 	var plants: Array[Building] = []
 	for b in buildings.all():
-		if b.is_complete() and b.def.power_watts > 0.0:
+		if b.is_complete() and (b.def.power_watts > 0.0 or b.def.storage_kwh > 0.0):
 			plants.append(b)
 	grid.refresh(plants)
 	EventBus.grid_changed.emit([] as Array[Vector2i])
 
 
-## Électricité du jour : barrages, puis centrales au charbon, puis au fioul.
-func _run_grid(season: int) -> void:
+## Électricité du jour [param day_tick] : vent et soleil moyens de la journée,
+## machines branchées, puis bilan (eau, vent, soleil, batteries, uranium,
+## charbon, fioul).
+func _run_grid(day_tick: int) -> void:
+	var season := GameDate.season(day_tick)
+	var first := day_tick - GameDate.hour_of_day(day_tick)
+	var wind := 0.0
+	var sun := 0.0
+	for h in GameDate.HOURS_PER_DAY:
+		wind += weather.wind_at(first + h)
+		sun += weather.sun_at(first + h)
+	grid.wind = wind / GameDate.HOURS_PER_DAY
+	grid.sun = sun / GameDate.HOURS_PER_DAY
+	grid.day_share = Weather.DAY_LENGTH[season] / GameDate.HOURS_PER_DAY
+	grid.machine_demand = machine_demand()
+	grid.heat_demand = electric_heat_watts(season)
+	grid.nuclear_stopped = events.is_active(CityEvents.Kind.NUCLEAR_INCIDENT)
 	var burnt := grid.run_day(population.count, season, stockpile.amount[Stockpile.Good.COAL],
-		stockpile.amount[Stockpile.Good.FUEL])
+		stockpile.amount[Stockpile.Good.FUEL], stockpile.amount[Stockpile.Good.URANIUM])
 	coal_burned_today += stockpile.take(Stockpile.Good.COAL, burnt)
 	stockpile.take(Stockpile.Good.FUEL, grid.fuel_burnt)
+	stockpile.take(Stockpile.Good.URANIUM, grid.uranium_burnt)
+
+
+## Courant demandé par les machines (W) : centres informatiques et datacenters
+## (moins aux latitudes froides pour ceux qu'il faut refroidir), camions
+## électriques.
+func machine_demand() -> float:
+	var total := roads.electric_watts()
+	var cooling := lerpf(POLAR_COOLING, 1.0, cos(deg_to_rad(world_map.latitude(home.y))))
+	for b in buildings.all():
+		if b.is_complete() and b.def.power_demand > 0.0:
+			total += b.def.power_demand * (cooling if b.def.needs_water_access else 1.0)
+	return total
+
+
+## Les machines électriques tournent (assez de courant la veille).
+func machines_powered() -> bool:
+	return grid.coverage >= POWERED_COVERAGE
 
 
 ## Retenue du barrage [param b] : la rivière en amont (tuiles de rivière qui
@@ -642,11 +704,16 @@ func _run_trains() -> void:
 func _run_trucks() -> void:
 	var need := roads.fuel_need()
 	var was := roads.running
-	roads.running = need <= 0.0 or stockpile.has(Stockpile.Good.FUEL, need)
+	if roads.electric:
+		# Véhicules électriques : ils roulent si le réseau les sert.
+		roads.running = roads.electric_watts() <= 0.0 or grid.coverage >= EV_MIN_COVERAGE
+	else:
+		roads.running = need <= 0.0 or stockpile.has(Stockpile.Good.FUEL, need)
 	if need > 0.0 and roads.running:
 		stockpile.take(Stockpile.Good.FUEL, need)
 	if was and not roads.running:
-		EventBus.notified.emit("Plus de carburant : les camions s'arrêtent")
+		EventBus.notified.emit("Plus de courant : les camions électriques s'arrêtent" if roads.electric
+			else "Plus de carburant : les camions s'arrêtent")
 	if was != roads.running:
 		roads.refresh()
 		EventBus.roads_changed.emit([] as Array[Vector2i])
@@ -977,30 +1044,73 @@ func _wear_goods() -> float:
 	return stockpile.take(Stockpile.Good.GOODS, need) / need
 
 
-## Habitants couverts par les bâtiments terminés et entretenus (dispensaires :
-## [param health] vrai ; postes de garde : faux).
-func service_capacity(health: bool) -> int:
+## Habitants couverts par [param service] : bâtiments terminés et entretenus
+## (dispensaires, postes de garde, écoles et universités, théâtres).
+func service_capacity(service: Service) -> int:
 	var total := 0
 	for b in buildings.all():
 		if b.is_complete() and (upkeep_paid or b.def.upkeep_per_day <= 0.0):
-			total += b.def.health_coverage if health else b.def.order_coverage
+			match service:
+				Service.HEALTH:
+					total += b.def.health_coverage
+				Service.ORDER:
+					total += b.def.order_coverage
+				Service.EDUCATION:
+					total += b.def.education_coverage
+				Service.CULTURE:
+					total += b.def.culture_coverage
 	return total
 
 
 ## Part des habitants soignés (à partir de la ville ; 1 avant).
 func health_coverage() -> float:
-	return _service_coverage(service_capacity(true))
+	return _service_coverage(Service.HEALTH, SERVICES_TIER)
 
 
 ## Part des habitants sous la garde des postes (à partir de la ville ; 1 avant).
 func order_coverage() -> float:
-	return _service_coverage(service_capacity(false))
+	return _service_coverage(Service.ORDER, SERVICES_TIER)
 
 
-func _service_coverage(capacity: int) -> float:
-	if tier.level < SERVICES_TIER or population.count == 0:
+## Part des habitants instruits, et qui ont accès à la culture (à partir de la
+## cité-État ; 1 avant).
+func education_coverage() -> float:
+	return _service_coverage(Service.EDUCATION, CITY_STATE_TIER)
+
+
+func culture_coverage() -> float:
+	return _service_coverage(Service.CULTURE, CITY_STATE_TIER)
+
+
+## Part de la demande d'électricité servie (besoin à partir de la cité-État ;
+## 1 avant).
+func electricity_coverage() -> float:
+	return grid.coverage if tier.level >= CITY_STATE_TIER else 1.0
+
+
+func _service_coverage(service: Service, from_tier: int) -> float:
+	if tier.level < from_tier or population.count == 0:
 		return 1.0
-	return minf(1.0, float(capacity) / population.count)
+	return minf(1.0, float(service_capacity(service)) / population.count)
+
+
+## Usines d'électronique : cuivre du jour transformé en composants, dans la
+## limite du stock.
+func _run_electronics() -> void:
+	var rate := 0.0
+	for b in buildings.all():
+		if b.is_complete():
+			rate += b.def.electronics_per_day
+	if rate <= 0.0:
+		return
+	rate *= grid.industry_factor()
+	var room := stockpile.capacity[Stockpile.Good.ELECTRONICS] - stockpile.amount[Stockpile.Good.ELECTRONICS]
+	var n := minf(minf(rate, room), stockpile.amount[Stockpile.Good.COPPER] / ELECTRONICS_COPPER)
+	if n <= 0.0:
+		return
+	stockpile.take(Stockpile.Good.COPPER, n * ELECTRONICS_COPPER)
+	stockpile.add(Stockpile.Good.ELECTRONICS, n)
+	production.produced_today[Stockpile.Good.ELECTRONICS] += n
 
 
 ## Éclairage voulu par jour, en carburant (à partir de la ville).
@@ -1038,7 +1148,7 @@ func _pay_upkeep() -> void:
 	var was := upkeep_paid
 	upkeep_paid = need <= 0.0 or treasury.pay_upkeep(need)
 	if was and not upkeep_paid:
-		EventBus.notified.emit("Trésor vide : universités, dispensaires et postes de garde à l'arrêt faute d'entretien")
+		EventBus.notified.emit("Trésor vide : universités, dispensaires, postes de garde, écoles et théâtres à l'arrêt faute d'entretien")
 
 
 ## Vêtements usés par jour (à partir du bourg).
@@ -1108,7 +1218,8 @@ func _pasture_quality() -> float:
 func research_per_day() -> float:
 	var boosts: Array[Vector2] = []
 	for b in buildings.all():
-		if b.is_complete() and b.def.research_coverage > 0 and (upkeep_paid or b.def.upkeep_per_day <= 0.0):
+		if b.is_complete() and b.def.research_coverage > 0 and (upkeep_paid or b.def.upkeep_per_day <= 0.0) \
+				and (b.def.power_demand <= 0.0 or machines_powered()):
 			boosts.append(Vector2(b.def.research_multiplier, b.def.research_coverage))
 	return Research.points_per_day(population.count, population.satisfaction, boosts)
 
@@ -1131,18 +1242,57 @@ func wood_days() -> float:
 	return stockpile.days_of(Stockpile.Good.WOOD, wood_need(GameDate.season(GameClock.tick)))
 
 
-## Charbon brûlé par jour pour le chauffage pendant la saison [param season]
-## (à partir du bourg, tant qu'il y en a en stock) : il remplace jusqu'à
-## COAL_HEAT_SHARE du bois.
+## Parts du chauffage (Heat) au palier atteint, d'après ce qui est
+## disponible : charbon et carburant en stock, courant servi la veille. La part
+## qui manque passe au charbon et au fioul disponibles (au prorata), sinon au
+## bois.
+func heat_mix() -> PackedFloat32Array:
+	var base := heat_shares()
+	var available := PackedFloat32Array([1.0,
+		1.0 if stockpile.amount[Stockpile.Good.COAL] > 0.0 else 0.0,
+		1.0 if stockpile.amount[Stockpile.Good.FUEL] > 0.0 else 0.0,
+		clampf(grid.coverage, 0.0, 1.0) if not grid.connected.is_empty() else 0.0])
+	var mix := PackedFloat32Array()
+	var missing := 0.0
+	for k in base.size():
+		mix.append(base[k] * available[k])
+		missing += base[k] - mix[k]
+	var fossil := mix[Heat.COAL] + mix[Heat.FUEL]
+	if fossil > 0.0:
+		var coal_part := mix[Heat.COAL] / fossil
+		mix[Heat.COAL] += missing * coal_part
+		mix[Heat.FUEL] += missing * (1.0 - coal_part)
+	else:
+		mix[Heat.WOOD] += missing
+	return mix
+
+
+## Charbon brûlé par jour pour le chauffage pendant la saison [param season].
 func coal_heat_need(season: int) -> float:
-	if tier.level < COAL_HEAT_TIER or stockpile.amount[Stockpile.Good.COAL] <= 0.0:
-		return 0.0
-	return heat_need(season) * COAL_HEAT_SHARE / COAL_WOOD_EQUIVALENT
+	return heat_need(season) * heat_mix()[Heat.COAL] / COAL_WOOD_EQUIVALENT
 
 
-## Bois brûlé par jour pendant la saison [param season], le charbon déduit.
+## Carburant brûlé par jour pour le chauffage (fioul, à partir de la ville).
+func fuel_heat_need(season: int) -> float:
+	return heat_need(season) * heat_mix()[Heat.FUEL] / FUEL_WOOD_EQUIVALENT
+
+
+## Courant demandé pour le chauffage pendant [param season] (W ; part prévue
+## au palier, que le réseau la serve ou non).
+func electric_heat_watts(season: int) -> float:
+	return heat_need(season) * heat_shares()[Heat.ELECTRICITY] * WATTS_PER_HEAT_WOOD
+
+
+## Parts prévues du chauffage (Heat) au palier atteint.
+func heat_shares() -> PackedFloat32Array:
+	var level := clampi(tier.level, 1, CityTier.NAMES.size()) - 1
+	return HEAT_SHARES.slice(level * HEAT_SOURCES, (level + 1) * HEAT_SOURCES)
+
+
+## Bois brûlé par jour pendant la saison [param season], les autres sources
+## déduites.
 func wood_need(season: int) -> float:
-	return heat_need(season) - coal_heat_need(season) * COAL_WOOD_EQUIVALENT
+	return heat_need(season) * heat_mix()[Heat.WOOD]
 
 
 ## Chauffage du jour pendant [param season], en bois (hiver rude compris).
@@ -1201,7 +1351,9 @@ func _run_events(season: int) -> void:
 		EventBus.notified.emit("Fin de l'événement : %s" % CityEvents.NAMES[kind])
 	if tier.level < EVENTS_TIER:
 		return
-	var kind := events.roll(season, tier.level)
+	var nuclear := grid.connected.any(func(b: Building) -> bool:
+		return b.def.power_source == BuildingDef.PowerSource.NUCLEAR)
+	var kind := events.roll(season, tier.level, nuclear)
 	if kind >= 0:
 		apply_event(kind)
 
@@ -1409,19 +1561,22 @@ func _on_tick(tick: int) -> void:
 	stats.end_hour()
 
 
-## Consommation de l'heure : besoins du jour répartis sur 24 h. Au bourg, le
-## charbon en stock chauffe une partie des maisons à la place du bois.
+## Consommation de l'heure : besoins du jour répartis sur 24 h. Le chauffage
+## suit heat_mix (bois, charbon, fioul, courant) ; ce que le charbon ou le
+## carburant ne couvrent pas faute de stock est pris sur le bois.
 func _consume(tick: int) -> void:
 	var food: float = food_need() / GameDate.HOURS_PER_DAY
 	_needed_today[Stockpile.Good.FOOD] += food
 	_consumed_today[Stockpile.Good.FOOD] += stockpile.take(Stockpile.Good.FOOD, food)
 	var season := GameDate.season(tick)
 	var heat := heat_need(season) / GameDate.HOURS_PER_DAY
-	var coal := stockpile.take(Stockpile.Good.COAL, coal_heat_need(season) / GameDate.HOURS_PER_DAY)
+	var mix := heat_mix()
+	var coal := stockpile.take(Stockpile.Good.COAL, heat * mix[Heat.COAL] / COAL_WOOD_EQUIVALENT)
+	var fuel := stockpile.take(Stockpile.Good.FUEL, heat * mix[Heat.FUEL] / FUEL_WOOD_EQUIVALENT)
 	coal_burned_today += coal
+	var warm := coal * COAL_WOOD_EQUIVALENT + fuel * FUEL_WOOD_EQUIVALENT + heat * mix[Heat.ELECTRICITY]
 	_needed_today[Stockpile.Good.WOOD] += heat
-	_consumed_today[Stockpile.Good.WOOD] += coal * COAL_WOOD_EQUIVALENT \
-		+ stockpile.take(Stockpile.Good.WOOD, heat - coal * COAL_WOOD_EQUIVALENT)
+	_consumed_today[Stockpile.Good.WOOD] += warm + stockpile.take(Stockpile.Good.WOOD, maxf(0.0, heat - warm))
 
 
 func _on_day(day: int) -> void:
@@ -1436,11 +1591,12 @@ func _on_day(day: int) -> void:
 	for good in _needed_today.size():
 		coverage.append(_consumed_today[good] / _needed_today[good] if _needed_today[good] > 0.0 else 1.0)
 	_run_charcoal()
-	_run_grid(GameDate.season(day_tick))
+	_run_grid(day_tick)
 	_run_forges()
 	_run_weavers()
 	_run_refineries()
 	_run_artisans()
+	_run_electronics()
 	_run_steam()
 	_run_trains()
 	_run_trucks()
@@ -1452,9 +1608,11 @@ func _on_day(day: int) -> void:
 	# Après l'entretien : un trésor vide ferme dispensaires et postes de garde.
 	var health := health_coverage()
 	var order := order_coverage()
+	var education := education_coverage()
+	var culture := culture_coverage()
 	var before := population.count
 	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing,
-		water_coverage(), tools, clothes, mood(), light, goods, health, order)
+		water_coverage(), tools, clothes, mood(), light, goods, health, order, education, culture, electricity_coverage())
 	decrees.end_day()
 	_run_events(GameDate.season(day_tick))
 	_announce_population(before, change, coverage)
@@ -1470,6 +1628,8 @@ func _on_day(day: int) -> void:
 			EventBus.notified.emit("La ville veut s'éclairer : puits de pétrole, réservoir et raffinerie (recherche Raffinage du pétrole)")
 		if tier.level == SERVICES_TIER:
 			EventBus.notified.emit("La ville veut des biens, des soins et de l'ordre : atelier d'artisans, dispensaire (recherche Médecine) et poste de garde")
+		if tier.level == CITY_STATE_TIER:
+			EventBus.notified.emit("La cité-État veut de l'électricité pour tous, des écoles et des théâtres ; uranium et lithium se prospectent")
 		if tier.level == ECONOMY_TIER:
 			EventBus.notified.emit("Le bourg lève l'impôt : trésor, marché et décrets dans le panneau Économie (E)")
 		EventBus.tier_changed.emit()
@@ -1482,7 +1642,7 @@ func _on_day(day: int) -> void:
 	draft.breed(_pasture_quality())
 	draft.end_day(coverage[Stockpile.Good.FOOD])
 	power.push_day(production.produced_today, PackedFloat32Array([draft.working() * DraftAnimals.WORK_WATTS,
-		_mill_watts(day_tick), grid.hydro]))
+		_mill_watts(day_tick), grid.hydro, grid.wind_power, grid.solar]))
 	for good in Stockpile.COUNT:
 		stats.add(Statistics.PRODUCED_KEYS[good], production.produced_today[good])
 	stats.add(&"food_lost", stockpile.lost_today[Stockpile.Good.FOOD])
@@ -1501,6 +1661,8 @@ func _on_day(day: int) -> void:
 	stats.add(&"goods", goods * 100.0)
 	stats.add(&"health", health * 100.0)
 	stats.add(&"order", order * 100.0)
+	stats.add(&"education", education * 100.0)
+	stats.add(&"culture", culture * 100.0)
 	stats.add(&"money", treasury.money)
 	stats.add(&"taxes", treasury.taxes_today)
 	stats.add(&"trade", treasury.sales_today - treasury.purchases_today)
@@ -1546,6 +1708,8 @@ func _check_milestones(day: int) -> void:
 	facts.research = research
 	facts.money = treasury.money
 	facts.grid_coverage = grid.coverage
+	facts.nuclear_power = grid.nuclear
+	facts.green_share = (grid.hydro + grid.wind_power + grid.solar) / grid.demand if grid.demand > 0.0 else 0.0
 	if tier.level >= SERVICES_TIER:
 		facts.services_coverage = minf(population.goods_coverage, minf(population.health_coverage, population.order_coverage))
 	for def in milestones.check(facts, day):

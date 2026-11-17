@@ -5,6 +5,9 @@ extends Resource
 ## data/buildings/*.tres.
 
 enum Category { HOUSING, STORAGE, OTHER }
+## Source d'une centrale : eau (barrage), charbon, fioul (carburant), uranium,
+## vent (éolienne), soleil (champ solaire).
+enum PowerSource { HYDRO, COAL, FUEL, NUCLEAR, WIND, SOLAR }
 
 const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 
@@ -31,6 +34,8 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var iron_cost := 0
 @export var tools_cost := 0
 @export var copper_cost := 0
+@export var lithium_cost := 0
+@export var electronics_cost := 0
 ## Niveau suivant, construit sur place (grenier → grenier en pierre…).
 @export var upgrade: BuildingDef
 ## Se construit directement au niveau du palier atteint (greniers) : coût de
@@ -64,6 +69,9 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Dispensaire et poste de garde : habitants soignés, habitants surveillés.
 @export var health_coverage := 0
 @export var order_coverage := 0
+## École, université, théâtre : habitants instruits, habitants qui sortent.
+@export var education_coverage := 0
+@export var culture_coverage := 0
 ## Entretien en pièces par jour ; impayé, ses effets (recherche, soins,
 ## gardes) cessent.
 @export var upkeep_per_day := 0.0
@@ -88,13 +96,19 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var trade_per_day := 0.0
 ## Gare : dessert les tuiles autour d'elle si une voie la relie au village.
 @export var station := false
-## Centrale ou barrage : puissance à plein régime (W). Une centrale brûle du
-## charbon (PowerGrid.WATTS_PER_COAL) ; un barrage suit le débit des saisons.
+## Centrale : puissance à plein régime (W) et source. Les barrages suivent le
+## débit des saisons, les éoliennes le vent, les champs solaires le soleil (de
+## jour) ; les centrales brûlent du charbon, du carburant ou de l'uranium
+## (PowerGrid.WATTS_PER_COAL, WATTS_PER_FUEL, WATTS_PER_URANIUM).
 @export var power_watts := 0.0
-@export var burns_coal := false
-## Centrale au fioul : brûle du carburant (PowerGrid.WATTS_PER_FUEL), après
-## les centrales au charbon.
-@export var burns_fuel := false
+@export var power_source: PowerSource = PowerSource.HYDRO
+## Batteries : énergie stockée de jour, rendue la nuit (kWh par jour).
+@export var storage_kwh := 0.0
+## Consommation électrique (W) : centre informatique, datacenter ; sans courant,
+## à l'arrêt.
+@export var power_demand := 0.0
+## Usine d'électronique : composants fabriqués par jour (un cuivre chacun).
+@export var electronics_per_day := 0.0
 ## Barrage : tuiles noyées en amont à la fin du chantier (la retenue).
 @export var flood_tiles := 0
 ## Dépôt de camions : les routes reliées portent plus loin, contre du carburant.
@@ -151,6 +165,8 @@ func costs() -> PackedFloat32Array:
 	values[Stockpile.Good.IRON] = iron_cost
 	values[Stockpile.Good.TOOLS] = tools_cost
 	values[Stockpile.Good.COPPER] = copper_cost
+	values[Stockpile.Good.LITHIUM] = lithium_cost
+	values[Stockpile.Good.ELECTRONICS] = electronics_cost
 	return values
 
 
@@ -202,12 +218,29 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Gare : reliée par la voie à une gare du village, elle rapproche les tuiles autour d'elle")
 	if power_watts > 0.0:
 		var fuel_text := " selon le débit, sans combustible"
-		if burns_coal:
-			fuel_text = " pour %s charbon par jour à plein régime" % Format.decimal(power_watts / PowerGrid.WATTS_PER_COAL)
-		elif burns_fuel:
-			fuel_text = " pour %s carburant par jour à plein régime (après le charbon)" % Format.decimal(power_watts / PowerGrid.WATTS_PER_FUEL)
+		match power_source:
+			PowerSource.COAL:
+				fuel_text = " pour %s charbon par jour à plein régime" % Format.decimal(power_watts / PowerGrid.WATTS_PER_COAL)
+			PowerSource.FUEL:
+				fuel_text = " pour %s carburant par jour à plein régime (après le charbon)" % Format.decimal(power_watts / PowerGrid.WATTS_PER_FUEL)
+			PowerSource.NUCLEAR:
+				fuel_text = " pour %s uranium par jour à plein régime" % Format.decimal(power_watts / PowerGrid.WATTS_PER_URANIUM)
+			PowerSource.WIND:
+				fuel_text = " par grand vent ; crêtes et côtes : plein rendement, ailleurs ×%s" % Format.decimal(PowerGrid.SHELTERED_WIND)
+			PowerSource.SOLAR:
+				fuel_text = " en plein soleil, de jour seulement ; plus près de l'équateur, plus de soleil"
 		lines.append("Électricité : %s%s" % [PowerMeter.format(power_watts), fuel_text])
 		lines.append("À %d tuiles du centre ou moins, ou raccordé par une ligne électrique" % Labor.FREE_DISTANCE)
+	if storage_kwh > 0.0:
+		lines.append("Stocke %d kWh : le surplus de jour (soleil, vent, eau) éclaire la nuit" % roundi(storage_kwh))
+	if power_demand > 0.0:
+		lines.append("Consomme %s d'électricité (sans courant, à l'arrêt)" % PowerMeter.format(power_demand))
+	if electronics_per_day > 0.0:
+		lines.append("Fabrique %s composants électroniques par jour (un cuivre chacun)" % Format.decimal(electronics_per_day))
+	if education_coverage > 0:
+		lines.append("Instruit %d habitants" % education_coverage)
+	if culture_coverage > 0:
+		lines.append("Culture pour %d habitants" % culture_coverage)
 	if flood_tiles > 0:
 		lines.append("Retenue : noie jusqu'à %d tuiles en amont (rivière et rives basses ; zones, routes et voies effacées)" % flood_tiles)
 	if truck_depot:

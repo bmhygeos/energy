@@ -472,7 +472,8 @@ effectif, vivres).
 | V11 (partie 3) | Camions | Moteur à explosion, dépôts, portée des routes contre du carburant — réalisé |
 | V11 (partie 4) | Besoins de la ville | Biens variés (atelier d'artisans), santé (médecine, dispensaire, épidémies), ordre (poste de garde, impôts) — réalisé |
 | V11 (partie 5) | Fin du palier 4 | Retenue des barrages (tuiles noyées en amont), centrale au fioul, capacité des camions (100 travailleurs par dépôt), cartographes (vue des expéditions) — réalisé |
-| V11+ | Palier 5 | Électronique, nucléaire, éolien, photovoltaïque, lithium, batteries et véhicules électriques (palier 5) |
+| V12 | Palier 5 | Éducation, culture, électricité ; électronique, informatique, IA ; nucléaire, éolien, photovoltaïque, lithium, batteries, véhicules électriques ; incident nucléaire — réalisé (sans pollution ni enrichissement séparé) |
+| V12+ | Palier 5, suite | Pollution et santé (module de la v1), bornes de recharge, enrichissement de l'uranium, équilibrage de la cité-État |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses

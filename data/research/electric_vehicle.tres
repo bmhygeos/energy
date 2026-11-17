@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"electric_vehicle"
+display_name = "Véhicule électrique"
+description = "Batteries au lithium et moteurs électriques : les camions roulent au courant."
+tier = 5
+cost = 150000.0
+prerequisites = Array[StringName]([&"lithium_electrochemistry", &"combustion_engine"])
+effect = "Les camions ne brûlent plus de carburant : ils demandent du courant au réseau."

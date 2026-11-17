@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"photovoltaics"
+display_name = "Photovoltaïque"
+description = "Cellules de silicium : la lumière devient courant."
+tier = 5
+cost = 150000.0
+prerequisites = Array[StringName]([&"electronics"])
+effect = "Champ solaire : courant de jour, d'autant plus près de l'équateur."

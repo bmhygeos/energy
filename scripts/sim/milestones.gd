@@ -49,6 +49,10 @@ class Facts:
 	var grid_coverage := 0.0
 	## Pire couverture de la veille entre biens, santé et ordre (0 avant la ville).
 	var services_coverage := 0.0
+	## Courant nucléaire servi la veille (W), et part de la demande servie par
+	## l'eau, le vent et le soleil.
+	var nuclear_power := 0.0
+	var green_share := 0.0
 
 	func has_building(id: StringName) -> bool:
 		return buildings.any(func(b: Building) -> bool: return b.def.id == id and b.is_complete())
@@ -110,6 +114,14 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.grid_coverage >= 1.0),
 		Def.new(&"services", "Ville bien tenue", "À la ville, couvrir les biens, la santé et l'ordre de tous les habitants.",
 			func(f: Facts) -> bool: return f.services_coverage >= 1.0),
+		Def.new(&"city_state", "Cité-État", "Atteindre le palier Cité-État (%d habitants)." % CityTier.POPULATION[4],
+			func(f: Facts) -> bool: return f.tier >= 5),
+		Def.new(&"atom", "L'atome", "Produire du courant dans une centrale nucléaire.",
+			func(f: Facts) -> bool: return f.nuclear_power > 0.0),
+		Def.new(&"green", "Énergie verte", "Servir la moitié de la demande d'électricité par l'eau, le vent et le soleil.",
+			func(f: Facts) -> bool: return f.green_share >= 0.5),
+		Def.new(&"datacenter", "Intelligence artificielle", "Construire un datacenter (recherche ×100).",
+			func(f: Facts) -> bool: return f.has_building(&"datacenter")),
 		Def.new(&"market", "Jour de marché", "Construire un marché pour commercer.",
 			func(f: Facts) -> bool: return f.has_building(&"market")),
 		Def.new(&"treasury", "Trésor", "Amasser %d pièces." % TREASURY_MONEY,

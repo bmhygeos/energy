@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"datacenter"
+display_name = "Datacenter"
+description = "Halls de serveurs refroidis par l'eau : l'intelligence artificielle cherche pour la cité."
+category = 2
+tier = 5
+research = &"artificial_intelligence"
+size = Vector2i(2, 2)
+build_hours = 336
+stone_cost = 200
+iron_cost = 100
+copper_cost = 60
+electronics_cost = 300
+research_multiplier = 100.0
+research_coverage = 10000
+power_demand = 200000.0
+upkeep_per_day = 120.0
+needs_water_access = true
+color = Color(0.7, 0.72, 0.76, 1)
+roof_color = Color(0.2, 0.22, 0.28, 1)
+height = 20.0
