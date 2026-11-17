@@ -122,6 +122,8 @@ var roads: RoadNetwork
 var ports: PortNetwork
 ## Réseau électrique (ville).
 var grid: PowerGrid
+## Canaux d'irrigation (recherche Irrigation).
+var canals: CanalNetwork
 ## Zones peintes (agriculture, élevage, coupe du bois).
 var zones: ZoneMap
 var population: Population
@@ -201,6 +203,9 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	grid = PowerGrid.new(world_map, territory, buildings, home)
 	grid.zones = zones
 	buildings.lines = grid
+	canals = CanalNetwork.new(world_map, territory, buildings, home)
+	canals.zones = zones
+	buildings.canals = canals
 	population = Population.new()
 	tier = CityTier.new()
 	labor = Labor.new(zones, home)
@@ -212,6 +217,7 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	production = Production.new(zones, labor)
 	research = Research.new()
 	production.research = research
+	production.canals = canals
 	draft = DraftAnimals.new()
 	production.draft = draft
 	power = PowerMeter.new()
@@ -530,6 +536,9 @@ func demolish(cell: Vector2i) -> bool:
 		elif grid.remove(cell):
 			_refresh_grid()
 			EventBus.grid_changed.emit([cell] as Array[Vector2i])
+		elif canals.remove(cell):
+			_refresh_canals()
+			EventBus.canals_changed.emit([cell] as Array[Vector2i])
 		else:
 			return false
 		_update_labor()
@@ -583,6 +592,7 @@ func _refresh_capacities() -> void:
 			for c in b.cells:
 				wells.append(world_map.wrap_cell(c))
 	production.wells = wells
+	_refresh_canals()
 	production.sawmill_bonus = sawmill
 	production.mill_bonus = mill
 	_water_drive = drive
@@ -746,6 +756,7 @@ func flood_reservoir(b: Building) -> Array[Vector2i]:
 		rails.remove(cell)
 		roads.remove(cell)
 		grid.remove(cell)
+		canals.remove(cell)
 		shown.append(display_cell(cell))
 	if flooded.is_empty():
 		return shown
@@ -754,6 +765,7 @@ func flood_reservoir(b: Building) -> Array[Vector2i]:
 	_refresh_rails()
 	_refresh_grid()
 	_refresh_ports()
+	_refresh_canals()
 	EventBus.tiles_changed.emit(shown)
 	EventBus.zones_changed.emit(shown)
 	EventBus.rails_changed.emit(shown)
@@ -850,6 +862,35 @@ func lines_error() -> String:
 	if not research.is_done(plant.research):
 		return "Recherche requise : %s" % ResearchDb.get_def(plant.research).display_name
 	return ""
+
+
+## Ce qui empêche de creuser des canaux (vide : possible).
+func canals_error() -> String:
+	if not research.is_done(&"irrigation"):
+		return "Recherche requise : %s" % ResearchDb.get_def(&"irrigation").display_name
+	return ""
+
+
+## Canaux reliés à l'eau (rivières, lacs, puits) et champs qu'ils irriguent.
+func _refresh_canals() -> void:
+	canals.refresh(production.wells)
+	EventBus.canals_changed.emit([] as Array[Vector2i])
+
+
+func plan_canals(from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
+	return _plan_track(canals, canals_error(), from, to)
+
+
+## Creuse les canaux de [param p] ; renvoie le nombre de tuiles creusées
+## (raison notifiée si aucune).
+func build_canals(p: TrackNetwork.Plan) -> int:
+	var built := _lay_track(canals, p)
+	if built.is_empty():
+		return 0
+	_refresh_canals()
+	EventBus.canals_changed.emit(built)
+	_update_labor()
+	return built.size()
 
 
 ## Ce qui empêche de poser des routes (vide : possible).

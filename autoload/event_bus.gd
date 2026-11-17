@@ -62,3 +62,5 @@ signal milestone_reached(milestone: Milestones.Def)
 signal view_changed()
 ## Ville agrandie (palier) : cases de la carte de la ville, bloc sur le monde.
 signal city_changed()
+## Canaux d'irrigation creusés ou retirés (tuiles du repère de la vue).
+signal canals_changed(cells: Array[Vector2i])

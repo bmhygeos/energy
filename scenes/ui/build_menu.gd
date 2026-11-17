@@ -24,6 +24,7 @@ var _expedition_button: Button
 var _rail_button: Button
 var _road_button: Button
 var _line_button: Button
+var _canal_button: Button
 var _members: SpinBox
 var _days: SpinBox
 var _horses: SpinBox
@@ -82,6 +83,15 @@ func _build_list() -> void:
 	_erase_zone_button.tooltip_text = "Glisser pour effacer les zones d'un rectangle."
 	_erase_zone_button.pressed.connect(func() -> void:
 		_select_tool(_erase_zone_button, BuildTool.Mode.ERASE_ZONE, null))
+	_canal_button = _tool_button("Canal d'irrigation   %d bois" % roundi(CanalNetwork.WOOD_PER_TILE))
+	_canal_button.tooltip_text = "\n".join(PackedStringArray(["Canal d'irrigation (recherche Irrigation)",
+		"Glisser pour creuser un tracé en L ; %d bois par tuile ; sur les champs comme hors des zones, pas sur l'eau ni la montagne." % roundi(CanalNetwork.WOOD_PER_TILE),
+		"Relié de proche en proche à une rivière, un lac ou un puits, il porte l'eau :",
+		"les champs à %d tuiles ou moins de lui sont irrigués (+%d %%)." % [Production.IRRIGATION_RANGE,
+			roundi((Production.IRRIGATION_BONUS - 1.0) * 100.0)],
+		"Démolir comble un canal."]))
+	_canal_button.pressed.connect(func() -> void:
+		_select_tool(_canal_button, BuildTool.Mode.CANAL, null))
 	_build_territory()
 	_build_transport()
 	_mark_site(first, false)
@@ -137,7 +147,7 @@ func _refresh_view() -> void:
 		_horses_row.visible = _horses_row.visible and GameState.tier.level >= 2
 	var stale := (_mode == BuildTool.Mode.BUILD and _def and (_def.site == BuildingDef.Site.CITY) != GameState.view_city) \
 		or GameState.view_city and _mode in [BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.RAIL,
-			BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.EXPEDITION]
+			BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.CANAL, BuildTool.Mode.EXPEDITION]
 	if stale:
 		EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
 
@@ -165,6 +175,11 @@ func _refresh_tier_locks() -> void:
 			CityTier.NAMES[2] if level < 3 else ResearchDb.get_def(&"locomotive").display_name))
 	if _road_button:
 		_lock(_road_button, "Route   %s" % _road_cost_text(), GameState.ROAD_TIER, level)
+	if _canal_button:
+		var canal_error := GameState.canals_error() if GameState.canals else "?"
+		_canal_button.disabled = not canal_error.is_empty()
+		_canal_button.text = "Canal d'irrigation   %d bois" % roundi(CanalNetwork.WOOD_PER_TILE) + (
+			"" if canal_error.is_empty() else "   (%s)" % ResearchDb.get_def(&"irrigation").display_name)
 	if _line_button:
 		var error := GameState.lines_error() if GameState.grid else "?"
 		_line_button.disabled = not error.is_empty()
@@ -404,6 +419,7 @@ func _on_tool_changed(mode: int, def: Resource) -> void:
 	_rail_button.set_pressed_no_signal(_mode == BuildTool.Mode.RAIL)
 	_road_button.set_pressed_no_signal(_mode == BuildTool.Mode.ROAD)
 	_line_button.set_pressed_no_signal(_mode == BuildTool.Mode.LINE)
+	_canal_button.set_pressed_no_signal(_mode == BuildTool.Mode.CANAL)
 	_track_plan = null
 	_refresh_hint()
 
@@ -458,9 +474,10 @@ func _refresh_hint() -> void:
 					text += "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
 		BuildTool.Mode.EXPEDITION:
 			text = _expedition_hint()
-		BuildTool.Mode.RAIL, BuildTool.Mode.ROAD, BuildTool.Mode.LINE:
+		BuildTool.Mode.RAIL, BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.CANAL:
 			text = "[b]%s[/b] — glisser pour poser un tracé en L · Échap : annuler" % {
-				BuildTool.Mode.RAIL: "Voie ferrée", BuildTool.Mode.ROAD: "Route"}.get(_mode, "Ligne électrique")
+				BuildTool.Mode.RAIL: "Voie ferrée", BuildTool.Mode.ROAD: "Route",
+				BuildTool.Mode.CANAL: "Canal d'irrigation"}.get(_mode, "Ligne électrique")
 			if _track_plan:
 				if _track_plan.is_valid():
 					var n := _track_plan.new_cells.size()

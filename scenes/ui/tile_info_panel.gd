@@ -24,6 +24,7 @@ func _ready() -> void:
 		sig.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
 	EventBus.labor_changed.connect(_refresh)
 	EventBus.view_changed.connect(_refresh)
+	EventBus.canals_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
 	EventBus.day_changed.connect(func(_d: int) -> void: _refresh())
 	EventBus.tick_advanced.connect(func(_t: int) -> void:
 		if _panel.visible and _shown_building():
@@ -87,6 +88,8 @@ func _refresh() -> void:
 		lines.append("Voie ferrée%s" % ("" if GameState.rails.running else " (trains arrêtés : plus de charbon)"))
 	if GameState.grid.has_tile(cell):
 		lines.append("Ligne électrique%s" % ("" if GameState.grid.linked.has(map.wrap_cell(cell)) else " (pas reliée au village)"))
+	if GameState.canals.has_tile(cell):
+		lines.append("Canal d'irrigation%s" % ("" if GameState.canals.linked.has(map.wrap_cell(cell)) else " (à sec : reliez-le à une rivière, un lac ou un puits)"))
 	if GameState.roads.has_tile(cell):
 		lines.append("Route%s" % ("" if GameState.roads.lengths.has(map.wrap_cell(cell)) else " (pas reliée au village)"))
 	var regrowth := GameState.production.regrowth_days_left(cell)

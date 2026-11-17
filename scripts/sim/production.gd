@@ -80,6 +80,8 @@ var wool := false
 var _irrigable: Dictionary[Vector2i, bool] = {}
 ## Tuiles (ramenées sur la planète) des puits en service, sources d'irrigation.
 var wells: Array[Vector2i] = []
+## Canaux d'irrigation (null : aucun) : ils portent l'eau plus loin.
+var canals: CanalNetwork
 
 
 func _init(p_zones: ZoneMap, p_labor: Labor) -> void:
@@ -149,9 +151,12 @@ func irrigation_factor(def: ZoneDef, cell: Vector2i) -> float:
 	return IRRIGATION_BONUS if is_irrigable(cell) else 1.0
 
 
-## Rivière, lac ou puits à IRRIGATION_RANGE tuiles ou moins de [param cell].
+## Rivière, lac, puits ou canal relié à l'eau à IRRIGATION_RANGE tuiles ou
+## moins de [param cell].
 func is_irrigable(cell: Vector2i) -> bool:
 	var c := map.wrap_cell(cell)
+	if canals and canals.irrigates(c):
+		return true
 	for w in wells:
 		var dx := absi(posmod(w.x - c.x + map.size.x / 2, map.size.x) - map.size.x / 2)
 		if maxi(dx, absi(w.y - c.y)) <= IRRIGATION_RANGE:

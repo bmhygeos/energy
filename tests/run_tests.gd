@@ -62,6 +62,8 @@ func _initialize() -> void:
 	_test_city_state_game()
 	_test_two_maps()
 	_test_motor_exploration()
+	_test_canals()
+	_test_canals_game()
 	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
@@ -1835,6 +1837,62 @@ func _test_two_maps() -> void:
 	_check(b != null and gs.city_buildings.building_at(spot) == b and gs.demolish(spot) and gs.city_buildings.building_at(spot) == null,
 		"maison construite puis démolie sur la carte de la ville")
 	gs.set_view(false)
+	gs.new_game(4242)
+
+
+## Canaux d'irrigation : sur les champs, reliés à l'eau de proche en proche.
+func _test_canals() -> void:
+	var map := WorldMap.new(Vector2i(64, 64), 0, FlatGenerator.new(Vector2i(64, 64)))
+	var territory := Territory.new(map)
+	var cells: Array[Vector2i] = []
+	for y in 30:
+		for x in 40:
+			cells.append(Vector2i(x, y))
+	territory.annex(cells)
+	map.set_terrain(Vector2i(5, 10), TerrainDef.Type.RIVER)
+	var registry := BuildingRegistry.new(map, territory)
+	var zones := ZoneMap.new(map, territory, registry)
+	var canals := CanalNetwork.new(map, territory, registry, Vector2i(5, 5))
+	canals.zones = zones
+	registry.canals = canals
+	var farm := ZoneDb.get_def(&"agriculture")
+	var pasture := ZoneDb.get_def(&"pasture")
+	zones.apply(zones.plan(farm, ZoneMap.rect_between(Vector2i(10, 9), Vector2i(12, 11))))
+	zones.apply(zones.plan(pasture, ZoneMap.rect_between(Vector2i(20, 20), Vector2i(20, 20))))
+	_check(canals.check_cell(Vector2i(11, 10)).is_empty() and not canals.check_cell(Vector2i(20, 20)).is_empty()
+		and not canals.check_cell(Vector2i(5, 10)).is_empty(), "canal : sur les champs, pas sur l'élevage ni la rivière")
+	var plan := canals.plan(Vector2i(6, 10), Vector2i(16, 10))
+	_check(plan.is_valid() and is_equal_approx(plan.costs[Stockpile.Good.WOOD], 11.0), "canal : 1 bois par tuile")
+	canals.build(plan)
+	canals.add_cells(TrackNetwork.l_path(Vector2i(30, 25), Vector2i(33, 25)))
+	var none: Array[Vector2i] = []
+	canals.refresh(none)
+	_check(canals.linked.has(Vector2i(16, 10)) and not canals.linked.has(Vector2i(30, 25)), "canal relié à la rivière ; canal isolé à sec")
+	_check(canals.irrigates(Vector2i(19, 13)) and not canals.irrigates(Vector2i(20, 14)) and not canals.irrigates(Vector2i(31, 27)),
+		"irrigation à 3 tuiles d'un canal relié")
+	var wells: Array[Vector2i] = [Vector2i(29, 25)]
+	canals.refresh(wells)
+	_check(canals.linked.has(Vector2i(33, 25)), "canal relié à un puits")
+	_check(registry.check_placement(BuildingDb.get_def(&"well"), Vector2i(14, 10)).error.contains("Canal"), "pas de bâtiment sur un canal")
+
+
+func _test_canals_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var center: Vector2i = gs.display_cell(gs.home)
+	var from := center + Vector2i(3, 0)
+	_check(gs.plan_canals(from, from + Vector2i(2, 0)).error.contains("Irrigation"), "canaux : recherche Irrigation requise")
+	gs.research._done[&"irrigation"] = true
+	gs.stockpile.amount[Stockpile.Good.WOOD] = 100.0
+	var built := 0
+	for dy in range(-5, 6):
+		var plan: TrackNetwork.Plan = gs.plan_canals(center + Vector2i(3, dy), center + Vector2i(5, dy))
+		if plan.is_valid():
+			built = gs.build_canals(plan)
+			break
+	_check(built > 0 and gs.canals.tile_count() == built, "canal creusé (%d tuiles)" % built)
+	var cell: Vector2i = gs.canals.cells()[0]
+	_check(gs.demolish(gs.display_cell(cell)) and not gs.canals.has_tile(cell), "Démolir comble le canal")
 	gs.new_game(4242)
 
 

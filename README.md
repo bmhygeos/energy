@@ -569,6 +569,12 @@ pétrole, cuivre, uranium, lithium) rendent ×2 à la ville (engins à moteur) e
 - **Irrigation** (hameau, 500 points) : champs à 3 tuiles ou moins d'une
   rivière, d'un lac ou d'un puits (village) : rendement +30 % (indiqué dans la
   fiche de la tuile).
+- **Canaux d'irrigation** (dès la recherche Irrigation ; menu, section Zones) :
+  creusés au glisser (tracé en L), 1 bois par tuile, sur les champs (zones
+  cultivées) comme hors des zones, pas sur l'eau, la montagne, l'élevage ni
+  les autres zones. Un canal relié de proche en proche à une rivière, un lac
+  ou un puits porte l'eau : les champs à 3 tuiles ou moins de lui sont
+  irrigués. Un canal à sec est dessiné en brun ; Démolir le comble.
 
 ### V5 : exploration
 - **Expédition** (menu, section Territoire) : 1 à 5 habitants actifs quittent

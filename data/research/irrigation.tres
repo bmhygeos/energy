@@ -10,4 +10,4 @@ description = "Rigoles et canaux amènent l'eau des rivières, des lacs et des p
 tier = 1
 cost = 500.0
 prerequisites = Array[StringName]([])
-effect = "Champs à 3 tuiles ou moins d'une rivière, d'un lac ou d'un puits : rendement +30 %."
+effect = "Champs à 3 tuiles ou moins d'une rivière, d'un lac ou d'un puits : rendement +30 %. Canaux d'irrigation : reliés à l'eau, ils portent l'irrigation plus loin, même à travers les champs."

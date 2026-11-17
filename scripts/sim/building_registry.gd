@@ -26,6 +26,8 @@ var territory: Territory
 var rails: RailNetwork
 var roads: RoadNetwork
 var lines: PowerGrid
+## Canaux d'irrigation (null : aucun).
+var canals: CanalNetwork
 var _buildings: Dictionary[int, Building] = {}
 ## Identifiant du bâtiment par tuile occupée (ramenée sur la planète).
 var _occupancy: Dictionary[Vector2i, int] = {}
@@ -89,6 +91,8 @@ func _placement_error(p: Placement) -> String:
 			return "Route présente"
 		if lines and lines.has_tile(cell):
 			return "Ligne électrique présente"
+		if canals and canals.has_tile(cell):
+			return "Canal d'irrigation présent"
 		var t := map.get_terrain(cell)
 		var terrain := TerrainDb.get_def(t)
 		if not terrain.buildable:

@@ -95,6 +95,11 @@ func track_name() -> String:
 	return "voie"
 
 
+## Message d'un tracé entièrement posé.
+func laid_text() -> String:
+	return "%s déjà posée" % track_name().capitalize()
+
+
 ## Matériaux pour un tracé sur [param cell] (pont sur une rivière : plus cher).
 func tile_costs(cell: Vector2i) -> PackedFloat32Array:
 	var values := base_costs()
@@ -123,7 +128,7 @@ func plan(from: Vector2i, to: Vector2i) -> Plan:
 		for good in Stockpile.COUNT:
 			p.costs[good] += costs[good]
 	if p.new_cells.is_empty():
-		p.error = "%s déjà posée" % track_name().capitalize()
+		p.error = laid_text()
 	return p
 
 

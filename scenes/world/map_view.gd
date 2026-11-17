@@ -44,6 +44,10 @@ func _ready() -> void:
 	add_child(_city_block)
 	move_child(_city_block, $Overlay.get_index())
 	_world_only.append(_city_block)
+	var canal_layer := CanalLayer.new()
+	add_child(canal_layer)
+	move_child(canal_layer, $Roads.get_index())
+	_world_only.append(canal_layer)
 	EventBus.game_started.connect(func(_seed: int) -> void: _load_map(GameState.view_map()))
 	EventBus.view_changed.connect(func() -> void: _load_map(GameState.view_map()))
 	EventBus.city_changed.connect(func() -> void:
@@ -128,6 +132,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				GameState.build_rails(_track_plan)
 			elif _track_plan and _mode == BuildTool.Mode.LINE:
 				GameState.build_lines(_track_plan)
+			elif _track_plan and _mode == BuildTool.Mode.CANAL:
+				GameState.build_canals(_track_plan)
 			elif _track_plan:
 				GameState.build_roads(_track_plan)
 			_track_plan = null
@@ -165,12 +171,15 @@ func _click(cell: Vector2i) -> void:
 			var rail := world and GameState.rails.has_rail(cell)
 			var road := world and GameState.roads.has_tile(cell)
 			var line := world and GameState.grid.has_tile(cell)
-			if (b or rail or road or line) and GameState.demolish(cell):
-				EventBus.notified.emit("%s démoli" % b.def.display_name if b else "Voie ferrée retirée" if rail else "Route retirée" if road else "Ligne électrique retirée")
+			var canal := world and GameState.canals.has_tile(cell)
+			if (b or rail or road or line or canal) and GameState.demolish(cell):
+				EventBus.notified.emit("%s démoli" % b.def.display_name if b else "Voie ferrée retirée" if rail else "Route retirée" if road
+					else "Ligne électrique retirée" if line else "Canal comblé")
 		BuildTool.Mode.UPGRADE:
 			if cell.x >= 0:
 				GameState.upgrade(cell)
-		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.RAIL, BuildTool.Mode.ROAD, BuildTool.Mode.LINE:
+		BuildTool.Mode.ZONE, BuildTool.Mode.ERASE_ZONE, BuildTool.Mode.RAIL, BuildTool.Mode.ROAD, BuildTool.Mode.LINE, \
+				BuildTool.Mode.CANAL:
 			if cell.x >= 0:
 				_drag_start = cell
 				_drag_end = cell
@@ -236,7 +245,7 @@ func _is_zone_mode() -> bool:
 
 
 func _is_track_mode() -> bool:
-	return _mode == BuildTool.Mode.RAIL or _mode == BuildTool.Mode.ROAD or _mode == BuildTool.Mode.LINE
+	return _mode in [BuildTool.Mode.RAIL, BuildTool.Mode.ROAD, BuildTool.Mode.LINE, BuildTool.Mode.CANAL]
 
 
 ## Outils qui se glissent (rectangle de zones, tracé de voie ou de route).
@@ -262,6 +271,8 @@ func _update_track_plan() -> void:
 			plan = GameState.plan_rails(start, end)
 		BuildTool.Mode.LINE:
 			plan = GameState.plan_lines(start, end)
+		BuildTool.Mode.CANAL:
+			plan = GameState.plan_canals(start, end)
 		_:
 			plan = GameState.plan_roads(start, end)
 	if _track_plan and _track_plan.cells == plan.cells and _track_plan.error == plan.error \
