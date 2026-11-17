@@ -37,6 +37,9 @@ const PLANE_TILES_PER_DAY := 60.0
 ## Carburant par explorateur et par jour (véhicule, avion).
 const MOTOR_FUEL_PER_MEMBER_PER_DAY := 0.5
 const PLANE_FUEL_PER_MEMBER_PER_DAY := 2.0
+## Aérodrome : un avant-poste à cette distance (tuiles) ou moins est relié par
+## les airs au village.
+const AIRFIELD_RANGE := 2
 ## Rayon de vue d'un avion (relevés aériens).
 const AERIAL_SIGHT_RADIUS := 8
 ## Rayon de vue (tuiles) autour de l'expédition ; à partir de la ville, des

@@ -291,7 +291,7 @@ func _update_expedition_preview() -> void:
 		_expeditions.show_path([], Vector2i(-1, -1))
 	else:
 		var transport: Exploration.Transport = GameState.expedition_transport(1, 1.0)
-		_expeditions.show_path(GameState.exploration.plan_path(GameState.display_cell(GameState.home), _hovered, transport), _hovered)
+		_expeditions.show_path(GameState.exploration.plan_path(GameState.expedition_start(), _hovered, transport), _hovered)
 
 
 ## Recalcule l'aperçu de la peinture (glisser en cours, sinon la tuile

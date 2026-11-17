@@ -192,6 +192,7 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	city_buildings = BuildingRegistry.new(city_map, city_territory)
 	city_buildings.start_ids(CITY_FIRST_ID)
 	view_city = false
+	expedition_origin = 0
 	zones = ZoneMap.new(world_map, territory, buildings)
 	rails = RailNetwork.new(world_map, territory, buildings, home)
 	rails.zones = zones
@@ -990,13 +991,61 @@ func food_need() -> float:
 		+ draft.fodder_need()
 
 
+## Départ choisi pour les expéditions : indice dans expedition_origins() (0 :
+## le village).
+var expedition_origin := 0
+
+
+## Moyen par lequel l'avant-poste [param b] est relié au village : « route »,
+## « voie ferrée », « aérodrome », ou vide s'il ne l'est pas.
+func outpost_link(b: Building) -> String:
+	if not b.is_complete() or not b.def.outpost:
+		return ""
+	for cell in b.cells:
+		for o in WorldMap.NEIGHBORS_4:
+			if roads.lengths.has(world_map.wrap_cell(cell + o)):
+				return "route"
+	for r in rails.access_tiles(b):
+		if rails.reached.has(r):
+			return "voie ferrée"
+	if tier.level >= Exploration.PLANE_TIER:
+		for other in buildings.all():
+			if other.is_complete() and other.def.airfield \
+					and rails.cheb(other.anchor, b.anchor) <= Exploration.AIRFIELD_RANGE + maxi(other.def.size.x, other.def.size.y):
+				return "aérodrome"
+	return ""
+
+
+## Départs possibles des expéditions (repère de la vue) : le village, puis les
+## avant-postes reliés.
+func expedition_origins() -> Array[Vector2i]:
+	var result: Array[Vector2i] = [display_cell(home)]
+	for b in buildings.all():
+		if not outpost_link(b).is_empty():
+			result.append(b.anchor)
+	return result
+
+
+## Départ des expéditions (repère de la vue) : le choix du joueur s'il est
+## toujours possible, sinon le village.
+func expedition_start() -> Vector2i:
+	var origins := expedition_origins()
+	return origins[expedition_origin] if expedition_origin < origins.size() else origins[0]
+
+
+func set_expedition_origin(index: int) -> void:
+	expedition_origin = maxi(0, index)
+	EventBus.expeditions_changed.emit()
+
+
 ## Lance une expédition de [param members] explorateurs et [param horses]
 ## chevaux de bât avec [param days] jours de vivres vers [param target]
 ## (repère de la vue) ; null (raison notifiée) si c'est impossible.
 func launch_expedition(target: Vector2i, members: int, days: float, horses := 0) -> Exploration.Expedition:
 	var error := expedition_error(members, days, horses)
 	var transport := expedition_transport(members, days, horses)
-	if error.is_empty() and exploration.plan_path(display_cell(home), target, transport).size() < 2:
+	var start := expedition_start()
+	if error.is_empty() and exploration.plan_path(start, target, transport).size() < 2:
 		error = "Trajet impossible : de l'eau barre le chemin"
 	if not error.is_empty():
 		EventBus.notified.emit(error)
@@ -1007,7 +1056,7 @@ func launch_expedition(target: Vector2i, members: int, days: float, horses := 0)
 	# En véhicule ou en avion, les chevaux restent à l'écurie.
 	if transport >= Exploration.Transport.MOTOR:
 		horses = 0
-	var e := exploration.launch(display_cell(home), target, members, food, transport, fuel)
+	var e := exploration.launch(start, target, members, food, transport, fuel)
 	e.horses = horses
 	e.speed = exploration.speed_for(members, horses)
 	draft.away += horses

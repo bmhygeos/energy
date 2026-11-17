@@ -428,6 +428,19 @@ météo et interface conservés.
   (« camions ») indiquent la desserte.
 - **Cartographes** : à la ville, les expéditions voient à 5 tuiles au lieu de 3.
 
+### Avant-postes
+
+- **Avant-poste** (recherche Collier d'attelage, village ; carte mondiale ;
+  30 bois, 10 pierre) : relié au village par une **route** ou une **voie
+  ferrée** reliées (une tuile qui le touche), ou, à la cité-État, par un
+  **aérodrome** à 2 tuiles ou moins (bâtiment du monde : 120 pierre, 40 fer,
+  10 outils), il devient un point de départ des expéditions.
+- Menu, section Territoire : liste « Départ » (le village, puis chaque
+  avant-poste relié, avec sa position et son moyen de liaison) ; l'aperçu du
+  trajet, la durée et les vivres partent de là, et l'expédition y revient.
+- Prévu : un avant-poste assez loin de la première ville pourra devenir un
+  hameau, seconde ville autonome (plan, V16).
+
 ### Exploration motorisée et aérienne
 
 | Palier | Transport | Vitesse | Carburant |

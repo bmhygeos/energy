@@ -168,6 +168,10 @@ func _building_lines(b: Building) -> PackedStringArray:
 				"" if rails.running else " (trains arrêtés : plus de charbon)"])
 		else:
 			lines.append("Non desservie : reliez-la par la voie à une gare du village")
+	if b.is_complete() and b.def.outpost:
+		var link: String = GameState.outpost_link(b)
+		lines.append("Relié au village par %s : les expéditions peuvent en partir (menu, Départ)" % link if not link.is_empty()
+			else "Non relié : posez une route ou une voie ferrée reliée au village à côté de lui (aérodrome à la cité-État)")
 	if b.is_complete() and b.def.truck_depot:
 		if b not in GameState.roads.served_depots:
 			lines.append("Sans route : posez une route reliée au village à côté de lui")

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"outpost"
+display_name = "Avant-poste"
+description = "Palissade, abri et réserve de vivres loin du village : les expéditions peuvent en partir."
+category = 2
+site = 1
+tier = 2
+research = &"harness_collar"
+build_hours = 48
+wood_cost = 30
+stone_cost = 10
+outpost = true
+color = Color(0.62, 0.5, 0.35, 1)
+roof_color = Color(0.42, 0.3, 0.2, 1)
+height = 14.0

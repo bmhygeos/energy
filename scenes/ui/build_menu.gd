@@ -30,6 +30,8 @@ var _days: SpinBox
 var _horses: SpinBox
 var _horses_row: HBoxContainer
 var _expedition_status: Label
+## Départ des expéditions : le village ou un avant-poste relié.
+var _origin: OptionButton
 var _toast_tween: Tween
 ## Entrées du menu propres à une carte (vrai : ville ; faux : monde),
 ## affichées seulement quand elle est à l'écran.
@@ -284,6 +286,27 @@ func _build_territory() -> void:
 		spin.value_changed.connect(func(_v: float) -> void:
 			_update_days_limit()
 			_refresh_hint())
+	var origin_row := HBoxContainer.new()
+	var origin_label := Label.new()
+	origin_label.text = "Départ"
+	origin_label.modulate = Color(1, 1, 1, 0.6)
+	origin_row.add_child(origin_label)
+	_origin = OptionButton.new()
+	_origin.focus_mode = Control.FOCUS_NONE
+	_origin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_origin.tooltip_text = "D'où partent les expéditions : le village, ou un avant-poste relié par une route, une voie ferrée ou un aérodrome."
+	_origin.item_selected.connect(func(index: int) -> void:
+		GameState.set_expedition_origin(index)
+		_refresh_hint())
+	origin_row.add_child(_origin)
+	_list.add_child(origin_row)
+	for sig: Signal in [EventBus.roads_changed, EventBus.rails_changed]:
+		sig.connect(func(_cells: Array[Vector2i]) -> void: _refresh_origins())
+	for sig: Signal in [EventBus.building_completed, EventBus.building_removed]:
+		sig.connect(func(_b: Building) -> void: _refresh_origins())
+	EventBus.tier_changed.connect(_refresh_origins)
+	EventBus.game_started.connect(func(_s: int) -> void: _refresh_origins())
+	_refresh_origins.call_deferred()
 	_expedition_status = Label.new()
 	_expedition_status.modulate = Color(1, 1, 1, 0.75)
 	_expedition_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -320,6 +343,24 @@ func _on_expedition_target(cell: Vector2i) -> void:
 
 
 ## État des expéditions en cours, sous les réglages.
+## Liste des départs : le village, puis chaque avant-poste relié (moyen et
+## position par rapport au village).
+func _refresh_origins() -> void:
+	if _origin == null or GameState.buildings == null:
+		return
+	_origin.clear()
+	var home: Vector2i = GameState.display_cell(GameState.home)
+	_origin.add_item("Village")
+	for b in GameState.buildings.all():
+		var link: String = GameState.outpost_link(b)
+		if not link.is_empty():
+			var d: Vector2i = b.anchor - home
+			_origin.add_item("Avant-poste (%+d, %+d) par %s" % [d.x, d.y, link])
+	var index: int = GameState.expedition_origin if GameState.expedition_origin < _origin.item_count else 0
+	_origin.select(index)
+	_origin.disabled = _origin.item_count < 2
+
+
 func _refresh_expedition_status() -> void:
 	if _expedition_status == null or GameState.exploration == null:
 		return
@@ -508,7 +549,7 @@ func _expedition_hint() -> String:
 	if not error.is_empty():
 		return text + "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
 	if _hovered.x >= 0:
-		var home := GameState.display_cell(GameState.home)
+		var home := GameState.expedition_start()
 		var transport := GameState.expedition_transport(members, _days.value, int(_horses.value))
 		var path := GameState.exploration.plan_path(home, _hovered, transport)
 		if path.size() < 2:

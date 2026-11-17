@@ -10,4 +10,4 @@ description = "Un collier rembourré qui prend appui sur les épaules du cheval 
 tier = 2
 cost = 1500.0
 prerequisites = Array[StringName]([])
-effect = "Chevaux : vivres portés et portée de l'attelage +50 % (pénalité de distance à partir de 18 tuiles)."
+effect = "Chevaux : vivres portés et portée de l'attelage +50 % (pénalité de distance à partir de 18 tuiles). Avant-poste : relié au village par une route, une voie ferrée ou un aérodrome, il lance ses propres expéditions."

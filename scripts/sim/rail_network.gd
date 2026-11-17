@@ -25,6 +25,8 @@ var running := true
 ## Gares desservies : tuile d'ancrage (ramenée) → longueur de voie depuis une
 ## gare du village.
 var served: Dictionary[Vector2i, int] = {}
+## Tuiles de voie reliées à une gare du village → longueur depuis elle.
+var reached: Dictionary[Vector2i, int] = {}
 
 
 func has_rail(cell: Vector2i) -> bool:
@@ -75,6 +77,7 @@ func refresh(stations: Array[Building]) -> void:
 			if _tiles.has(n) and not dist.has(n):
 				dist[n] = dist[cell] + 1
 				queue.append(n)
+	reached = dist
 	for b in stations:
 		if is_village_station(b):
 			continue

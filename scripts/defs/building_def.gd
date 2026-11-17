@@ -119,6 +119,12 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var flood_tiles := 0
 ## Dépôt de camions : les routes reliées portent plus loin, contre du carburant.
 @export var truck_depot := false
+## Avant-poste : relié au village (route, voie ferrée ou aérodrome), il lance
+## ses propres expéditions.
+@export var outpost := false
+## Aérodrome : relie par les airs les avant-postes à AIRFIELD_RANGE tuiles ou
+## moins (cité-État).
+@export var airfield := false
 ## Port de pêche : les zones de pêche vont jusqu'à ce nombre de tuiles du
 ## rivage (le plus grand compte).
 @export var fishing_reach := 0
@@ -258,6 +264,10 @@ func describe_effects() -> PackedStringArray:
 			RoadNetwork.TRUCKS_PER_DEPOT * RoadNetwork.PORTERS_PER_TRUCK])
 		lines.append("Brûlent %s carburant par jour, plus %s par tuile de route" % [Format.decimal(RoadNetwork.FUEL_PER_DEPOT_PER_DAY),
 			Format.decimal(RoadNetwork.FUEL_PER_TILE_PER_DAY, 2)])
+	if outpost:
+		lines.append("Avant-poste : relié au village par une route, une voie ferrée ou un aérodrome, il lance ses propres expéditions")
+	if airfield:
+		lines.append("Aérodrome : relie par les airs les avant-postes à %d tuiles ou moins" % Exploration.AIRFIELD_RANGE)
 	if fishing_reach > 0:
 		lines.append("Pêche jusqu'à %d tuiles du rivage" % fishing_reach)
 	if harbor:

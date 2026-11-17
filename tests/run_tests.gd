@@ -64,6 +64,7 @@ func _initialize() -> void:
 	_test_canals()
 	_test_canals_game()
 	_test_tractors()
+	_test_outposts()
 	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
@@ -1804,6 +1805,51 @@ func _test_two_maps() -> void:
 	_check(b != null and gs.city_buildings.building_at(spot) == b and gs.demolish(spot) and gs.city_buildings.building_at(spot) == null,
 		"maison construite puis démolie sur la carte de la ville")
 	gs.set_view(false)
+	gs.new_game(4242)
+
+
+## Avant-postes : reliés par une route (ou un aérodrome), ils lancent des
+## expéditions.
+func _test_outposts() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var outpost_def := BuildingDb.get_def(&"outpost")
+	_check(outpost_def.site == BuildingDef.Site.WORLD and outpost_def.research == &"harness_collar" and outpost_def.tier == 2,
+		"avant-poste : monde, collier d'attelage, village")
+	var home: Vector2i = gs.display_cell(gs.home)
+	var outpost: Building = null
+	for dx in range(5, 0, -1):
+		for dy in range(-5, 6):
+			var p: BuildingRegistry.Placement = gs.buildings.check_placement(outpost_def, home + Vector2i(dx, dy))
+			if outpost == null and p.is_valid():
+				outpost = gs.buildings.place(p)
+				outpost.build_progress = outpost_def.build_hours
+				outpost.status = Building.Status.RUNNING
+	_check(outpost != null and gs.outpost_link(outpost).is_empty() and gs.expedition_origins().size() == 1, "avant-poste isolé : pas d'expédition")
+	if outpost == null:
+		return
+	gs.roads.add_cells(TrackNetwork.l_path(home, outpost.anchor + Vector2i(0, 1)))
+	gs.roads.refresh()
+	_check(gs.outpost_link(outpost) == "route" and gs.expedition_origins().size() == 2, "relié par la route : départ possible")
+	gs.set_expedition_origin(1)
+	gs.stockpile.amount[Stockpile.Good.FOOD] = 1000.0
+	var trip: Exploration.Expedition = gs.launch_expedition(outpost.anchor + Vector2i(8, 0), 1, 5.0)
+	_check(trip != null and trip.path[0] == outpost.anchor, "l'expédition part de l'avant-poste")
+	for c in gs.roads.cells():
+		gs.roads.remove(c)
+	gs.roads.refresh()
+	gs.tier.level = 5
+	_check(gs.outpost_link(outpost).is_empty(), "route retirée : plus relié")
+	var airfield_def := BuildingDb.get_def(&"airfield")
+	var airfield: Building = null
+	for dy in range(-2, 3):
+		for dx in range(-2, 4):
+			var p: BuildingRegistry.Placement = gs.buildings.check_placement(airfield_def, outpost.anchor + Vector2i(dx, dy))
+			if airfield == null and p.is_valid():
+				airfield = gs.buildings.place(p)
+				airfield.build_progress = airfield_def.build_hours
+				airfield.status = Building.Status.RUNNING
+	_check(airfield != null and gs.outpost_link(outpost) == "aérodrome", "aérodrome voisin : relié par les airs")
 	gs.new_game(4242)
 
 

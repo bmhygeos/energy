@@ -358,6 +358,24 @@ compteur de puissance par habitant :
 - L'électricité reprend le moteur de la v1 (`PowerGrid`, centrales, lignes),
   mis de côté au départ (section 10).
 
+### Avant-postes et nouvelles villes
+- **Avant-poste** (réalisé) : débloqué par le collier d'attelage (palier 2),
+  bâtiment de la carte mondiale. Relié au village par une route, une voie
+  ferrée ou (cité-État) un aérodrome voisin, il lance ses propres
+  expéditions : le joueur choisit leur départ.
+- **Aérodrome** (réalisé, palier 5) : relie par les airs les avant-postes à 2
+  tuiles ou moins.
+- **Avant-poste → hameau** (prévu) : un avant-poste assez loin de la
+  première ville (distance proposée : 40 tuiles ou plus) peut être amélioré
+  en **hameau**, une seconde ville **autonome** : sa propre population, ses
+  stocks, sa carte de ville, ses zones, son palier et son bloc sur la carte
+  mondiale. Les villes partagent la recherche et échangent des marchandises
+  par leurs réseaux (route, voie ferrée, port). Des habitants de la première
+  ville (colons) partent la fonder, avec des vivres et du bois.
+- Questions à trancher : distance minimale, nombre de colons, partage du
+  territoire, échanges entre villes (automatiques ou commandés), palier de
+  la cité-État atteint ville par ville ou pour l'ensemble.
+
 ### Palier 4 : cimenterie et ciment (prévu)
 - **Recherche « Cimenterie »** (palier 4 – Ville ; prérequis proposé : Coke,
   pour la cuisson au charbon) : débloque la **cimenterie**, bâtiment de la
@@ -492,6 +510,8 @@ effectif, vivres).
 | V14 (suite) | Exploration motorisée | Véhicules à moteur à la ville (×3, navires à moteur), avion à la cité-État (60 tuiles/j, survole tout), contre du carburant — réalisé |
 | V14 | Deux cartes | Carte de la ville (plaine qui grandit avec le palier : logements, ateliers, services) et carte mondiale (zones, ressources, réseaux, bloc de la ville au centre) ; bouton Ville / Monde et touche Tab — réalisé |
 | V13 | Équilibrage | Rythme de la ville et de la cité-État (outil `simulate_pacing`) : isolation (chauffage ×0,8 / ×0,5 / ×0,4) et mécanisation des mines (×2 / ×3) — en cours |
+| V14 (avant-postes) | Avant-postes | Avant-poste (collier d'attelage), relié par route, voie ferrée ou aérodrome : départ des expéditions ; aérodrome (cité-État) — réalisé |
+| V16 | Nouvelles villes | Avant-poste assez loin amélioré en hameau : seconde ville autonome (population, stocks, carte, palier), recherche commune, échanges par les réseaux — prévu |
 | V15 | Cimenterie | Recherche Cimenterie (palier 4), cimenterie (pierre + charbon → ciment), le ciment remplace la pierre et accélère les chantiers — prévu |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 

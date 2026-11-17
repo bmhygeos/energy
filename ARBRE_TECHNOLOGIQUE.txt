@@ -1,6 +1,7 @@
 ARBRE TECHNOLOGIQUE — Energy (v2)
 ==================================
 
+Fichier généré par tools/arbre_technologique.py à partir des données du jeu.
 Une recherche se lance quand son palier est atteint et ses prérequis terminés.
 Une seule recherche à la fois ; points de recherche par habitant et par jour,
 multipliés par l'atelier (×2), le laboratoire (×5), l'université (×10),
@@ -14,12 +15,14 @@ Palier 1 — Hameau
     Prérequis : aucun
     Débloque : Canal d'irrigation (réseau, monde, 1 bois par tuile)
     Effet : Champs à 3 tuiles ou moins d'une rivière, d'un lac ou d'un puits : rendement +30 %. Canaux d'irrigation : reliés à l'eau, ils portent l'irrigation plus loin, même à travers les champs.
+  Sans recherche (palier atteint) : Grenier (ville), Maison (ville), Camp d'abattage (ville)
 
 Palier 2 — Village
 ------------------
 * Collier d'attelage  (1 500 points)
     Prérequis : aucun
-    Effet : Chevaux : vivres portés et portée de l'attelage +50 % (pénalité de distance à partir de 18 tuiles).
+    Débloque : Avant-poste (monde)
+    Effet : Chevaux : vivres portés et portée de l'attelage +50 % (pénalité de distance à partir de 18 tuiles). Avant-poste : relié au village par une route, une voie ferrée ou un aérodrome, il lance ses propres expéditions.
 * Métallurgie du fer  (1 500 points)
     Prérequis : aucun
     Débloque : Forge (ville)
@@ -43,6 +46,7 @@ Palier 2 — Village
     Prérequis : Engrenage
     Débloque : Moulin à vent (monde)
     Effet : Débloque le moulin à vent : agriculture +20 %, nourriture qui se gâte moitié moins vite, puissance mécanique.
+  Sans recherche (palier atteint) : Parc à fer (ville), Écurie (ville), Parc à pierre (ville), Entrepôt à outils (ville), Puits (monde), Atelier (ville)
 
 Palier 3 — Bourg
 ----------------
@@ -71,6 +75,7 @@ Palier 3 — Bourg
 * Charbon de bois  (20 000 points)
     Prérequis : Sylviculture
     Effet : 20 % du bois coupé chaque jour devient du charbon (3 bois pour 1 charbon), sauf si la réserve de chauffage en bois est trop basse.
+  Sans recherche (palier atteint) : Parc à charbon (ville), Port de pêche (monde), Atelier de tissage (ville)
 
 Palier 4 — Ville
 ----------------
@@ -101,6 +106,7 @@ Palier 4 — Ville
     Prérequis : Méthode expérimentale
     Débloque : Dispensaire (ville)
     Effet : Dispensaire : soigne 500 habitants ; les épidémies emportent moins d'habitants.
+  Sans recherche (palier atteint) : Atelier d'artisans (ville), Parc à cuivre (ville), Poste de garde (ville), Réservoir de pétrole (ville)
 
 Palier 5 — Cité-État
 --------------------
@@ -136,6 +142,7 @@ Palier 5 — Cité-État
     Prérequis : Électrochimie du lithium, Moteur à explosion
     Débloque : Borne de recharge (monde)
     Effet : Borne de recharge : à côté d'une route reliée, les camions d'un dépôt roulent au courant au lieu du carburant.
+  Sans recherche (palier atteint) : Aérodrome (monde), École (ville), Théâtre (ville)
 
 Arbre (prérequis → recherche)
 -----------------------------
@@ -162,7 +169,5 @@ Palier 5 :
                 ├→ Radioactivité
                 └→ Énergie éolienne
 
-Sans recherche (débloqués par le palier) : maisons, greniers, atelier (×2), écurie,
-tissage, artisans, poste de garde, école, théâtre, ports, routes, etc.
-
-Pas encore dans l'arbre : recherche de la fusée (ère spatiale, V∞).
+Pas encore dans l'arbre : recherche de la fusée (ère spatiale, V∞) ;
+prévus au plan : cimenterie (V15), avant-poste → hameau (V16).
