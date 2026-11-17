@@ -7,7 +7,7 @@ Une seule recherche à la fois ; points de recherche par habitant et par jour,
 multipliés par l'atelier (×2), le laboratoire (×5), l'université (×10),
 le centre informatique (×20) et le datacenter (×100).
 Entre parenthèses après chaque bâtiment : la carte où il se construit (ville ou monde).
-32 recherches, de 500 à 600 000 points.
+33 recherches, de 500 à 600 000 points.
 
 Palier 1 — Hameau
 -----------------
@@ -106,6 +106,10 @@ Palier 4 — Ville
     Prérequis : Méthode expérimentale
     Débloque : Dispensaire (ville)
     Effet : Dispensaire : soigne 500 habitants ; les épidémies emportent moins d'habitants.
+* Cimenterie  (45 000 points)
+    Prérequis : Coke
+    Débloque : Cimenterie (ville)
+    Effet : Cimenterie : ciment (1 pierre et 0,25 charbon chacun). Le ciment remplace la pierre des chantiers (1 ciment pour 2 pierres, s'il y en a assez) et les bâtit deux fois plus vite.
   Sans recherche (palier atteint) : Atelier d'artisans (ville), Parc à cuivre (ville), Poste de garde (ville), Réservoir de pétrole (ville)
 
 Palier 5 — Cité-État
@@ -166,6 +170,7 @@ Palier 4 :
                          ├→ Conductivité du cuivre → Hydroélectricité
                          ├→ Enseignement supérieur
                          └→ Médecine
+  Coke → Cimenterie
 Palier 5 :
   Conductivité ─┬→ Électronique ─┬→ Informatique (+ Enseignement supérieur) → Intelligence artificielle
                 │                ├→ Photovoltaïque
@@ -174,5 +179,5 @@ Palier 5 :
                 ├→ Radioactivité
                 └→ Énergie éolienne
 
-Prévus au plan : cimenterie (V15), avant-poste → hameau et port → ville portuaire (V16),
+Prévus au plan : avant-poste → hameau et port → ville portuaire (V16),
 vue globe et satellites suivants (V∞).

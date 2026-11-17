@@ -94,6 +94,12 @@ const GOODS_WOOD := 1.0
 const GOODS_IRON := 0.25
 ## Tracteurs : carburant par travailleur agricole et par jour.
 const TRACTOR_FUEL_PER_WORKER := 0.03
+## Cimenterie : pierre et charbon par ciment ; pierres remplacées par un
+## ciment ; chantier au ciment : heures gagnées par heure.
+const CEMENT_STONE := 1.0
+const CEMENT_COAL := 0.25
+const STONE_PER_CEMENT := 2.0
+const CEMENT_BUILD_SPEED := 2
 ## Raffinerie : pétrole par unité de carburant.
 const OIL_PER_FUEL := 1.0
 ## Palier à partir duquel la cité pose des routes (bourg).
@@ -379,7 +385,22 @@ func build_costs(def: BuildingDef) -> PackedFloat32Array:
 		var step := costs_of(level)
 		for good in Stockpile.COUNT:
 			total[good] += step[good]
-	return total
+	return with_cement(total)
+
+
+## [param values] avec la pierre remplacée par du ciment (recherche
+## Cimenterie), s'il y en a assez en stock ; sinon inchangé.
+func with_cement(values: PackedFloat32Array) -> PackedFloat32Array:
+	var stone := values[Stockpile.Good.STONE]
+	if stone <= 0.0 or research == null or not research.is_done(&"cement"):
+		return values
+	var cement := ceilf(stone / STONE_PER_CEMENT)
+	if not stockpile.has(Stockpile.Good.CEMENT, cement + values[Stockpile.Good.CEMENT]):
+		return values
+	var result := values.duplicate()
+	result[Stockpile.Good.STONE] = 0.0
+	result[Stockpile.Good.CEMENT] += cement
+	return result
 
 
 ## Placement de [param def] (à son niveau construit, build_level) en
@@ -468,6 +489,9 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 	for good in costs.size():
 		stockpile.take(good, costs[good])
 	var b := registry_for(def).place(placement)
+	# Chantier au ciment : deux fois plus rapide.
+	if costs[Stockpile.Good.CEMENT] > 0.0:
+		b.speed = CEMENT_BUILD_SPEED
 	if not placement.cleared.is_empty():
 		EventBus.tiles_changed.emit(placement.cleared)
 	EventBus.building_placed.emit(b)
@@ -488,7 +512,7 @@ func upgrade_error(b: Building) -> String:
 		return "%s : au palier %s" % [next.display_name, CityTier.NAMES[next.tier - 1]]
 	if next.research and not research.is_done(next.research):
 		return "Recherche requise : %s" % ResearchDb.get_def(next.research).display_name
-	var costs := costs_of(next)
+	var costs := with_cement(costs_of(next))
 	for good in costs.size():
 		if not stockpile.has(good, costs[good]):
 			return "%s insuffisant%s (%d requis)" % [Stockpile.GOOD_NAMES[good],
@@ -510,11 +534,13 @@ func upgrade_building(b: Building) -> bool:
 		EventBus.notified.emit(error)
 		return false
 	var next := b.def.upgrade
-	var costs := costs_of(next)
+	var costs := with_cement(costs_of(next))
 	for good in costs.size():
 		stockpile.take(good, costs[good])
 	EventBus.building_removed.emit(b)
 	b.start_upgrade(next)
+	if costs[Stockpile.Good.CEMENT] > 0.0:
+		b.speed = CEMENT_BUILD_SPEED
 	EventBus.building_placed.emit(b)
 	EventBus.stocks_changed.emit()
 	EventBus.notified.emit("Amélioration lancée : %s" % next.display_name)
@@ -912,6 +938,7 @@ func plan_lines(from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
 
 func _plan_track(network: TrackNetwork, error: String, from: Vector2i, to: Vector2i) -> TrackNetwork.Plan:
 	var p := network.plan(from, to)
+	p.costs = with_cement(p.costs)
 	if not error.is_empty():
 		p.error = error
 	for good in Stockpile.COUNT:
@@ -1401,6 +1428,27 @@ func pollution_harm() -> float:
 	return pollution_index() * (1.0 - CARE_POLLUTION_SHIELD * (health_coverage() if tier.level >= SERVICES_TIER else 0.0))
 
 
+## Cimenteries : pierre et charbon du jour cuits en ciment, dans la limite
+## du stock.
+func _run_cement() -> void:
+	var rate := 0.0
+	for b in all_buildings():
+		if b.is_complete():
+			rate += b.def.cement_per_day
+	if rate <= 0.0:
+		return
+	rate *= grid.industry_factor()
+	var room := stockpile.capacity[Stockpile.Good.CEMENT] - stockpile.amount[Stockpile.Good.CEMENT]
+	var n := minf(minf(rate, room), minf(stockpile.amount[Stockpile.Good.STONE] / CEMENT_STONE,
+		stockpile.amount[Stockpile.Good.COAL] / CEMENT_COAL))
+	if n <= 0.0:
+		return
+	stockpile.take(Stockpile.Good.STONE, n * CEMENT_STONE)
+	coal_burned_today += stockpile.take(Stockpile.Good.COAL, n * CEMENT_COAL)
+	stockpile.add(Stockpile.Good.CEMENT, n)
+	production.produced_today[Stockpile.Good.CEMENT] += n
+
+
 ## Usines d'électronique : cuivre du jour transformé en composants, dans la
 ## limite du stock.
 func _run_electronics() -> void:
@@ -1869,6 +1917,7 @@ func _on_day(day: int) -> void:
 	_run_refineries()
 	_run_artisans()
 	_run_electronics()
+	_run_cement()
 	_run_enrichment()
 	_run_space()
 	_run_steam()

@@ -37,6 +37,7 @@ Palier 4 :
                          ├→ Conductivité du cuivre → Hydroélectricité
                          ├→ Enseignement supérieur
                          └→ Médecine
+  Coke → Cimenterie
 Palier 5 :
   Conductivité ─┬→ Électronique ─┬→ Informatique (+ Enseignement supérieur) → Intelligence artificielle
                 │                ├→ Photovoltaïque
@@ -108,7 +109,7 @@ def main():
         if by_tier.get(t):
             out.append(f"  Sans recherche (palier atteint) : {', '.join(by_tier[t])}")
         out.append("")
-    out += [DIAGRAM, "", "Prévus au plan : cimenterie (V15), avant-poste → hameau et port → ville portuaire (V16),",
+    out += [DIAGRAM, "", "Prévus au plan : avant-poste → hameau et port → ville portuaire (V16),",
             "vue globe et satellites suivants (V∞).", ""]
     missing = [research[r]["name"] for r in order if research[r]["name"] not in DIAGRAM]
     if missing:

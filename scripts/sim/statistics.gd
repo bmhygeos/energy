@@ -12,9 +12,9 @@ extends RefCounted
 const SERIES: Array[StringName] = [
 	&"population", &"active", &"employed", &"unemployed",
 	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
-	&"fiber_stock", &"clothes_stock", &"fuel_stock", &"copper_stock", &"goods_stock", &"uranium_stock", &"lithium_stock", &"electronics_stock", &"nuclear_fuel_stock",
+	&"fiber_stock", &"clothes_stock", &"fuel_stock", &"copper_stock", &"goods_stock", &"uranium_stock", &"lithium_stock", &"electronics_stock", &"nuclear_fuel_stock", &"cement_stock",
 	&"food_produced", &"wood_produced", &"stone_produced", &"iron_produced", &"tools_produced",
-	&"coal_produced", &"oil_produced", &"fiber_produced", &"clothes_produced", &"fuel_produced", &"copper_produced", &"goods_produced", &"uranium_produced", &"lithium_produced", &"electronics_produced", &"nuclear_fuel_produced",
+	&"coal_produced", &"oil_produced", &"fiber_produced", &"clothes_produced", &"fuel_produced", &"copper_produced", &"goods_produced", &"uranium_produced", &"lithium_produced", &"electronics_produced", &"nuclear_fuel_produced", &"cement_produced",
 	&"food_lost", &"wood_lost", &"satisfaction", &"power", &"power_per_capita",
 	&"territory", &"horses", &"water", &"research", &"coal_burned", &"clothes",
 	&"light", &"electricity", &"goods", &"health", &"order", &"education", &"culture", &"pollution",
@@ -23,16 +23,16 @@ const SERIES: Array[StringName] = [
 const AVERAGED: Array[StringName] = [
 	&"population", &"active", &"employed", &"unemployed",
 	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
-	&"fiber_stock", &"clothes_stock", &"fuel_stock", &"copper_stock", &"goods_stock", &"uranium_stock", &"lithium_stock", &"electronics_stock", &"nuclear_fuel_stock",
+	&"fiber_stock", &"clothes_stock", &"fuel_stock", &"copper_stock", &"goods_stock", &"uranium_stock", &"lithium_stock", &"electronics_stock", &"nuclear_fuel_stock", &"cement_stock",
 ]
 ## Marchandise (Stockpile.Good) → séries de stock et de production.
 const STOCK_KEYS: Array[StringName] = [
 	&"food_stock", &"wood_stock", &"stone_stock", &"iron_stock", &"tools_stock", &"coal_stock", &"oil_stock",
-	&"fiber_stock", &"clothes_stock", &"fuel_stock", &"copper_stock", &"goods_stock", &"uranium_stock", &"lithium_stock", &"electronics_stock", &"nuclear_fuel_stock",
+	&"fiber_stock", &"clothes_stock", &"fuel_stock", &"copper_stock", &"goods_stock", &"uranium_stock", &"lithium_stock", &"electronics_stock", &"nuclear_fuel_stock", &"cement_stock",
 ]
 const PRODUCED_KEYS: Array[StringName] = [
 	&"food_produced", &"wood_produced", &"stone_produced", &"iron_produced", &"tools_produced",
-	&"coal_produced", &"oil_produced", &"fiber_produced", &"clothes_produced", &"fuel_produced", &"copper_produced", &"goods_produced", &"uranium_produced", &"lithium_produced", &"electronics_produced", &"nuclear_fuel_produced",
+	&"coal_produced", &"oil_produced", &"fiber_produced", &"clothes_produced", &"fuel_produced", &"copper_produced", &"goods_produced", &"uranium_produced", &"lithium_produced", &"electronics_produced", &"nuclear_fuel_produced", &"cement_produced",
 ]
 
 ## Nombre de jours clos.

@@ -428,6 +428,18 @@ météo et interface conservés.
   (« camions ») indiquent la desserte.
 - **Cartographes** : à la ville, les expéditions voient à 5 tuiles au lieu de 3.
 
+### Cimenterie et ciment
+
+- **Cimenterie** (recherche, ville, après le coke ; 45 000 points) :
+  **cimenterie** (2×1, carte de la ville ; 30 bois, 80 pierre, 30 fer, 10
+  outils) : 10 ciments par jour, chacun pour 1 pierre et 0,25 charbon ;
+  l'électricité l'accélère comme les autres ateliers.
+- Après la recherche, la pierre d'un chantier (bâtiment, amélioration,
+  route) est remplacée par du ciment, 1 ciment pour 2 pierres, si le stock de
+  ciment suffit ; sinon la pierre reste demandée.
+- Un bâtiment construit ou amélioré au ciment se bâtit **deux fois plus
+  vite**.
+
 ### Fusée et premier satellite
 
 - **Fusée** (cité-État, 600 000 points, après l'électronique et le moteur à

@@ -67,6 +67,7 @@ func _initialize() -> void:
 	_test_outposts()
 	_test_space()
 	_test_space_game()
+	_test_cement()
 	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
@@ -1004,7 +1005,7 @@ func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
 	stock.amount = Stockpile.zeros()
-	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -1810,6 +1811,43 @@ func _test_two_maps() -> void:
 	_check(b != null and gs.city_buildings.building_at(spot) == b and gs.demolish(spot) and gs.city_buildings.building_at(spot) == null,
 		"maison construite puis démolie sur la carte de la ville")
 	gs.set_view(false)
+	gs.new_game(4242)
+
+
+## Cimenterie : ciment cuit au charbon, il remplace la pierre et accélère les
+## chantiers.
+func _test_cement() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	gs.tier.level = 4
+	var stock: Stockpile = gs.stockpile
+	for good in Stockpile.COUNT:
+		stock.capacity[good] = 5000.0
+		stock.amount[good] = 1000.0
+	stock.amount[Stockpile.Good.CEMENT] = 0.0
+	var tower := BuildingDb.get_def(&"house")
+	var plain: PackedFloat32Array = gs.build_costs(tower)
+	_check(plain[Stockpile.Good.STONE] > 0.0 and plain[Stockpile.Good.CEMENT] == 0.0, "sans recherche : de la pierre")
+	gs.research._done[&"cement"] = true
+	_check(gs.build_costs(tower)[Stockpile.Good.STONE] == plain[Stockpile.Good.STONE], "sans ciment en stock : toujours de la pierre")
+	var works := _place_running(gs, BuildingDb.get_def(&"cement_works"))
+	stock.amount[Stockpile.Good.STONE] = 4.0
+	gs._run_cement()
+	_check(works != null and is_equal_approx(stock.amount[Stockpile.Good.CEMENT], 4.0) and stock.amount[Stockpile.Good.STONE] == 0.0
+		and is_equal_approx(stock.amount[Stockpile.Good.COAL], 1000.0 - 4.0 * gs.CEMENT_COAL), "cimenterie : pierre et charbon → ciment")
+	stock.amount[Stockpile.Good.CEMENT] = 1000.0
+	var cemented: PackedFloat32Array = gs.build_costs(tower)
+	_check(cemented[Stockpile.Good.STONE] == 0.0 and cemented[Stockpile.Good.CEMENT] == ceilf(plain[Stockpile.Good.STONE] / gs.STONE_PER_CEMENT),
+		"le ciment remplace la pierre (1 pour 2)")
+	gs.set_view(true)
+	var b: Building = gs.build(tower, gs.free_city_spot(gs.build_level(tower)))
+	gs.set_view(false)
+	_check(b != null and b.speed == gs.CEMENT_BUILD_SPEED, "chantier au ciment : deux fois plus rapide")
+	var hours: int = b.def.build_hours
+	gs.city_buildings.advance(ceili(hours / 2.0))
+	_check(b.is_complete(), "bâti en %d h au lieu de %d" % [ceili(hours / 2.0), hours])
+	var road: TrackNetwork.Plan = gs.plan_roads(gs.display_cell(gs.home) + Vector2i(2, 4), gs.display_cell(gs.home) + Vector2i(6, 4))
+	_check(road.costs[Stockpile.Good.STONE] == 0.0 and road.costs[Stockpile.Good.CEMENT] > 0.0, "routes au ciment")
 	gs.new_game(4242)
 
 

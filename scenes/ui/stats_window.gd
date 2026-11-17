@@ -11,7 +11,7 @@ const WOOD_COLOR := Color("a0703c")
 ## Couleur de chaque marchandise (Stockpile.Good).
 const GOOD_COLORS: Array[Color] = [FOOD_COLOR, WOOD_COLOR, Color("9aa3ad"), Color("5f7f9e"), Color("d9774b"),
 	Color("5a5a64"), Color("2f6f6a"), Color("7393e6"), Color("c46fb0"), Color("d4c34a"), Color("c9824e"), Color("b58ad9"),
-	Color("8fd14f"), Color("cfd6dd"), Color("3fb7a8"), Color("b7e34a")]
+	Color("8fd14f"), Color("cfd6dd"), Color("3fb7a8"), Color("b7e34a"), Color("bdb7ab")]
 const PENDING_COLOR := Color("8b8f99")
 
 var _range := 1

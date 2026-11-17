@@ -382,7 +382,7 @@ compteur de puissance par habitant :
   territoire, échanges entre villes (automatiques ou commandés), palier de
   la cité-État atteint ville par ville ou pour l'ensemble.
 
-### Palier 4 : cimenterie et ciment (prévu)
+### Palier 4 : cimenterie et ciment (réalisé en V15)
 - **Recherche « Cimenterie »** (palier 4 – Ville ; prérequis proposé : Coke,
   pour la cuisson au charbon) : débloque la **cimenterie**, bâtiment de la
   carte de la ville.
@@ -397,6 +397,10 @@ compteur de puissance par habitant :
   fois plus vite (durée du chantier ×0,5).
 - Effet attendu : moins de carrières à la ville, des chantiers d'immeubles et
   d'usines plus courts, et une nouvelle demande de charbon.
+- Réalisé avec les valeurs ci-dessus ; la cimenterie (2×1, carte de la ville)
+  coûte 30 bois, 80 pierre, 30 fer et 10 outils. Le ciment remplace la pierre
+  des bâtiments, des améliorations et des routes quand le stock suffit pour
+  tout le chantier ; il brûle du charbon (pollution).
 
 ### Transport : portée et quantité transportée
 Chaque palier apporte un mode de transport qui repousse la **portée** (distance
@@ -527,7 +531,7 @@ effectif, vivres).
 | V13 | Équilibrage | Rythme de la ville et de la cité-État (outil `simulate_pacing`) : isolation (chauffage ×0,8 / ×0,5 / ×0,4) et mécanisation des mines (×2 / ×3) — en cours |
 | V14 (avant-postes) | Avant-postes | Avant-poste (collier d'attelage), relié par route, voie ferrée ou aérodrome : départ des expéditions ; aérodrome (cité-État) ; ports reliés par l'eau, départs eux aussi — réalisé |
 | V16 | Nouvelles villes | Avant-poste (ou port : ville portuaire) assez loin amélioré en hameau : seconde ville autonome (population, stocks, carte, palier), recherche commune, échanges par les réseaux — prévu |
-| V15 | Cimenterie | Recherche Cimenterie (palier 4), cimenterie (pierre + charbon → ciment), le ciment remplace la pierre et accélère les chantiers — prévu |
+| V15 | Cimenterie | Recherche Cimenterie (palier 4), cimenterie (pierre + charbon → ciment), le ciment remplace la pierre et accélère les chantiers — réalisé |
 | V17 | Fusée | Recherche Fusée, usine de fusées, base de lancement, premier satellite qui cartographie la planète — réalisé (sans vue globe) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 

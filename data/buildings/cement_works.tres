@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"cement_works"
+display_name = "Cimenterie"
+description = "Fours rotatifs et broyeurs : la pierre calcaire, cuite au charbon, devient ciment."
+category = 2
+tier = 4
+research = &"cement"
+size = Vector2i(2, 1)
+build_hours = 96
+wood_cost = 30
+stone_cost = 80
+iron_cost = 30
+tools_cost = 10
+cement_per_day = 10.0
+color = Color(0.72, 0.7, 0.66, 1)
+roof_color = Color(0.45, 0.44, 0.42, 1)
+height = 24.0

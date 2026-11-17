@@ -159,7 +159,7 @@ func advance(hours: int = 1) -> Array[Building]:
 	for b: Building in _buildings.values():
 		if b.is_complete():
 			continue
-		b.build_progress = mini(b.build_progress + hours, b.def.build_hours)
+		b.build_progress = mini(b.build_progress + hours * b.speed, b.def.build_hours)
 		if b.is_complete():
 			b.status = Building.Status.RUNNING
 			completed.append(b)

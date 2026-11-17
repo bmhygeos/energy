@@ -13,6 +13,8 @@ var anchor: Vector2i
 var cells: Array[Vector2i]
 ## Heures de chantier écoulées ; le bâtiment est terminé à def.build_hours.
 var build_progress := 0
+## Heures de chantier gagnées par heure (2 : construit au ciment).
+var speed := 1
 var status: Status = Status.CONSTRUCTION
 ## Pendant une amélioration : le niveau précédent, toujours en service.
 var previous_def: BuildingDef
@@ -41,6 +43,7 @@ func start_upgrade(next: BuildingDef) -> void:
 	previous_def = def
 	def = next
 	build_progress = 0
+	speed = 1
 	status = Status.CONSTRUCTION
 
 

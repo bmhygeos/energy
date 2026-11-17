@@ -107,6 +107,9 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Consommation électrique (W) : centre informatique, datacenter ; sans courant,
 ## à l'arrêt.
 @export var power_demand := 0.0
+## Cimenterie : ciment cuit par jour (GameState.CEMENT_STONE pierre et
+## CEMENT_COAL charbon chacun).
+@export var cement_per_day := 0.0
 ## Usine d'électronique : composants fabriqués par jour (un cuivre chacun).
 @export var electronics_per_day := 0.0
 ## Usine d'enrichissement : combustible nucléaire produit par jour
@@ -250,6 +253,8 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Stocke %d kWh : le surplus de jour (soleil, vent, eau) éclaire la nuit" % roundi(storage_kwh))
 	if power_demand > 0.0:
 		lines.append("Consomme %s d'électricité (sans courant, à l'arrêt)" % PowerMeter.format(power_demand))
+	if cement_per_day > 0.0:
+		lines.append("Cuit %s ciment par jour (pierre et charbon) ; le ciment remplace la pierre et accélère les chantiers" % Format.decimal(cement_per_day))
 	if electronics_per_day > 0.0:
 		lines.append("Fabrique %s composants électroniques par jour (un cuivre chacun)" % Format.decimal(electronics_per_day))
 	if nuclear_fuel_per_day > 0.0:
