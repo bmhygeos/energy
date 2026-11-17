@@ -20,6 +20,9 @@ const WATTS_PER_FUEL := 1500.0
 ## Puissance moyenne d'une unité de combustible nucléaire (uranium enrichi)
 ## par jour.
 const WATTS_PER_NUCLEAR_FUEL := 500000.0
+## Centrale à fusion : puissance moyenne d'un lithium par jour (le tritium
+## du deutérium-tritium vient du lithium).
+const WATTS_PER_LITHIUM := 4000000.0
 ## Usine d'enrichissement : minerais d'uranium par unité de combustible.
 const ENRICH_URANIUM := 5.0
 ## Forges, tissages et raffineries à pleine couverture : +INDUSTRY_BONUS.
@@ -55,6 +58,9 @@ var hydro := 0.0
 var wind_power := 0.0
 var solar := 0.0
 var nuclear := 0.0
+## Courant de la fusion (W) et lithium brûlé le dernier jour.
+var fusion := 0.0
+var lithium_burnt := 0.0
 ## Courant rendu la nuit par les batteries (W).
 var stored := 0.0
 ## Combustibles brûlés le dernier jour (carburant, combustible nucléaire).
@@ -149,7 +155,7 @@ func capacity(season: int) -> float:
 ## limite des stocks de combustible nucléaire [param nuclear_fuel], de
 ## [param coal] et de [param fuel] (brûlés : nuclear_fuel_burnt, fuel_burnt) ;
 ## renvoie le charbon brûlé.
-func run_day(count: int, season: int, coal: float, fuel := 0.0, nuclear_fuel := 0.0) -> float:
+func run_day(count: int, season: int, coal: float, fuel := 0.0, nuclear_fuel := 0.0, lithium := 0.0) -> float:
 	demand = count * WATTS_PER_INHABITANT + machine_demand + heat_demand
 	var water := 0.0
 	var air := 0.0
@@ -157,6 +163,7 @@ func run_day(count: int, season: int, coal: float, fuel := 0.0, nuclear_fuel := 
 	var thermal := 0.0
 	var oil := 0.0
 	var atom := 0.0
+	var star := 0.0
 	var battery := 0.0
 	for b in connected:
 		var w := output_of(b, season)
@@ -173,6 +180,8 @@ func run_day(count: int, season: int, coal: float, fuel := 0.0, nuclear_fuel := 
 				oil += w
 			BuildingDef.PowerSource.NUCLEAR:
 				atom += w
+			BuildingDef.PowerSource.FUSION:
+				star += w
 		battery += b.def.storage_kwh * 1000.0 / GameDate.HOURS_PER_DAY
 	# Jour et nuit : l'eau et le vent servent les deux, le soleil le jour seul.
 	var share := clampf(day_share, 0.0, 1.0)
@@ -191,6 +200,10 @@ func run_day(count: int, season: int, coal: float, fuel := 0.0, nuclear_fuel := 
 	wind_power = green * air / produced if produced > 0.0 else 0.0
 	solar = green - hydro - wind_power
 	var left := demand - green
+	# La fusion d'abord : presque sans combustible, sans pollution.
+	fusion = minf(minf(left, star), lithium * WATTS_PER_LITHIUM)
+	lithium_burnt = fusion / WATTS_PER_LITHIUM
+	left -= fusion
 	nuclear = minf(minf(left, atom), nuclear_fuel * WATTS_PER_NUCLEAR_FUEL)
 	nuclear_fuel_burnt = nuclear / WATTS_PER_NUCLEAR_FUEL
 	left -= nuclear
@@ -198,7 +211,7 @@ func run_day(count: int, season: int, coal: float, fuel := 0.0, nuclear_fuel := 
 	left -= burnt
 	var oil_burnt := minf(minf(left, oil), fuel * WATTS_PER_FUEL)
 	fuel_burnt = oil_burnt / WATTS_PER_FUEL
-	supplied = green + nuclear + burnt + oil_burnt
+	supplied = green + fusion + nuclear + burnt + oil_burnt
 	coverage = supplied / demand if demand > 0.0 else 0.0
 	return burnt / WATTS_PER_COAL
 

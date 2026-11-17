@@ -53,6 +53,10 @@ class Facts:
 	var satellites := 0
 	## La capitale est Cité des étoiles.
 	var star_city := false
+	## Un équipage s'est posé sur la Lune.
+	var moon := false
+	## Genres de satellites en orbite (Space.Kind).
+	var satellite_kinds := 0
 	var surveyed := 0.0
 	## Indice de pollution de la veille (0–1).
 	var pollution := 1.0
@@ -127,11 +131,15 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.tier >= 5 and f.pollution <= 0.0),
 		Def.new(&"satellite", "Premier satellite", "Mettre un satellite en orbite (base de lancement).",
 			func(f: Facts) -> bool: return f.satellites > 0),
+		Def.new(&"constellation", "Constellation", "Avoir en orbite un satellite d'observation, un de météo et un de communications.",
+			func(f: Facts) -> bool: return f.satellite_kinds >= 3),
 		Def.new(&"mapped", "Planète cartographiée", "Cartographier toute la planète par satellite.",
 			func(f: Facts) -> bool: return f.surveyed >= 1.0),
 		Def.new(&"star_city", CityTier.STAR_NAME, "La capitale devient %s : %d habitants, un satellite en orbite." % [
 			CityTier.STAR_NAME, CityTier.STAR_POPULATION],
 			func(f: Facts) -> bool: return f.star_city),
+		Def.new(&"moon", "Sur la Lune", "Poser un équipage sur la Lune (recherche Voyage sur la Lune, fusée lunaire).",
+			func(f: Facts) -> bool: return f.moon),
 		Def.new(&"datacenter", "Intelligence artificielle", "Construire un datacenter (recherche ×100).",
 			func(f: Facts) -> bool: return f.has_building(&"datacenter")),
 	]

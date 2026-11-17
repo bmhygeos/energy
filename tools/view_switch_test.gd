@@ -1,6 +1,7 @@
 extends SceneTree
 ## Test sans affichage du passage entre la carte mondiale et la carte de la
-## ville : calques, bâtiments affichés, menu de construction, caméra.
+## ville : calques, bâtiments affichés, menu de construction, caméra ; et vue
+## globe (fermée sans satellite, ouverte avec).
 ## Lancer : godot --headless -s res://tools/view_switch_test.gd
 
 var _failures := 0
@@ -38,7 +39,19 @@ func _initialize() -> void:
 	await process_frame
 	_check(_sprite_count(sprites) == gs.buildings.count() and camera.position == world_position, "retour au monde : vue et caméra retrouvées")
 	_check(not house_button.visible and well_button.visible, "menu : bâtiments du monde")
-	print("%s" % ("Passage ville / monde : OK" if _failures == 0 else "%d échec(s)" % _failures))
+	var globe: Node = null
+	for n in root.get_node("Main").get_children():
+		if n.has_method("is_open"):
+			globe = n
+	globe.toggle()
+	_check(globe != null and not globe.is_open(), "globe : fermé sans satellite")
+	gs.space.satellites = 1
+	globe.toggle()
+	await process_frame
+	_check(globe.is_open(), "globe : ouvert avec un satellite")
+	globe.toggle()
+	_check(not globe.is_open(), "globe : refermé")
+	print("%s" % ("Passage ville / monde et globe : OK" if _failures == 0 else "%d échec(s)" % _failures))
 	quit(1 if _failures > 0 else 0)
 
 

@@ -442,11 +442,18 @@ au-delà de laquelle la pénalité de trajet commence, section 5) et augmente la
 ### Palier 6 : Cité des étoiles (la capitale seule)
 - **Condition** : palier commun Cité-État atteint, **capitale** à 15 000
   habitants avec 80 % de satisfaction, et au moins un satellite en orbite.
+- **Recherches du palier 6** (réalisées, V21) : **Fusion nucléaire**
+  (1 000 000 points, après la radioactivité et l'IA) : centrale à fusion de
+  la capitale, 2 MW pour 0,5 lithium par jour, sans pollution ; **Voyage sur
+  la Lune** (1 500 000 points, après la fusée et la fusion) : les usines
+  construisent la fusée lunaire (120 jours, matériaux doublés), lancée contre
+  3 000 carburant à l'équateur ; 90 % de réussite ; jalon « Sur la Lune ».
+  Candidat pour l'objectif de fin de partie (question ouverte).
 - **Effets** (réalisé) : la capitale prend le nom de palier « Cité des
   étoiles » (bandeau, bloc sur la carte mondiale, jalon) et sa carte de ville
   passe à 48×48 cases. Les autres villes restent au palier commun,
-  Cité-État. Prépare la suite de l'ère spatiale (vue globe, satellites
-  suivants), à faire.
+  Cité-État. Prépare la suite de l'ère spatiale (satellites suivants), à
+  faire.
 
 ### Palier 5 : la fusée et le premier satellite
 - **Recherche de la fusée** : projet de recherche long,
@@ -467,8 +474,17 @@ au-delà de laquelle la pénalité de trajet commence, section 5) et augmente la
   automatique d'une fusée prête contre 300 carburant à l'équateur à 600 aux
   pôles, 15 % d'échecs. Le premier satellite cartographie la planète par
   bandes de 16 colonnes de longitude par jour (64 jours) depuis la longitude
-  du village : tuiles explorées et prospectées, sans annexion. Reste : vue
-  globe, satellites suivants.
+  du village : tuiles explorées et prospectées, sans annexion.
+- **Vue globe** (réalisée, V19) : dès le premier satellite, bouton « Globe »
+  du bandeau ou touche V : la planète en 3D, tuiles connues avec la couleur de
+  leur terrain, territoires teintés, villes marquées, inconnues sombres,
+  satellites en orbite ; glisser pour tourner, molette pour zoomer.
+- **Satellites suivants** (réalisés, V20) : dans l'ordre des lancements
+  réussis, observation (cartographie), **météo** (prévision du lendemain au
+  survol de la météo, intempéries atténuées de moitié : hiver rude,
+  sécheresse, épizootie, incendie), **communications** (tout avant-poste ou
+  port devient un départ d'expédition, recherche +10 %) ; les suivants
+  s'ajoutent en orbite. Jalon « Constellation ».
 
 ## 8. Gouvernance (à partir du palier 3)
 **Pas d'extérieur** : la cité ne commerce avec personne ; tout ce dont elle a
@@ -552,6 +568,9 @@ effectif, vivres).
 | V15 | Cimenterie | Recherche Cimenterie (palier 4), cimenterie (pierre + charbon → ciment), le ciment remplace la pierre et accélère les chantiers — réalisé |
 | V17 | Fusée | Recherche Fusée, usine de fusées, base de lancement, premier satellite qui cartographie la planète — réalisé (sans vue globe) |
 | V18 | Cité des étoiles | Palier 6 de la capitale seule : 15 000 habitants, satisfaction, un satellite ; carte de ville 48×48, jalon — réalisé |
+| V19 | Vue globe | Planète en 3D dès le premier satellite : tuiles connues, territoires, villes, satellites en orbite ; bouton Globe, touche V — réalisé |
+| V20 | Satellites | Météo (prévisions, intempéries atténuées) et communications (avant-postes reliés, recherche +10 %) ; jalon Constellation — réalisé |
+| V21 | Palier 6 : fusion et Lune | Recherches du palier 6 (capitale Cité des étoiles) : fusion nucléaire (centrale à fusion), voyage sur la Lune (fusée lunaire, alunissage) — réalisé |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses

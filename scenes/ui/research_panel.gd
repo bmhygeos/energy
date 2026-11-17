@@ -115,7 +115,7 @@ func _refresh() -> void:
 		child.queue_free()
 	var shown := 0
 	for def in ResearchDb.DEFS:
-		if def.tier > GameState.tier.level:
+		if def.tier > GameState.research_level():
 			continue
 		shown += 1
 		_list.add_child(_row(def))
@@ -167,7 +167,7 @@ func _row(def: ResearchDef) -> Control:
 		var start := Button.new()
 		start.text = "Rechercher"
 		start.focus_mode = Control.FOCUS_NONE
-		start.disabled = not research.is_available(def, GameState.tier.level)
+		start.disabled = not research.is_available(def, GameState.research_level())
 		start.pressed.connect(func() -> void: GameState.start_research(def))
 		line.add_child(start)
 	var bar := ProgressBar.new()

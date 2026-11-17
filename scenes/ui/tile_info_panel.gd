@@ -170,12 +170,18 @@ func _building_lines(b: Building) -> PackedStringArray:
 		else:
 			lines.append("Non desservie : reliez-la par la voie à une gare du village")
 	if b.is_complete() and b.def.rocket_factory:
-		lines.append("Fusée en assemblage : %d %%%s" % [roundi(GameState.space.progress / Space.ROCKET_WORK_DAYS * 100.0),
-			"" if GameState.machines_powered() else " (à l'arrêt : courant insuffisant)"])
+		var space: Space = GameState.space
+		if space.building_lunar():
+			lines.append("Fusée lunaire en assemblage : %d %%" % roundi(space.lunar_progress / Space.LUNAR_WORK_DAYS * 100.0))
+		else:
+			lines.append("Fusée en assemblage : %d %%" % roundi(space.progress / Space.ROCKET_WORK_DAYS * 100.0))
+		if not GameState.machines_powered():
+			lines.append("À l'arrêt : courant insuffisant")
 	if b.is_complete() and b.def.launch_pad:
 		var fuel := Space.launch_fuel(GameState.world_map.latitude(GameState.world_map.wrap_cell(b.anchor).y))
 		lines.append("Lancement : %d carburant à cette latitude ; fusées prêtes : %d ; satellites : %d" % [
 			roundi(fuel), GameState.space.rockets, GameState.space.satellites])
+		lines.append("Prochain satellite : %s" % Space.KIND_NAMES[GameState.space.next_kind()])
 	if b.is_complete() and (b.def.outpost or b.def.harbor):
 		var link: String = GameState.outpost_link(b)
 		lines.append("Relié au village par %s : les expéditions peuvent en partir (menu, Départ)" % link if not link.is_empty()
@@ -204,7 +210,7 @@ func _building_lines(b: Building) -> PackedStringArray:
 	if b.is_complete() and b.def.coal_per_day > 0.0:
 		lines.append("En marche" if GameState.steam_running else "À l'arrêt : plus de charbon")
 	if b.is_complete() and b.def.upgrade:
-		lines.append("Améliorable en %s (palier %s)" % [b.def.upgrade.display_name, CityTier.NAMES[b.def.upgrade.tier - 1]])
+		lines.append("Améliorable en %s (palier %s)" % [b.def.upgrade.display_name, CityTier.label(b.def.upgrade.tier)])
 	return lines
 
 

@@ -76,7 +76,7 @@ func _initialize() -> void:
 			print("Village déserté au jour %d" % (day + 1))
 			break
 	print("\nPaliers : ", ", ".join(_tier_days.keys().map(func(t: int) -> String:
-		return "%s jour %d" % [CityTier.NAMES[t - 1], _tier_days[t]])))
+		return "%s jour %d" % [CityTier.label(t), _tier_days[t]])))
 	var milestones: Milestones = _gs.milestones
 	for def in milestones.defs:
 		var when := "jour %d" % (milestones.reached[def.id] + 1) if milestones.is_reached(def.id) else "—"

@@ -182,10 +182,19 @@ func _refresh() -> void:
 				"s" if roads.electric_depots() > 1 else "", PowerMeter.format(roads.electric_watts())] if roads.electric else ""],
 			"" if roads.running else "  ·  à l'arrêt"]
 	var space: Space = GameState.space
-	if space and (space.progress > 0.0 or space.rockets > 0 or space.launches > 0):
-		_needs.text += "\nEspace : fusée %d %%  ·  prêtes %d  ·  lancements %d  ·  satellites %d%s" % [
+	if space and (space.progress > 0.0 or space.rockets > 0 or space.launches > 0 or space.lunar_project):
+		var orbit := PackedStringArray()
+		for kind in space.kinds:
+			orbit.append(Space.KIND_NAMES[kind])
+		_needs.text += "\nEspace : fusée %d %%  ·  prêtes %d  ·  lancements %d  ·  satellites %d%s%s" % [
 			roundi(space.progress / Space.ROCKET_WORK_DAYS * 100.0), space.rockets, space.launches, space.satellites,
+			" (%s)" % ", ".join(orbit) if not orbit.is_empty() else "",
 			"  ·  planète cartographiée %d %%" % roundi(space.surveyed(GameState.world_map.size.x) * 100.0) if space.satellites > 0 else ""]
+		if space.moon_landed:
+			_needs.text += "  ·  équipage sur la Lune"
+		elif space.lunar_project:
+			_needs.text += "  ·  fusée lunaire %s" % ("prête" if space.lunar_ready else "%d %%" % roundi(
+				space.lunar_progress / Space.LUNAR_WORK_DAYS * 100.0))
 	if GameState.steam_coal_need() > 0.0:
 		_needs.text += "\nMachines à vapeur : charbon %s /j%s" % [Format.decimal(GameState.steam_coal_need()),
 			"" if GameState.steam_running else "  ·  à l'arrêt"]

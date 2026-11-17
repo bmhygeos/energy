@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"fusion"
+display_name = "Fusion nucléaire"
+description = "Plasma confiné à cent millions de degrés : le feu des étoiles, domestiqué."
+tier = 6
+cost = 1000000.0
+prerequisites = Array[StringName]([&"radioactivity", &"artificial_intelligence"])
+effect = "Centrale à fusion (capitale) : 2 MW pour 0,5 lithium par jour, sans déchets ni pollution."

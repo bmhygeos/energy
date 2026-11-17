@@ -59,6 +59,7 @@ pour le tutoriel.
 | Recherche | `R` ou bouton « Recherche » du bandeau, puis « Rechercher » |
 | Décrets (bourg) | `E` ou bouton « Décrets » du bandeau : rationnement, corvée, fête |
 | Améliorer | « Améliorer » du menu puis clic sur une maison ou un grenier |
+| Vue globe | `V` ou bouton « Globe » du bandeau (dès le premier satellite) |
 | Statistiques et jalons | `G` ou bouton « Stats » du bandeau ; Échap pour fermer |
 | Tutoriel | `H` ou « Aide » du menu « Partie » pour l'afficher ou le masquer (affiché au lancement) |
 | Calque d'information | `O` (relief, fertilité, pâturage, eau, gisements prospectés, vent, soleil) ou boutons en bas à droite |
@@ -440,6 +441,29 @@ météo et interface conservés.
 - Un bâtiment construit ou amélioré au ciment se bâtit **deux fois plus
   vite**.
 
+### Satellites
+
+- Chaque lancement réussi met en orbite le satellite suivant :
+  1. **observation** : cartographie de la planète (64 jours) ;
+  2. **météo** : prévision du lendemain midi au survol de la météo du
+     bandeau ; les intempéries (hiver rude, sécheresse, épizootie, incendie)
+     n'ont plus que la moitié de leurs effets ;
+  3. **communications** : tout avant-poste ou port devient un départ
+     d'expédition (relié « par satellite »), recherche +10 %.
+- Les lancements suivants ajoutent des satellites en orbite (vue globe).
+  Panneau Main-d'œuvre : satellites par genre ; fiche de la base de
+  lancement : prochain satellite. Jalon « Constellation ».
+
+### Vue globe
+
+- Dès le premier satellite : bouton **Globe (V)** du bandeau ou touche `V`.
+- La planète en 3D : tuiles connues avec la couleur de leur terrain,
+  territoires des villes teintés d'or, villes marquées en rouge, tuiles
+  inconnues sombres ; les satellites tournent en orbite.
+- Glisser pour tourner, molette pour zoomer ; `V` ou Échap pour fermer. La
+  vue s'ouvre tournée vers la ville choisie ; la texture n'est recalculée que
+  si la carte a changé (environ 1 s pour la planète entière).
+
 ### Palier 6 : Cité des étoiles
 
 - Réservé à la **capitale** (la première ville) : au palier commun
@@ -450,6 +474,17 @@ météo et interface conservés.
   bandeau et sur son bloc ; jalon « Cité des étoiles ». Les autres villes
   restent Cité-État.
 - Au survol du palier (bandeau), ce qui manque encore à la capitale.
+- **Recherches du palier 6** (Cité des étoiles seulement) :
+  - **Fusion nucléaire** (1 000 000 points, après la radioactivité et l'IA) :
+    **centrale à fusion** (capitale, carte mondiale ; 600 pierre, 400 fer,
+    80 outils, 200 cuivre, 400 électronique) : 2 MW pour 0,5 lithium par jour,
+    sans déchets ni pollution ; elle passe avant l'uranium, le charbon et le
+    fioul dans le bilan du réseau.
+  - **Voyage sur la Lune** (1 500 000 points, après la fusée et la fusion) :
+    les usines de fusées construisent la **fusée lunaire** (120 jours,
+    matériaux doublés) ; la base de lancement la tire contre 3 000 carburant à
+    l'équateur (jusqu'à 6 000 aux pôles) ; 90 % de réussite, sinon une autre
+    fusée est construite. Alunissage : jalon « Sur la Lune ».
 
 ### Fusée et premier satellite
 

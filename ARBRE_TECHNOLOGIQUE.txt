@@ -7,7 +7,7 @@ Une seule recherche à la fois ; points de recherche par habitant et par jour,
 multipliés par l'atelier (×2), le laboratoire (×5), l'université (×10),
 le centre informatique (×20) et le datacenter (×100).
 Entre parenthèses après chaque bâtiment : la carte où il se construit (ville ou monde).
-33 recherches, de 500 à 600 000 points.
+35 recherches, de 500 à 1 500 000 points.
 
 Palier 1 — Hameau
 -----------------
@@ -149,8 +149,18 @@ Palier 5 — Cité-État
 * Fusée  (600 000 points)
     Prérequis : Électronique, Moteur à explosion
     Débloque : Base de lancement (monde), Usine de fusées (ville)
-    Effet : Usine de fusées (fer, électronique, cuivre et courant : une fusée en 40 jours) et base de lancement (carburant, moins près de l'équateur). Le premier satellite cartographie toute la planète, gisements compris.
+    Effet : Usine de fusées (fer, électronique, cuivre et courant : une fusée en 40 jours) et base de lancement (carburant, moins près de l'équateur). Satellites, dans l'ordre : observation (cartographie de la planète, gisements compris), météo (prévisions, intempéries atténuées de moitié), communications (avant-postes et ports reliés, recherche +10 %).
   Sans recherche (palier atteint) : Aérodrome (monde), École (ville), Théâtre (ville)
+
+Palier 6 — Cité des étoiles (capitale seule)
+--------------------------------------------
+* Fusion nucléaire  (1 000 000 points)
+    Prérequis : Radioactivité, Intelligence artificielle
+    Débloque : Centrale à fusion (monde)
+    Effet : Centrale à fusion (capitale) : 2 MW pour 0,5 lithium par jour, sans déchets ni pollution.
+* Voyage sur la Lune  (1 500 000 points)
+    Prérequis : Fusée, Fusion nucléaire
+    Effet : Les usines de fusées construisent la fusée lunaire (120 jours, matériaux doublés) ; lancée de la base contre 3 000 carburant à l'équateur, elle pose un équipage sur la Lune (90 % de réussite).
 
 Arbre (prérequis → recherche)
 -----------------------------
@@ -178,5 +188,5 @@ Palier 5 :
                 │                └→ Fusée (+ Moteur à explosion)
                 ├→ Radioactivité
                 └→ Énergie éolienne
-
-Prévus au plan : vue globe et satellites suivants (V∞).
+Palier 6 (Cité des étoiles, capitale seule) :
+  Radioactivité + Intelligence artificielle → Fusion nucléaire → Voyage sur la Lune (+ Fusée)

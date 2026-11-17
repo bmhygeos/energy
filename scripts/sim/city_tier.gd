@@ -10,11 +10,18 @@ const POPULATION: PackedInt32Array = [0, 100, 400, 1500, 5000]
 ## reste le dernier palier commun.
 const STAR_NAME := "Cité des étoiles"
 const STAR_POPULATION := 15000
+## Niveau du palier 6 (recherches et bâtiments de la capitale seule).
+const STAR_TIER := 6
 ## Satisfaction demandée pour passer au palier suivant.
 const SATISFACTION_REQUIRED := 0.8
 
 ## Palier atteint, de 1 (Hameau) à NAMES.size() (Cité-État).
 var level := 1
+
+
+## Nom du palier [param level] (1 : Hameau ; STAR_TIER : Cité des étoiles).
+static func label(level: int) -> String:
+	return STAR_NAME if level > NAMES.size() else NAMES[clampi(level, 1, NAMES.size()) - 1]
 
 
 func name() -> String:

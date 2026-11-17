@@ -10,7 +10,7 @@ enum Category { HOUSING, STORAGE, OTHER }
 enum Site { CITY, WORLD }
 ## Source d'une centrale : eau (barrage), charbon, fioul (carburant), uranium,
 ## vent (éolienne), soleil (champ solaire).
-enum PowerSource { HYDRO, COAL, FUEL, NUCLEAR, WIND, SOLAR }
+enum PowerSource { HYDRO, COAL, FUEL, NUCLEAR, WIND, SOLAR, FUSION }
 
 const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 
@@ -22,7 +22,7 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Proposé dans le menu de construction.
 @export var player_buildable := true
 ## Palier de la ville à partir duquel il se construit (1 : hameau).
-@export_range(1, 5) var tier := 1
+@export_range(1, 6) var tier := 1
 ## Recherche à terminer avant de le construire (vide : aucune).
 @export var research: StringName
 ## Emprise en tuiles (x, y) ; ancrée sur la tuile avant-bas (x et y maximaux).
@@ -243,6 +243,8 @@ func describe_effects() -> PackedStringArray:
 				fuel_text = " pour %s carburant par jour à plein régime (après le charbon)" % Format.decimal(power_watts / PowerGrid.WATTS_PER_FUEL)
 			PowerSource.NUCLEAR:
 				fuel_text = " pour %s combustible nucléaire par jour à plein régime" % Format.decimal(power_watts / PowerGrid.WATTS_PER_NUCLEAR_FUEL)
+			PowerSource.FUSION:
+				fuel_text = " pour %s lithium par jour à plein régime (tritium), sans déchets ni pollution" % Format.decimal(power_watts / PowerGrid.WATTS_PER_LITHIUM)
 			PowerSource.WIND:
 				fuel_text = " par grand vent ; crêtes et côtes : plein rendement, ailleurs ×%s" % Format.decimal(PowerGrid.SHELTERED_WIND)
 			PowerSource.SOLAR:

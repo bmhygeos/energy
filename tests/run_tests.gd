@@ -70,6 +70,8 @@ func _initialize() -> void:
 	_test_cement()
 	_test_cities()
 	_test_star_city()
+	_test_satellites()
+	_test_tier_six()
 	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
@@ -1472,7 +1474,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 28 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 30 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1813,6 +1815,95 @@ func _test_two_maps() -> void:
 	_check(b != null and gs.city_buildings.building_at(spot) == b and gs.demolish(spot) and gs.city_buildings.building_at(spot) == null,
 		"maison construite puis démolie sur la carte de la ville")
 	gs.set_view(false)
+	gs.new_game(4242)
+
+
+## Palier 6 : fusion et voyage sur la Lune, pour la capitale Cité des étoiles.
+func _test_tier_six() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var fusion := ResearchDb.get_def(&"fusion")
+	var moon := ResearchDb.get_def(&"moon_voyage")
+	_check(fusion.tier == CityTier.STAR_TIER and moon.tier == CityTier.STAR_TIER and CityTier.label(6) == CityTier.STAR_NAME,
+		"fusion et Lune au palier 6")
+	gs.tier.level = CityTier.NAMES.size()
+	for id in [&"radioactivity", &"artificial_intelligence", &"rocket"]:
+		gs.research._done[id] = true
+	_check(not gs.research.is_available(fusion, gs.research_level()), "fusion : seulement à la Cité des étoiles")
+	gs.cities[0].star = true
+	_check(gs.research.is_available(fusion, gs.research_level()), "Cité des étoiles : la fusion se recherche")
+	gs.research._done[&"fusion"] = true
+	for good in Stockpile.COUNT:
+		gs.stockpile.capacity[good] = 5000.0
+		gs.stockpile.amount[good] = 5000.0
+	var plant_def := BuildingDb.get_def(&"fusion_plant")
+	var spot := Vector2i(-1, -1)
+	var center: Vector2i = gs.display_cell(gs.home)
+	for r in range(3, 7):
+		for dx in range(-r, r + 1):
+			if spot.x < 0 and gs.check_placement(plant_def, center + Vector2i(dx, r)).is_valid():
+				spot = center + Vector2i(dx, r)
+	_check(spot.x >= 0, "centrale à fusion constructible dans la capitale")
+	var town: City = gs._new_city(gs.world_map.wrap_cell(gs.home + Vector2i(90, 0)), "Autre")
+	_check(not town.star and gs.city_level() == CityTier.NAMES.size() and gs.city_level() < plant_def.tier,
+		"pas de centrale à fusion hors de la capitale")
+	gs.activate(gs.cities[0])
+	var flat := _sea_map()
+	var registry := BuildingRegistry.new(flat[0], flat[1])
+	var grid := PowerGrid.new(flat[0], flat[1], registry, Vector2i(25, 10))
+	var plant: Building = registry.place(registry.check_placement(plant_def, Vector2i(26, 12)))
+	var plants: Array[Building] = [plant]
+	grid.refresh(plants)
+	grid.run_day(5000, GameDate.SUMMER, 0.0, 0.0, 0.0, 0.01)
+	_check(is_equal_approx(grid.fusion, 0.01 * PowerGrid.WATTS_PER_LITHIUM) and is_equal_approx(grid.lithium_burnt, 0.01),
+		"fusion : limitée par le lithium")
+	var space := Space.new(3)
+	space.lunar_project = true
+	var stock := Stockpile.new()
+	for good in [Stockpile.Good.IRON, Stockpile.Good.ELECTRONICS, Stockpile.Good.COPPER]:
+		stock.capacity[good] = 100000.0
+		stock.amount[good] = 100000.0
+	for k in Space.LUNAR_WORK_DAYS:
+		space.assemble(stock, 1.0)
+	_check(space.lunar_ready and space.rockets == 0 and is_equal_approx(stock.amount[Stockpile.Good.IRON],
+		100000.0 - Space.LUNAR_WORK_DAYS * Space.IRON_PER_DAY * Space.LUNAR_MATERIALS), "fusée lunaire : 120 jours, matériaux doublés")
+	while not space.moon_landed:
+		space.lunar_ready = true
+		space.launch_lunar()
+	_check(space.moon_landed and not space.building_lunar(), "équipage sur la Lune")
+	gs.new_game(4242)
+
+
+## Satellites suivants : météo (intempéries atténuées), communications
+## (avant-postes reliés, recherche).
+func _test_satellites() -> void:
+	var space := Space.new(5)
+	space.rng.seed = 5
+	var order: Array[int] = []
+	while order.size() < 4:
+		space.rockets = 1
+		if space.launch():
+			order.append(space.kinds[-1])
+	_check(order == [Space.Kind.SURVEY, Space.Kind.WEATHER, Space.Kind.COMMUNICATIONS, Space.Kind.COMMUNICATIONS],
+		"satellites dans l'ordre : observation, météo, communications (%s)" % [order])
+	var e := CityEvents.new(1)
+	e.active[CityEvents.Kind.DROUGHT] = 5
+	e.active[CityEvents.Kind.HARD_WINTER] = 5
+	var farm := ZoneDb.get_def(&"agriculture")
+	var dry := e.zone_factor(farm)
+	var cold := e.heat_factor()
+	e.forecast = true
+	_check(e.zone_factor(farm) == lerpf(dry, 1.0, CityEvents.FORECAST_RELIEF) and e.heat_factor() < cold
+		and e.fire_tiles() < CityEvents.FIRE_TILES, "météo : intempéries atténuées")
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	gs.tier.level = 2
+	var outpost := _place_running(gs, BuildingDb.get_def(&"outpost"))
+	var points: float = gs.research_per_day()
+	_check(outpost != null and gs.outpost_link(outpost).is_empty(), "avant-poste isolé")
+	gs.space.kinds.assign([Space.Kind.SURVEY, Space.Kind.WEATHER, Space.Kind.COMMUNICATIONS])
+	_check(gs.outpost_link(outpost) == "satellite" and is_equal_approx(gs.research_per_day(), points * (1.0 + Space.COMMUNICATIONS_RESEARCH)),
+		"communications : avant-poste relié, recherche +10 %%")
 	gs.new_game(4242)
 
 

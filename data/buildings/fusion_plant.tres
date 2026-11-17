@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"fusion_plant"
+display_name = "Centrale à fusion"
+description = "Tokamak, aimants supraconducteurs et couverture de lithium : une étoile en bouteille alimente la cité."
+category = 2
+site = 1
+tier = 6
+research = &"fusion"
+size = Vector2i(2, 2)
+build_hours = 720
+stone_cost = 600
+iron_cost = 400
+tools_cost = 80
+copper_cost = 200
+electronics_cost = 400
+power_watts = 2000000.0
+power_source = 6
+color = Color(0.82, 0.86, 0.95, 1)
+roof_color = Color(0.35, 0.45, 0.75, 1)
+height = 38.0

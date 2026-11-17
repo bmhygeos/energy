@@ -48,6 +48,7 @@ const DEFS: Array[BuildingDef] = [
 	preload("res://data/buildings/dam.tres"),
 	preload("res://data/buildings/enrichment_plant.tres"),
 	preload("res://data/buildings/nuclear_plant.tres"),
+	preload("res://data/buildings/fusion_plant.tres"),
 	preload("res://data/buildings/wind_turbine.tres"),
 	preload("res://data/buildings/solar_field.tres"),
 	preload("res://data/buildings/battery.tres"),

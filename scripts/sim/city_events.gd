@@ -37,6 +37,8 @@ const DROUGHT_FACTOR := 0.5
 const EPIZOOTIC_FACTOR := 0.5
 const EPIZOOTIC_HORSES_LOST := 0.2
 const FIRE_TILES := 12
+## Satellite météo : part des effets des intempéries évitée (on s'y prépare).
+const FORECAST_RELIEF := 0.5
 const MIGRANTS_SHARE := 0.05
 ## Épidémie : part des habitants emportée sans aucun soin (moins à mesure que
 ## les dispensaires couvrent la ville).
@@ -45,6 +47,8 @@ const EPIDEMIC_DEATHS := 0.08
 ## Jours restants des événements en cours.
 var active: Dictionary[Kind, int] = {}
 var rng := RandomNumberGenerator.new()
+## Satellite météo en orbite : intempéries prévues, effets atténués.
+var forecast := false
 var _gap := MIN_GAP_DAYS
 
 
@@ -58,16 +62,27 @@ func is_active(kind: Kind) -> bool:
 
 ## Facteur du chauffage.
 func heat_factor() -> float:
-	return HARD_WINTER_HEAT if is_active(Kind.HARD_WINTER) else 1.0
+	return _relieved(HARD_WINTER_HEAT) if is_active(Kind.HARD_WINTER) else 1.0
 
 
 ## Facteur de rendement de la zone [param def].
 func zone_factor(def: ZoneDef) -> float:
 	if def.quality == ZoneDef.Quality.FERTILITY and is_active(Kind.DROUGHT):
-		return DROUGHT_FACTOR
+		return _relieved(DROUGHT_FACTOR)
 	if def.quality == ZoneDef.Quality.PASTURE and is_active(Kind.EPIZOOTIC):
-		return EPIZOOTIC_FACTOR
+		return _relieved(EPIZOOTIC_FACTOR)
 	return 1.0
+
+
+## Facteur [param factor] d'une intempérie, atténué si elle est prévue
+## (satellite météo).
+func _relieved(factor: float) -> float:
+	return lerpf(factor, 1.0, FORECAST_RELIEF) if forecast else factor
+
+
+## Tuiles qu'un incendie peut brûler (moitié moins s'il est prévu).
+func fire_tiles() -> int:
+	return roundi(FIRE_TILES * (1.0 - FORECAST_RELIEF)) if forecast else FIRE_TILES
 
 
 ## Tire l'événement du jour pendant [param season], au palier

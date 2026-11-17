@@ -65,6 +65,7 @@ func _ready() -> void:
 	_build_game_menu()
 	_build_view_button()
 	_build_city_picker()
+	_build_globe_button()
 	EventBus.labor_changed.connect(_refresh_population)
 	EventBus.population_changed.connect(_refresh_population)
 	EventBus.stocks_changed.connect(_refresh_stocks)
@@ -86,6 +87,23 @@ func _unhandled_input(event: InputEvent) -> void:
 			and not get_viewport().gui_get_focus_owner() is LineEdit:
 		GameState.set_view(not GameState.view_city)
 		get_viewport().set_input_as_handled()
+
+
+## Bouton « Globe » du bandeau (touche V), dès le premier satellite : la vue
+## globe s'ouvre par-dessus la carte.
+func _build_globe_button() -> void:
+	var globe := GlobeView.new()
+	get_parent().add_child.call_deferred(globe)
+	var button := Button.new()
+	button.text = "Globe (V)"
+	button.focus_mode = Control.FOCUS_NONE
+	button.tooltip_text = "La planète vue de l'espace : tuiles connues, territoires, villes et satellites"
+	%StatsButton.add_sibling(button)
+	button.pressed.connect(func() -> void: globe.toggle())
+	var refresh := func() -> void: button.visible = GlobeView.available()
+	EventBus.day_changed.connect(func(_d: int) -> void: refresh.call())
+	EventBus.game_started.connect(func(_s: int) -> void: refresh.call())
+	refresh.call()
 
 
 ## Liste des villes du bandeau (dès la deuxième ville) : la ville choisie
@@ -196,6 +214,11 @@ func _on_tick(tick: int) -> void:
 	_weather_label.tooltip_text = "Météo : %s\nVent : %d %% de la normale\nNébulosité : %d %%\nLumière du jour : %d %%" % [
 		weather.describe(tick), roundi(weather.wind_at(tick) * 100.0),
 		roundi(weather.cloud_at(tick) * 100.0), roundi(Weather.daylight_at(tick) * 100.0)]
+	# Satellite météo : prévisions pour demain à midi.
+	if GameState.space and GameState.space.has(Space.Kind.WEATHER):
+		var noon := tick - GameDate.hour_of_day(tick) + GameDate.HOURS_PER_DAY + roundi(Weather.MIDDAY)
+		_weather_label.tooltip_text += "\n\nPrévision (satellite) pour demain midi : %s, vent %d %%, nébulosité %d %%\nIntempéries atténuées de moitié" % [
+			weather.describe(noon), roundi(weather.wind_at(noon) * 100.0), roundi(weather.cloud_at(noon) * 100.0)]
 	# Événement en cours : à la place du ciel, détail au survol.
 	var events := GameState.events
 	for kind: CityEvents.Kind in events.active:

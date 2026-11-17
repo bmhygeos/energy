@@ -12,7 +12,7 @@ import glob
 import re
 import sys
 
-TIERS = ["Hameau", "Village", "Bourg", "Ville", "Cité-État"]
+TIERS = ["Hameau", "Village", "Bourg", "Ville", "Cité-État", "Cité des étoiles (capitale seule)"]
 # Réseaux posés au glisser, débloqués par une recherche (pas de fichier de bâtiment).
 NETWORKS = {
     "irrigation": ["Canal d'irrigation (réseau, monde, 1 bois par tuile)"],
@@ -44,7 +44,9 @@ Palier 5 :
                 │                ├→ Électrochimie du lithium → Véhicule électrique (+ Moteur à explosion)
                 │                └→ Fusée (+ Moteur à explosion)
                 ├→ Radioactivité
-                └→ Énergie éolienne"""
+                └→ Énergie éolienne
+Palier 6 (Cité des étoiles, capitale seule) :
+  Radioactivité + Intelligence artificielle → Fusion nucléaire → Voyage sur la Lune (+ Fusée)"""
 
 
 def field(text, key):
@@ -109,7 +111,7 @@ def main():
         if by_tier.get(t):
             out.append(f"  Sans recherche (palier atteint) : {', '.join(by_tier[t])}")
         out.append("")
-    out += [DIAGRAM, "", "Prévus au plan : vue globe et satellites suivants (V∞).", ""]
+    out += [DIAGRAM, ""]
     missing = [research[r]["name"] for r in order if research[r]["name"] not in DIAGRAM]
     if missing:
         sys.exit("Recherches absentes du schéma : " + ", ".join(missing))

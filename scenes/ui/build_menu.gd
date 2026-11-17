@@ -158,7 +158,7 @@ func _refresh_view() -> void:
 ## encore faite : grisés, palier ou recherche indiqués ; coûts (inventions) ;
 ## vivres des expéditions selon le palier.
 func _refresh_tier_locks() -> void:
-	var level := GameState.tier.level if GameState.tier else 1
+	var level: int = GameState.city_level() if GameState.tier else 1
 	for d: ZoneDef in _zone_buttons:
 		_lock(_zone_buttons[d], d.display_name, d.tier, level)
 	for d: BuildingDef in _build_buttons:
@@ -195,7 +195,7 @@ func _refresh_tier_locks() -> void:
 func _lock(button: Button, label: String, needed: int, level: int) -> void:
 	var locked := needed > level
 	button.disabled = locked
-	button.text = label + ("   (%s)" % CityTier.NAMES[needed - 1] if locked else "")
+	button.text = label + ("   (%s)" % CityTier.label(needed) if locked else "")
 
 
 ## Section « Transport » : routes (bourg), voies ferrées (bourg, recherche
@@ -395,7 +395,7 @@ func _zone_tooltip(def: ZoneDef) -> String:
 		"Sur : " + def.describe_terrains(),
 		"Travailleurs : %d par tuile" % def.workers_per_tile,
 		"Produit : %s" % Stockpile.GOOD_NAMES[def.output].to_lower(),
-		"Palier : %s" % CityTier.NAMES[def.tier - 1],
+		"Palier : %s" % CityTier.label(def.tier),
 		"Glisser pour peindre un rectangle (les tuiles non valides sont ignorées)."]))
 
 
@@ -425,10 +425,10 @@ func _tooltip(def: BuildingDef) -> String:
 		lines.append("Se construit au niveau du palier atteint (coût des améliorations ajouté) :")
 		var level := def.upgrade
 		while level:
-			lines.append("  %s : %s" % [CityTier.NAMES[level.tier - 1], level.display_name])
+			lines.append("  %s : %s" % [CityTier.label(level.tier), level.display_name])
 			level = level.upgrade
 	if def.tier > 1:
-		lines.append("Palier : %s" % CityTier.NAMES[def.tier - 1])
+		lines.append("Palier : %s" % CityTier.label(def.tier))
 	if def.research:
 		lines.append("Recherche : %s" % ResearchDb.get_def(def.research).display_name)
 	lines.append("Chantier : %s" % Format.duration_hours(def.build_hours))

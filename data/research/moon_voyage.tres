@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"moon_voyage"
+display_name = "Voyage sur la Lune"
+description = "Module lunaire, capsule et lanceur géant : la cité-État vise la Lune."
+tier = 6
+cost = 1500000.0
+prerequisites = Array[StringName]([&"rocket", &"fusion"])
+effect = "Les usines de fusées construisent la fusée lunaire (120 jours, matériaux doublés) ; lancée de la base contre 3 000 carburant à l'équateur, elle pose un équipage sur la Lune (90 % de réussite)."

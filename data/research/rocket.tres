@@ -10,4 +10,4 @@ description = "Moteurs-fusées, guidage électronique et alliages légers : la c
 tier = 5
 cost = 600000.0
 prerequisites = Array[StringName]([&"electronics", &"combustion_engine"])
-effect = "Usine de fusées (fer, électronique, cuivre et courant : une fusée en 40 jours) et base de lancement (carburant, moins près de l'équateur). Le premier satellite cartographie toute la planète, gisements compris."
+effect = "Usine de fusées (fer, électronique, cuivre et courant : une fusée en 40 jours) et base de lancement (carburant, moins près de l'équateur). Satellites, dans l'ordre : observation (cartographie de la planète, gisements compris), météo (prévisions, intempéries atténuées de moitié), communications (avant-postes et ports reliés, recherche +10 %)."

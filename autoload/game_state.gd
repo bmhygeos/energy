@@ -629,8 +629,8 @@ func check_placement(def: BuildingDef, anchor: Vector2i) -> BuildingRegistry.Pla
 	def = build_level(def)
 	var registry := registry_for(def)
 	var placement := registry.check_placement(def, anchor)
-	if placement.is_valid() and def.tier > tier.level:
-		placement.error = "Disponible au palier %s" % CityTier.NAMES[def.tier - 1]
+	if placement.is_valid() and def.tier > city_level():
+		placement.error = "Disponible au palier %s" % CityTier.label(def.tier)
 	if placement.is_valid() and def.research and not research.is_done(def.research):
 		placement.error = "Recherche requise : %s" % ResearchDb.get_def(def.research).display_name
 	for good in costs.size():
@@ -660,7 +660,7 @@ func plan_zones(def: ZoneDef, from: Vector2i, to: Vector2i) -> ZoneMap.Plan:
 	if def and def.tier > tier.level:
 		plan.refused += plan.changed.size()
 		plan.changed.clear()
-		plan.error = "Disponible au palier %s" % CityTier.NAMES[def.tier - 1]
+		plan.error = "Disponible au palier %s" % CityTier.label(def.tier)
 	return plan
 
 
@@ -728,8 +728,8 @@ func upgrade_error(b: Building) -> String:
 		return "%s : pas d'amélioration" % b.def.display_name
 	if not b.is_complete():
 		return "Chantier en cours"
-	if next.tier > tier.level:
-		return "%s : au palier %s" % [next.display_name, CityTier.NAMES[next.tier - 1]]
+	if next.tier > city_level():
+		return "%s : au palier %s" % [next.display_name, CityTier.label(next.tier)]
 	if next.research and not research.is_done(next.research):
 		return "Recherche requise : %s" % ResearchDb.get_def(next.research).display_name
 	var costs := with_cement(costs_of(next))
@@ -929,7 +929,9 @@ func _run_grid(day_tick: int) -> void:
 	grid.heat_demand = electric_heat_watts(season)
 	grid.nuclear_stopped = events.is_active(CityEvents.Kind.NUCLEAR_INCIDENT)
 	var burnt := grid.run_day(population.count, season, stockpile.amount[Stockpile.Good.COAL],
-		stockpile.amount[Stockpile.Good.FUEL], stockpile.amount[Stockpile.Good.NUCLEAR_FUEL])
+		stockpile.amount[Stockpile.Good.FUEL], stockpile.amount[Stockpile.Good.NUCLEAR_FUEL],
+		stockpile.amount[Stockpile.Good.LITHIUM])
+	stockpile.take(Stockpile.Good.LITHIUM, grid.lithium_burnt)
 	coal_burned_today += stockpile.take(Stockpile.Good.COAL, burnt)
 	fuel_burned_today += stockpile.take(Stockpile.Good.FUEL, grid.fuel_burnt)
 	stockpile.take(Stockpile.Good.NUCLEAR_FUEL, grid.nuclear_fuel_burnt)
@@ -1092,7 +1094,7 @@ func _run_trucks() -> void:
 func rails_error() -> String:
 	var station := BuildingDb.get_def(&"station")
 	if tier.level < station.tier:
-		return "Disponible au palier %s" % CityTier.NAMES[station.tier - 1]
+		return "Disponible au palier %s" % CityTier.label(station.tier)
 	if not research.is_done(station.research):
 		return "Recherche requise : %s" % ResearchDb.get_def(station.research).display_name
 	return ""
@@ -1102,7 +1104,7 @@ func rails_error() -> String:
 func lines_error() -> String:
 	var plant := BuildingDb.get_def(&"power_plant")
 	if tier.level < plant.tier:
-		return "Disponible au palier %s" % CityTier.NAMES[plant.tier - 1]
+		return "Disponible au palier %s" % CityTier.label(plant.tier)
 	if not research.is_done(plant.research):
 		return "Recherche requise : %s" % ResearchDb.get_def(plant.research).display_name
 	return ""
@@ -1140,7 +1142,7 @@ func build_canals(p: TrackNetwork.Plan) -> int:
 ## Ce qui empêche de poser des routes (vide : possible).
 func roads_error() -> String:
 	if tier.level < ROAD_TIER:
-		return "Disponible au palier %s" % CityTier.NAMES[ROAD_TIER - 1]
+		return "Disponible au palier %s" % CityTier.label(ROAD_TIER)
 	return ""
 
 
@@ -1251,6 +1253,8 @@ func food_need() -> float:
 func outpost_link(b: Building) -> String:
 	if not b.is_complete() or not (b.def.outpost or b.def.harbor):
 		return ""
+	if space and space.has(Space.Kind.COMMUNICATIONS):
+		return "satellite"
 	if b.def.harbor and ports.is_linked(b.anchor):
 		return "l'eau"
 	for cell in b.cells:
@@ -1599,16 +1603,31 @@ func _run_space() -> void:
 			factories += 1.0
 		if b.is_complete() and b.def.launch_pad and pad == null:
 			pad = b
+	space.lunar_project = research.is_done(&"moon_voyage")
 	if space.assemble(stockpile, factories):
-		EventBus.notified.emit("Une fusée est prête%s" % ("" if pad else " : construisez une base de lancement"))
+		EventBus.notified.emit("%s est prête%s" % ["La fusée lunaire" if space.lunar_ready else "Une fusée",
+			"" if pad else " : construisez une base de lancement"])
+	if pad and space.lunar_ready:
+		var lunar_fuel := Space.lunar_fuel(world_map.latitude(world_map.wrap_cell(pad.anchor).y))
+		if stockpile.has(Stockpile.Good.FUEL, lunar_fuel):
+			fuel_burned_today += stockpile.take(Stockpile.Good.FUEL, lunar_fuel)
+			if space.launch_lunar():
+				EventBus.notified.emit("Alunissage : l'équipage de %s marche sur la Lune !" % city.name)
+			else:
+				EventBus.notified.emit("Échec de la mission lunaire : la fusée est perdue, les usines en construisent une autre")
 	if pad and space.rockets > 0:
 		var fuel := Space.launch_fuel(world_map.latitude(world_map.wrap_cell(pad.anchor).y))
 		if stockpile.has(Stockpile.Good.FUEL, fuel):
 			fuel_burned_today += stockpile.take(Stockpile.Good.FUEL, fuel)
 			var first := space.satellites == 0
 			if space.launch():
-				EventBus.notified.emit("Lancement réussi : satellite en orbite%s" % (
-					" — il cartographie la planète" if first else ""))
+				var kind: int = space.kinds[-1]
+				events.forecast = space.has(Space.Kind.WEATHER)
+				EventBus.notified.emit("Lancement réussi : satellite %s en orbite%s" % [Space.KIND_NAMES[kind], {
+					Space.Kind.SURVEY: " — il cartographie la planète" if first else "",
+					Space.Kind.WEATHER: " — prévisions météo, intempéries atténuées",
+					Space.Kind.COMMUNICATIONS: " — avant-postes et ports reliés, recherche +%d %%" % roundi(Space.COMMUNICATIONS_RESEARCH * 100.0),
+				}.get(kind, "")])
 			else:
 				EventBus.notified.emit("Échec du lancement : la fusée est perdue")
 
@@ -1808,12 +1827,16 @@ func research_per_day() -> float:
 	for b in all_buildings():
 		if b.is_complete() and b.def.research_coverage > 0 and (b.def.power_demand <= 0.0 or machines_powered()):
 			boosts.append(Vector2(b.def.research_multiplier, b.def.research_coverage))
-	return Research.points_per_day(population.count, population.satisfaction, boosts)
+	var points := Research.points_per_day(population.count, population.satisfaction, boosts)
+	# Satellite de communications : les savants échangent plus vite.
+	if space and space.has(Space.Kind.COMMUNICATIONS):
+		points *= 1.0 + Space.COMMUNICATIONS_RESEARCH
+	return points
 
 
 ## Lance la recherche [param def] ; false (raison notifiée) si indisponible.
 func start_research(def: ResearchDef) -> bool:
-	if not research.start(def, tier.level):
+	if not research.start(def, research_level()):
 		EventBus.notified.emit("%s n'est pas disponible" % def.display_name)
 		return false
 	EventBus.research_changed.emit()
@@ -1982,7 +2005,7 @@ func _burn_forest() -> int:
 		return 0
 	var front: Array[Vector2i] = [forests[events.rng.randi_range(0, forests.size() - 1)]]
 	var burnt: Array[Vector2i] = []
-	while not front.is_empty() and burnt.size() < CityEvents.FIRE_TILES:
+	while not front.is_empty() and burnt.size() < events.fire_tiles():
 		var cell: Vector2i = front.pop_front()
 		if world_map.get_terrain(cell) != TerrainDef.Type.FOREST or not territory.is_territory(cell):
 			continue
@@ -2002,7 +2025,7 @@ func _burn_forest() -> int:
 ## Ce qui empêche les décrets (vide : possible).
 func decrees_error() -> String:
 	if tier.level < DECREES_TIER:
-		return "Disponible au palier %s" % CityTier.NAMES[DECREES_TIER - 1]
+		return "Disponible au palier %s" % CityTier.label(DECREES_TIER)
 	return ""
 
 
@@ -2364,6 +2387,17 @@ func _city_day(day_tick: int) -> void:
 	_consumed_today = Stockpile.zeros()
 
 
+## Palier de la ville active pour ses bâtiments : CityTier.STAR_TIER pour la
+## capitale Cité des étoiles, sinon le palier commun.
+func city_level() -> int:
+	return CityTier.STAR_TIER if city.star else tier.level
+
+
+## Palier des recherches : la Cité des étoiles ouvre celles du palier 6.
+func research_level() -> int:
+	return CityTier.STAR_TIER if not cities.is_empty() and cities[0].star else tier.level
+
+
 ## Nom du palier de la ville [param c] (la capitale peut être Cité des
 ## étoiles).
 func tier_name(c: City = null) -> String:
@@ -2378,7 +2412,7 @@ func star_city_missing() -> String:
 		return ""
 	var missing := PackedStringArray()
 	if not tier.is_max():
-		missing.append("le palier %s" % CityTier.NAMES[CityTier.NAMES.size() - 1])
+		missing.append("le palier %s" % CityTier.label(CityTier.NAMES.size()))
 	if capital.population.count < CityTier.STAR_POPULATION:
 		missing.append("%d habitants à %s (%d)" % [CityTier.STAR_POPULATION, capital.name, capital.population.count])
 	if capital.population.satisfaction < CityTier.SATISFACTION_REQUIRED:
@@ -2424,7 +2458,7 @@ func mean_satisfaction() -> float:
 ## couvertures moyennes pondérées par les habitants, puissance totale.
 func _day_stats(day_tick: int, points: float) -> void:
 	var produced := Stockpile.zeros()
-	var extra := PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 0.0])
+	var extra := PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 	var food_lost := 0.0
 	var wood_lost := 0.0
 	var horses := 0.0
@@ -2435,7 +2469,8 @@ func _day_stats(day_tick: int, points: float) -> void:
 		activate(c)
 		for good in Stockpile.COUNT:
 			produced[good] += production.produced_today[good]
-		var parts := [draft.working() * DraftAnimals.WORK_WATTS, _mill_watts(day_tick), grid.hydro, grid.wind_power, grid.solar]
+		var parts := [draft.working() * DraftAnimals.WORK_WATTS, _mill_watts(day_tick), grid.hydro, grid.wind_power, grid.solar,
+			grid.fusion]
 		for k in parts.size():
 			extra[k] += parts[k]
 		food_lost += stockpile.lost_today[Stockpile.Good.FOOD]
@@ -2500,7 +2535,13 @@ func _check_milestones(day: int) -> void:
 	facts.grid_coverage = grid.coverage
 	facts.nuclear_power = grid.nuclear
 	facts.satellites = space.satellites
+	var kinds: Array[int] = []
+	for kind in space.kinds:
+		if kind not in kinds:
+			kinds.append(kind)
+	facts.satellite_kinds = kinds.size()
 	facts.star_city = cities[0].star
+	facts.moon = space.moon_landed
 	facts.surveyed = space.surveyed(world_map.size.x)
 	facts.pollution = pollution_index()
 	facts.green_share = (grid.hydro + grid.wind_power + grid.solar) / grid.demand if grid.demand > 0.0 else 0.0
