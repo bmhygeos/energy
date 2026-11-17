@@ -37,15 +37,31 @@ func set_map(p_map: WorldMap) -> void:
 	queue_redraw()
 
 
+var _view := Transform2D()
+
+
+func _process(_delta: float) -> void:
+	# La vue a bougé : redessiner les tuiles à l'écran (seules dessinées).
+	var view := get_viewport().get_canvas_transform()
+	if mode != Mode.NONE and view != _view:
+		_view = view
+		queue_redraw()
+
+
 func _draw() -> void:
 	if map == null or mode == Mode.NONE:
 		return
 	var gradient := gradient_for(mode)
-	for c in GameState.territory.known_cells():
-		var cell := GameState.display_cell(c)
-		var color := _cell_color(cell, gradient)
-		if color.a > 0.0:
-			draw_colored_polygon(Iso.diamond(cell), color)
+	var territory := GameState.territory
+	var area := Iso.visible_cells(get_viewport())
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var cell := Vector2i(x, y)
+			if not map.has_cell(cell) or not territory.is_known(cell):
+				continue
+			var color := _cell_color(cell, gradient)
+			if color.a > 0.0:
+				draw_colored_polygon(Iso.diamond(cell), color)
 
 
 func _cell_color(cell: Vector2i, gradient: Gradient) -> Color:

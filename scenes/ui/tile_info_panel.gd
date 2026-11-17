@@ -168,10 +168,18 @@ func _building_lines(b: Building) -> PackedStringArray:
 				"" if rails.running else " (trains arrêtés : plus de charbon)"])
 		else:
 			lines.append("Non desservie : reliez-la par la voie à une gare du village")
-	if b.is_complete() and b.def.outpost:
+	if b.is_complete() and b.def.rocket_factory:
+		lines.append("Fusée en assemblage : %d %%%s" % [roundi(GameState.space.progress / Space.ROCKET_WORK_DAYS * 100.0),
+			"" if GameState.machines_powered() else " (à l'arrêt : courant insuffisant)"])
+	if b.is_complete() and b.def.launch_pad:
+		var fuel := Space.launch_fuel(GameState.world_map.latitude(GameState.world_map.wrap_cell(b.anchor).y))
+		lines.append("Lancement : %d carburant à cette latitude ; fusées prêtes : %d ; satellites : %d" % [
+			roundi(fuel), GameState.space.rockets, GameState.space.satellites])
+	if b.is_complete() and (b.def.outpost or b.def.harbor):
 		var link: String = GameState.outpost_link(b)
 		lines.append("Relié au village par %s : les expéditions peuvent en partir (menu, Départ)" % link if not link.is_empty()
-			else "Non relié : posez une route ou une voie ferrée reliée au village à côté de lui (aérodrome à la cité-État)")
+			else "Non relié : posez une route ou une voie ferrée reliée au village à côté de lui (aérodrome à la cité-État)"
+				+ (", ou reliez-le par l'eau à un autre port" if b.def.harbor else ""))
 	if b.is_complete() and b.def.truck_depot:
 		if b not in GameState.roads.served_depots:
 			lines.append("Sans route : posez une route reliée au village à côté de lui")

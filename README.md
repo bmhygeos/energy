@@ -428,6 +428,25 @@ météo et interface conservés.
   (« camions ») indiquent la desserte.
 - **Cartographes** : à la ville, les expéditions voient à 5 tuiles au lieu de 3.
 
+### Fusée et premier satellite
+
+- **Fusée** (cité-État, 600 000 points, après l'électronique et le moteur à
+  explosion) : **usine de fusées** (carte de la ville ; 250 pierre, 150 fer,
+  30 outils, 60 cuivre, 100 électronique ; 50 kW) et **base de lancement**
+  (carte mondiale ; 400 pierre, 200 fer, 40 outils, 40 cuivre, 60
+  électronique).
+- L'usine assemble une fusée en 40 jours de travail (5 fer, 3 électronique et
+  2 cuivre par jour, au prorata du stock ; à l'arrêt sans courant). Une fusée
+  prête part de la base de lancement dès qu'il y a le carburant : 300 à
+  l'équateur, jusqu'à 600 aux pôles. 15 % des lancements échouent.
+- **Premier satellite** : il cartographie la planète par bandes de longitude
+  (16 colonnes par jour, toute la planète en 64 jours, en partant du
+  village) ; les tuiles deviennent explorées et leurs gisements prospectés,
+  sans être annexées. Jalons Premier satellite et Planète cartographiée.
+- Panneau Main-d'œuvre (ligne Espace) et fiches de l'usine et de la base.
+- Brume et calques ne dessinent que les tuiles à l'écran, et chaque carte
+  garde son sol : la planète entière connue reste fluide.
+
 ### Avant-postes
 
 - **Avant-poste** (recherche Collier d'attelage, village ; carte mondiale ;
@@ -438,8 +457,12 @@ météo et interface conservés.
 - Menu, section Territoire : liste « Départ » (le village, puis chaque
   avant-poste relié, avec sa position et son moyen de liaison) ; l'aperçu du
   trajet, la durée et les vivres partent de là, et l'expédition y revient.
-- Prévu : un avant-poste assez loin de la première ville pourra devenir un
-  hameau, seconde ville autonome (plan, V16).
+- **Ports** : ils ont la même fonction. Un port relié par l'eau à une tête de
+  ligne (ou, comme un avant-poste, par une route, une voie ferrée ou un
+  aérodrome) est lui aussi un départ des expéditions.
+- Prévu : un avant-poste ou un port assez loin de la première ville pourra
+  devenir un hameau ou une ville portuaire, seconde ville autonome (plan,
+  V16).
 
 ### Exploration motorisée et aérienne
 

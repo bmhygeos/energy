@@ -65,6 +65,8 @@ func _initialize() -> void:
 	_test_canals_game()
 	_test_tractors()
 	_test_outposts()
+	_test_space()
+	_test_space_game()
 	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
@@ -188,6 +190,9 @@ func _test_ports_game() -> void:
 	b.build_progress = port.build_hours
 	gs._refresh_capacities()
 	_check(gs.zones.water_reach == ZoneMap.ALL_WATERS and gs.exploration.ships and gs.ports.distances.size() == 1, "port : eaux ouvertes, navires")
+	_check(gs.outpost_link(b).is_empty() and gs.expedition_origins().size() == 1, "port seul (tête de ligne) : pas un départ")
+	gs.ports.linked[gs.world_map.wrap_cell(b.anchor)] = 12
+	_check(gs.outpost_link(b) == "l'eau" and gs.expedition_origins().size() == 2, "port relié par l'eau : départ des expéditions")
 	gs.new_game(4242)
 
 
@@ -1464,7 +1469,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 25 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 27 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1805,6 +1810,60 @@ func _test_two_maps() -> void:
 	_check(b != null and gs.city_buildings.building_at(spot) == b and gs.demolish(spot) and gs.city_buildings.building_at(spot) == null,
 		"maison construite puis démolie sur la carte de la ville")
 	gs.set_view(false)
+	gs.new_game(4242)
+
+
+## Ère spatiale : assemblage, carburant selon la latitude, échecs, cartographie.
+func _test_space() -> void:
+	var space := Space.new(1)
+	var stock := Stockpile.new()
+	for good in [Stockpile.Good.IRON, Stockpile.Good.ELECTRONICS, Stockpile.Good.COPPER]:
+		stock.capacity[good] = 10000.0
+		stock.amount[good] = 10000.0
+	var ready := false
+	for k in Space.ROCKET_WORK_DAYS:
+		ready = space.assemble(stock, 1.0)
+	_check(ready and space.rockets == 1 and is_equal_approx(stock.amount[Stockpile.Good.IRON], 10000.0 - Space.ROCKET_WORK_DAYS * Space.IRON_PER_DAY),
+		"usine : une fusée en %d jours" % Space.ROCKET_WORK_DAYS)
+	stock.amount[Stockpile.Good.ELECTRONICS] = Space.ELECTRONICS_PER_DAY / 2.0
+	space.assemble(stock, 1.0)
+	_check(is_equal_approx(space.progress, 0.5), "sans assez d'électronique : à moitié")
+	_check(is_equal_approx(Space.launch_fuel(0.0), Space.LAUNCH_FUEL_EQUATOR) and Space.launch_fuel(60.0) > Space.launch_fuel(20.0),
+		"lancement : moins de carburant près de l'équateur")
+	var ok := 0
+	for k in 200:
+		space.rockets = 1
+		if space.launch():
+			ok += 1
+	_check(ok > 140 and ok < 200, "lancements : quelques échecs (%d réussis sur 200)" % ok)
+	_check(space.survey_column == 0, "premier satellite : cartographie commencée")
+	var total := 0
+	for k in 100:
+		total += space.survey_day(1024).size()
+	_check(total == 1024 and space.surveyed(1024) == 1.0 and space.survey_day(1024).is_empty(), "planète cartographiée en %d jours" % (1024 / Space.SURVEY_COLUMNS_PER_DAY))
+
+
+func _test_space_game() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	_check(BuildingDb.get_def(&"rocket_factory").site == BuildingDef.Site.CITY and BuildingDb.get_def(&"launch_pad").site == BuildingDef.Site.WORLD,
+		"usine de fusées en ville, base de lancement au monde")
+	var far: Vector2i = gs.display_cell(gs.home) + Vector2i(200, 0)
+	_check(not gs.territory.is_known(far), "au départ, la planète est inconnue")
+	gs.space.rockets = 1
+	gs.space.rng.seed = 2
+	gs.tier.level = 5
+	var pad := _place_running(gs, BuildingDb.get_def(&"launch_pad"))
+	gs.stockpile.capacity[Stockpile.Good.FUEL] = 2000.0
+	gs.stockpile.amount[Stockpile.Good.FUEL] = 2000.0
+	while gs.space.rockets > 0 or gs.space.satellites == 0:
+		gs.space.rockets = maxi(gs.space.rockets, 1)
+		gs._run_space()
+	_check(pad != null and gs.space.satellites == 1 and gs.stockpile.amount[Stockpile.Good.FUEL] < 2000.0, "lancement depuis la base, carburant brûlé")
+	for k in 70:
+		gs._run_space()
+	_check(gs.territory.is_known(far) and gs.territory.is_prospected(far) and not gs.territory.is_territory(far),
+		"satellite : planète explorée et prospectée, sans annexion")
 	gs.new_game(4242)
 
 

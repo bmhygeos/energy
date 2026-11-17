@@ -26,6 +26,8 @@ var _track_plan: TrackNetwork.Plan
 var _expedition_hover := Vector2i(-1, -1)
 
 @onready var _ground: TileMapLayer = $Ground
+## Sol de la carte de la ville (le sol du monde reste peint, masqué).
+var _city_ground: TileMapLayer
 @onready var _decor: TileMapLayer = $Decor
 @onready var _overlay: OverlayLayer = $Overlay
 @onready var _fog: FogLayer = $Fog
@@ -40,6 +42,10 @@ func _ready() -> void:
 	var tile_set := TerrainTileSet.build()
 	_ground.tile_set = tile_set
 	_decor.tile_set = tile_set
+	_city_ground = TileMapLayer.new()
+	_city_ground.tile_set = tile_set
+	add_child(_city_ground)
+	move_child(_city_ground, _ground.get_index() + 1)
 	_city_block = CityBlockLayer.new()
 	add_child(_city_block)
 	move_child(_city_block, $Overlay.get_index())
@@ -48,36 +54,48 @@ func _ready() -> void:
 	add_child(canal_layer)
 	move_child(canal_layer, $Roads.get_index())
 	_world_only.append(canal_layer)
-	EventBus.game_started.connect(func(_seed: int) -> void: _load_map(GameState.view_map()))
+	EventBus.game_started.connect(func(_seed: int) -> void:
+		_paint_world()
+		_paint_city()
+		_load_map(GameState.view_map()))
 	EventBus.view_changed.connect(func() -> void: _load_map(GameState.view_map()))
-	EventBus.city_changed.connect(func() -> void:
-		if GameState.view_city:
-			_load_map(GameState.view_map()))
+	EventBus.city_changed.connect(_paint_city)
 	EventBus.overlay_changed.connect(func(mode: int) -> void:
 		_decor.modulate.a = 1.0 if mode == OverlayLayer.Mode.NONE else DECOR_DIMMED_ALPHA)
 	EventBus.tiles_changed.connect(func(cells: Array[Vector2i]) -> void:
-		if GameState.view_city:
-			return
 		for cell in cells:
 			_paint_cell(cell))
 	EventBus.tool_changed.connect(_on_tool_changed)
 	EventBus.view_changed.connect(_on_view_changed)
 	EventBus.territory_changed.connect(_fog.refresh)
+	_paint_world()
+	_paint_city()
 	_load_map(GameState.view_map())
 
 
-func _load_map(p_map: WorldMap) -> void:
-	map = p_map
+## Repeint tout le sol du monde (nouvelle partie).
+func _paint_world() -> void:
 	_ground.clear()
 	_decor.clear()
+	for cell in GameState.territory.known_cells():
+		_paint_cell(GameState.display_cell(cell))
+
+
+## Repeint le sol de la ville (nouvelle partie, ville agrandie).
+func _paint_city() -> void:
+	_city_ground.clear()
+	for cell in GameState.city_territory.known_cells():
+		_city_ground.set_cell(cell, TerrainTileSet.GROUND_SOURCE, Vector2i(GameState.city_map.get_variant(cell), TerrainDef.Type.PLAIN))
+
+
+## Affiche la carte [param p_map] (ville ou monde) : chaque carte garde son sol.
+func _load_map(p_map: WorldMap) -> void:
+	map = p_map
 	for layer in _world_only:
 		layer.visible = not GameState.view_city
-	if GameState.view_city:
-		for cell in GameState.city_territory.known_cells():
-			_paint_cell(cell)
-	else:
-		for cell in GameState.territory.known_cells():
-			_paint_cell(GameState.display_cell(cell))
+	_ground.visible = not GameState.view_city
+	_city_ground.visible = GameState.view_city
+	if not GameState.view_city:
 		_overlay.set_map(map)
 		_fog.refresh()
 	_set_hovered(Vector2i(-1, -1))
@@ -85,14 +103,16 @@ func _load_map(p_map: WorldMap) -> void:
 	EventBus.tool_changed.emit(BuildTool.Mode.SELECT, null)
 
 
-## Peint [param cell] (repère de la vue), ou l'efface si elle est inconnue.
+## Peint [param cell] du monde (repère de la vue), ou l'efface si elle est
+## inconnue.
 func _paint_cell(cell: Vector2i) -> void:
-	if not GameState.view_territory().is_known(cell):
+	if not GameState.territory.is_known(cell):
 		_ground.erase_cell(cell)
 		_decor.erase_cell(cell)
 		return
-	var def := TerrainDb.get_def(map.get_terrain(cell))
-	var v := map.get_variant(cell)
+	var world := GameState.world_map
+	var def := TerrainDb.get_def(world.get_terrain(cell))
+	var v := world.get_variant(cell)
 	_ground.set_cell(cell, TerrainTileSet.GROUND_SOURCE, Vector2i(v, def.type))
 	if def.decor_row >= 0:
 		_decor.set_cell(cell, TerrainTileSet.DECOR_SOURCE, Vector2i(v, def.decor_row))

@@ -125,6 +125,11 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Aérodrome : relie par les airs les avant-postes à AIRFIELD_RANGE tuiles ou
 ## moins (cité-État).
 @export var airfield := false
+## Usine de fusées : assemble une fusée (GameState.ROCKET_WORK_DAYS jours de
+## fer, d'électronique, de cuivre et de courant).
+@export var rocket_factory := false
+## Base de lancement : lance les fusées prêtes, contre du carburant.
+@export var launch_pad := false
 ## Port de pêche : les zones de pêche vont jusqu'à ce nombre de tuiles du
 ## rivage (le plus grand compte).
 @export var fishing_reach := 0
@@ -268,12 +273,18 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Avant-poste : relié au village par une route, une voie ferrée ou un aérodrome, il lance ses propres expéditions")
 	if airfield:
 		lines.append("Aérodrome : relie par les airs les avant-postes à %d tuiles ou moins" % Exploration.AIRFIELD_RANGE)
+	if rocket_factory:
+		lines.append("Assemble une fusée en %d jours de travail (fer, électronique, cuivre ; à l'arrêt sans courant)" % Space.ROCKET_WORK_DAYS)
+	if launch_pad:
+		lines.append("Lance les fusées prêtes : %d à %d carburant selon la latitude (moins près de l'équateur), %d %% d'échecs" % [
+			roundi(Space.LAUNCH_FUEL_EQUATOR), roundi(Space.LAUNCH_FUEL_POLE), roundi(Space.FAILURE_CHANCE * 100.0)])
 	if fishing_reach > 0:
 		lines.append("Pêche jusqu'à %d tuiles du rivage" % fishing_reach)
 	if harbor:
 		lines.append("Pêche sur toutes les eaux découvertes")
 		lines.append("Expéditions sur l'eau, mer comprise (%s tuiles par jour)" % Format.decimal(Exploration.SHIP_TILES_PER_DAY))
 		lines.append("Transport : relié par l'eau à un autre port, il rapproche les tuiles autour de lui")
+		lines.append("Relié par l'eau (ou comme un avant-poste), il lance ses propres expéditions")
 	if mechanical_watts > 0.0:
 		lines.append("Puissance mécanique ≈ %s%s" % [PowerMeter.format(mechanical_watts), " selon le vent" if wind_powered else ""])
 	if horse_capacity > 0:

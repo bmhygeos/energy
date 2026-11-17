@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"rocket_factory"
+display_name = "Usine de fusées"
+description = "Halls d'assemblage, bancs d'essai et salles blanches : les fusées y prennent forme, étage par étage."
+category = 2
+tier = 5
+research = &"rocket"
+size = Vector2i(2, 2)
+build_hours = 336
+stone_cost = 250
+iron_cost = 150
+tools_cost = 30
+copper_cost = 60
+electronics_cost = 100
+power_demand = 50000.0
+rocket_factory = true
+color = Color(0.85, 0.86, 0.88, 1)
+roof_color = Color(0.3, 0.32, 0.38, 1)
+height = 30.0

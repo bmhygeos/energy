@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"rocket"
+display_name = "Fusée"
+description = "Moteurs-fusées, guidage électronique et alliages légers : la cité vise l'orbite."
+tier = 5
+cost = 600000.0
+prerequisites = Array[StringName]([&"electronics", &"combustion_engine"])
+effect = "Usine de fusées (fer, électronique, cuivre et courant : une fusée en 40 jours) et base de lancement (carburant, moins près de l'équateur). Le premier satellite cartographie toute la planète, gisements compris."

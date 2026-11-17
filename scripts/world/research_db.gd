@@ -34,6 +34,7 @@ const DEFS: Array[ResearchDef] = [
 	preload("res://data/research/photovoltaics.tres"),
 	preload("res://data/research/lithium_electrochemistry.tres"),
 	preload("res://data/research/electric_vehicle.tres"),
+	preload("res://data/research/rocket.tres"),
 ]
 
 

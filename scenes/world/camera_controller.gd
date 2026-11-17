@@ -61,10 +61,17 @@ func _on_view_changed() -> void:
 ## affichée.
 func refresh_bounds() -> void:
 	var city: bool = GameState.view_city
-	var cells: Array[Vector2i] = GameState.view_territory().known_cells()
+	# Par blocs de tuiles : assez précis, et rapide même sur la planète entière.
+	var n := WorldMap.CHUNK_SIZE
+	var corners: Array[Vector2i] = []
+	for key in GameState.view_territory().known_blocks():
+		corners.append(key * n)
+		corners.append(key * n + Vector2i.ONE * (n - 1))
+	if city:
+		corners = GameState.city_territory.known_cells()
 	var shown := func(c: Vector2i) -> Vector2i: return c if city else GameState.display_cell(c)
-	var rect := Rect2i(shown.call(cells[0]), Vector2i.ONE)
-	for c in cells:
+	var rect := Rect2i(shown.call(corners[0]), Vector2i.ONE)
+	for c in corners:
 		rect = rect.expand(shown.call(c))
 	_bounds = Iso.world_bounds(Rect2i(rect.position, rect.size + Vector2i.ONE))
 

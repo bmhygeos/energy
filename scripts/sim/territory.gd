@@ -80,25 +80,40 @@ func known_deposit(cell: Vector2i) -> int:
 
 ## Tuiles connues (abscisses ramenées sur la planète).
 func known_cells() -> Array[Vector2i]:
-	return _cells_where(func(b: int) -> bool: return b & STATE_MASK != State.UNKNOWN)
+	return _cells_where(-1)
 
 
 func territory_cells() -> Array[Vector2i]:
-	return _cells_where(func(b: int) -> bool: return b & STATE_MASK == State.TERRITORY)
+	return _cells_where(State.TERRITORY)
 
 
 func count(state: State) -> int:
-	return _cells_where(func(b: int) -> bool: return b & STATE_MASK == state).size()
+	if state == State.UNKNOWN:
+		return map.size.x * map.size.y - _cells_where(-1).size()
+	var total := 0
+	for key: Vector2i in _blocks:
+		for b in _blocks[key]:
+			if b & STATE_MASK == state:
+				total += 1
+	return total
 
 
-func _cells_where(test: Callable) -> Array[Vector2i]:
+## Blocs (WorldMap.CHUNK_SIZE tuiles de côté) où une tuile au moins est connue.
+func known_blocks() -> Array[Vector2i]:
+	return _blocks.keys()
+
+
+## Tuiles dans l'état [param state] (-1 : toutes les connues).
+func _cells_where(state: int) -> Array[Vector2i]:
 	var n := WorldMap.CHUNK_SIZE
 	var result: Array[Vector2i] = []
 	for key: Vector2i in _blocks:
 		var bytes := _blocks[key]
+		var origin := key * n
 		for i in bytes.size():
-			if test.call(bytes[i]):
-				result.append(key * n + Vector2i(i % n, i / n))
+			var s := bytes[i] & STATE_MASK
+			if s != State.UNKNOWN and (state < 0 or s == state):
+				result.append(origin + Vector2i(i % n, i / n))
 	return result
 
 

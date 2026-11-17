@@ -156,6 +156,8 @@ var fuel_burned_today := 0.0
 var wood_burned_today := 0.0
 ## Pollution de l'air de la cité.
 var pollution: Pollution
+## Fusées, lancements et satellites (recherche Fusée).
+var space: Space
 ## Machines à vapeur alimentées en charbon (la veille), et leurs bonus.
 var steam_running := false
 var _steam_drive := 0.0
@@ -235,6 +237,7 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	fuel_burned_today = 0.0
 	wood_burned_today = 0.0
 	pollution = Pollution.new()
+	space = Space.new(seed_value)
 	GameClock.reset()
 	_refresh_city_area()
 	_found_village()
@@ -996,11 +999,14 @@ func food_need() -> float:
 var expedition_origin := 0
 
 
-## Moyen par lequel l'avant-poste [param b] est relié au village : « route »,
-## « voie ferrée », « aérodrome », ou vide s'il ne l'est pas.
+## Moyen par lequel l'avant-poste ou le port [param b] est relié au village :
+## « l'eau » (port relié à une tête de ligne), « route », « voie ferrée »,
+## « aérodrome », ou vide s'il ne l'est pas.
 func outpost_link(b: Building) -> String:
-	if not b.is_complete() or not b.def.outpost:
+	if not b.is_complete() or not (b.def.outpost or b.def.harbor):
 		return ""
+	if b.def.harbor and ports.is_linked(b.anchor):
+		return "l'eau"
 	for cell in b.cells:
 		for o in WorldMap.NEIGHBORS_4:
 			if roads.lengths.has(world_map.wrap_cell(cell + o)):
@@ -1017,7 +1023,7 @@ func outpost_link(b: Building) -> String:
 
 
 ## Départs possibles des expéditions (repère de la vue) : le village, puis les
-## avant-postes reliés.
+## avant-postes et les ports reliés.
 func expedition_origins() -> Array[Vector2i]:
 	var result: Array[Vector2i] = [display_cell(home)]
 	for b in buildings.all():
@@ -1334,6 +1340,54 @@ func _run_enrichment() -> void:
 	stockpile.take(Stockpile.Good.URANIUM, n * PowerGrid.ENRICH_URANIUM)
 	stockpile.add(Stockpile.Good.NUCLEAR_FUEL, n)
 	production.produced_today[Stockpile.Good.NUCLEAR_FUEL] += n
+
+
+## Ère spatiale du jour : assemblage dans les usines de fusées alimentées,
+## lancement depuis une base s'il y a une fusée et assez de carburant,
+## cartographie par le satellite.
+func _run_space() -> void:
+	var factories := 0.0
+	var pad: Building = null
+	for b in all_buildings():
+		if b.is_complete() and b.def.rocket_factory and machines_powered():
+			factories += 1.0
+		if b.is_complete() and b.def.launch_pad and pad == null:
+			pad = b
+	if space.assemble(stockpile, factories):
+		EventBus.notified.emit("Une fusée est prête%s" % ("" if pad else " : construisez une base de lancement"))
+	if pad and space.rockets > 0:
+		var fuel := Space.launch_fuel(world_map.latitude(world_map.wrap_cell(pad.anchor).y))
+		if stockpile.has(Stockpile.Good.FUEL, fuel):
+			fuel_burned_today += stockpile.take(Stockpile.Good.FUEL, fuel)
+			var first := space.satellites == 0
+			if space.launch():
+				EventBus.notified.emit("Lancement réussi : satellite en orbite%s" % (
+					" — il cartographie la planète" if first else ""))
+			else:
+				EventBus.notified.emit("Échec du lancement : la fusée est perdue")
+	_survey()
+
+
+## Le satellite cartographie ses colonnes du jour (en partant de la longitude
+## du village, vers l'est) : tuiles explorées, gisements prospectés.
+func _survey() -> void:
+	var columns := space.survey_day(world_map.size.x)
+	if columns.is_empty():
+		return
+	var cells: Array[Vector2i] = []
+	for k in columns:
+		var x := posmod(home.x + k, world_map.size.x)
+		for y in world_map.size.y:
+			cells.append(Vector2i(x, y))
+	territory.explore(cells)
+	territory.prospect(cells)
+	var shown: Array[Vector2i] = []
+	for c in cells:
+		shown.append(display_cell(c))
+	EventBus.tiles_changed.emit(shown)
+	EventBus.territory_changed.emit()
+	if space.surveyed(world_map.size.x) >= 1.0:
+		EventBus.notified.emit("Le satellite a cartographié toute la planète")
 
 
 ## Indice de pollution de l'air (0 : pur, 1 : irrespirable).
@@ -1816,6 +1870,7 @@ func _on_day(day: int) -> void:
 	_run_artisans()
 	_run_electronics()
 	_run_enrichment()
+	_run_space()
 	_run_steam()
 	_run_trains()
 	_run_trucks()
@@ -1928,6 +1983,8 @@ func _check_milestones(day: int) -> void:
 	facts.research = research
 	facts.grid_coverage = grid.coverage
 	facts.nuclear_power = grid.nuclear
+	facts.satellites = space.satellites
+	facts.surveyed = space.surveyed(world_map.size.x)
 	facts.pollution = pollution_index()
 	facts.green_share = (grid.hydro + grid.wind_power + grid.solar) / grid.demand if grid.demand > 0.0 else 0.0
 	if tier.level >= SERVICES_TIER:

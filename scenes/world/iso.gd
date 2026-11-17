@@ -37,3 +37,21 @@ static func world_bounds(cells: Rect2i) -> Rect2:
 	var top := map_to_world(o).y - HALF.y
 	var bottom := map_to_world(e).y + HALF.y
 	return Rect2(left, top, right - left, bottom - top)
+
+
+## Tuiles couvrant l'écran de [param viewport], élargies de [param margin]
+## tuiles (les calques dessinés tuile à tuile se limitent à l'écran).
+static func visible_cells(viewport: Viewport, margin := 2) -> Rect2i:
+	var inverse := viewport.get_canvas_transform().affine_inverse()
+	var size := viewport.get_visible_rect().size
+	var lo := Vector2i(1 << 30, 1 << 30)
+	var hi := Vector2i(-(1 << 30), -(1 << 30))
+	for corner in [Vector2.ZERO, Vector2(size.x, 0), Vector2(0, size.y), size]:
+		var world: Vector2 = inverse * corner
+		# Inverse de map_to_world : x − y et x + y depuis l'écran.
+		var a := world.x / HALF.x - 1.0
+		var b := world.y / HALF.y - 1.0
+		var cell := Vector2i(floori((a + b) / 2.0), floori((b - a) / 2.0))
+		lo = Vector2i(mini(lo.x, cell.x), mini(lo.y, cell.y))
+		hi = Vector2i(maxi(hi.x, cell.x), maxi(hi.y, cell.y))
+	return Rect2i(lo - Vector2i.ONE * margin, hi - lo + Vector2i.ONE * (2 * margin + 1))

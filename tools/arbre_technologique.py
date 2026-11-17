@@ -40,7 +40,8 @@ Palier 4 :
 Palier 5 :
   Conductivité ─┬→ Électronique ─┬→ Informatique (+ Enseignement supérieur) → Intelligence artificielle
                 │                ├→ Photovoltaïque
-                │                └→ Électrochimie du lithium → Véhicule électrique (+ Moteur à explosion)
+                │                ├→ Électrochimie du lithium → Véhicule électrique (+ Moteur à explosion)
+                │                └→ Fusée (+ Moteur à explosion)
                 ├→ Radioactivité
                 └→ Énergie éolienne"""
 
@@ -107,8 +108,8 @@ def main():
         if by_tier.get(t):
             out.append(f"  Sans recherche (palier atteint) : {', '.join(by_tier[t])}")
         out.append("")
-    out += [DIAGRAM, "", "Pas encore dans l'arbre : recherche de la fusée (ère spatiale, V∞) ;",
-            "prévus au plan : cimenterie (V15), avant-poste → hameau (V16).", ""]
+    out += [DIAGRAM, "", "Prévus au plan : cimenterie (V15), avant-poste → hameau et port → ville portuaire (V16),",
+            "vue globe et satellites suivants (V∞).", ""]
     missing = [research[r]["name"] for r in order if research[r]["name"] not in DIAGRAM]
     if missing:
         sys.exit("Recherches absentes du schéma : " + ", ".join(missing))

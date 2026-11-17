@@ -49,6 +49,9 @@ class Facts:
 	## l'eau, le vent et le soleil.
 	var nuclear_power := 0.0
 	var green_share := 0.0
+	## Satellites en orbite, part de la planète cartographiée (0–1).
+	var satellites := 0
+	var surveyed := 0.0
 	## Indice de pollution de la veille (0–1).
 	var pollution := 1.0
 
@@ -120,6 +123,10 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.green_share >= 0.5),
 		Def.new(&"clean_air", "Ciel dégagé", "À la cité-État, garder un air pur (pollution nulle).",
 			func(f: Facts) -> bool: return f.tier >= 5 and f.pollution <= 0.0),
+		Def.new(&"satellite", "Premier satellite", "Mettre un satellite en orbite (base de lancement).",
+			func(f: Facts) -> bool: return f.satellites > 0),
+		Def.new(&"mapped", "Planète cartographiée", "Cartographier toute la planète par satellite.",
+			func(f: Facts) -> bool: return f.surveyed >= 1.0),
 		Def.new(&"datacenter", "Intelligence artificielle", "Construire un datacenter (recherche ×100).",
 			func(f: Facts) -> bool: return f.has_building(&"datacenter")),
 	]

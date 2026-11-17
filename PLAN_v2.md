@@ -365,6 +365,9 @@ compteur de puissance par habitant :
   expéditions : le joueur choisit leur départ.
 - **Aérodrome** (réalisé, palier 5) : relie par les airs les avant-postes à 2
   tuiles ou moins.
+- **Ports** (réalisé) : ils ont la fonction des avant-postes. Un port relié
+  par l'eau à une tête de ligne (ou, comme un avant-poste, par une route, une
+  voie ferrée ou un aérodrome) lance ses propres expéditions.
 - **Avant-poste → hameau** (prévu) : un avant-poste assez loin de la
   première ville (distance proposée : 40 tuiles ou plus) peut être amélioré
   en **hameau**, une seconde ville **autonome** : sa propre population, ses
@@ -372,6 +375,9 @@ compteur de puissance par habitant :
   mondiale. Les villes partagent la recherche et échangent des marchandises
   par leurs réseaux (route, voie ferrée, port). Des habitants de la première
   ville (colons) partent la fonder, avec des vivres et du bois.
+- **Port → ville portuaire** (prévu) : de même, un port assez loin de la
+  première ville peut devenir une **ville portuaire** autonome, qui commence
+  au hameau avec sa pêche et ses liaisons par l'eau.
 - Questions à trancher : distance minimale, nombre de colons, partage du
   territoire, échanges entre villes (automatiques ou commandés), palier de
   la cité-État atteint ville par ville ou pour l'ensemble.
@@ -432,6 +438,15 @@ au-delà de laquelle la pénalité de trajet commence, section 5) et augmente la
   territoire et limitée par la population.
 - Le lancement débloque la **vue globe** (planète entière, satellite en orbite)
   et ouvre l'ère spatiale (satellites suivants : météo prévue, communications).
+- **Réalisé (V17)** : recherche **Fusée** (600 000 points, après
+  l'électronique et le moteur à explosion) ; **usine de fusées** (carte de la
+  ville, 50 kW) : une fusée en 40 jours de travail (5 fer, 3 électronique et
+  2 cuivre par jour) ; **base de lancement** (carte mondiale) : lancement
+  automatique d'une fusée prête contre 300 carburant à l'équateur à 600 aux
+  pôles, 15 % d'échecs. Le premier satellite cartographie la planète par
+  bandes de 16 colonnes de longitude par jour (64 jours) depuis la longitude
+  du village : tuiles explorées et prospectées, sans annexion. Reste : vue
+  globe, satellites suivants.
 
 ## 8. Gouvernance (à partir du palier 3)
 **Pas d'extérieur** : la cité ne commerce avec personne ; tout ce dont elle a
@@ -510,9 +525,10 @@ effectif, vivres).
 | V14 (suite) | Exploration motorisée | Véhicules à moteur à la ville (×3, navires à moteur), avion à la cité-État (60 tuiles/j, survole tout), contre du carburant — réalisé |
 | V14 | Deux cartes | Carte de la ville (plaine qui grandit avec le palier : logements, ateliers, services) et carte mondiale (zones, ressources, réseaux, bloc de la ville au centre) ; bouton Ville / Monde et touche Tab — réalisé |
 | V13 | Équilibrage | Rythme de la ville et de la cité-État (outil `simulate_pacing`) : isolation (chauffage ×0,8 / ×0,5 / ×0,4) et mécanisation des mines (×2 / ×3) — en cours |
-| V14 (avant-postes) | Avant-postes | Avant-poste (collier d'attelage), relié par route, voie ferrée ou aérodrome : départ des expéditions ; aérodrome (cité-État) — réalisé |
-| V16 | Nouvelles villes | Avant-poste assez loin amélioré en hameau : seconde ville autonome (population, stocks, carte, palier), recherche commune, échanges par les réseaux — prévu |
+| V14 (avant-postes) | Avant-postes | Avant-poste (collier d'attelage), relié par route, voie ferrée ou aérodrome : départ des expéditions ; aérodrome (cité-État) ; ports reliés par l'eau, départs eux aussi — réalisé |
+| V16 | Nouvelles villes | Avant-poste (ou port : ville portuaire) assez loin amélioré en hameau : seconde ville autonome (population, stocks, carte, palier), recherche commune, échanges par les réseaux — prévu |
 | V15 | Cimenterie | Recherche Cimenterie (palier 4), cimenterie (pierre + charbon → ciment), le ciment remplace la pierre et accélère les chantiers — prévu |
+| V17 | Fusée | Recherche Fusée, usine de fusées, base de lancement, premier satellite qui cartographie la planète — réalisé (sans vue globe) |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses

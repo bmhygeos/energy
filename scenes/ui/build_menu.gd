@@ -294,7 +294,7 @@ func _build_territory() -> void:
 	_origin = OptionButton.new()
 	_origin.focus_mode = Control.FOCUS_NONE
 	_origin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_origin.tooltip_text = "D'où partent les expéditions : le village, ou un avant-poste relié par une route, une voie ferrée ou un aérodrome."
+	_origin.tooltip_text = "D'où partent les expéditions : le village, un avant-poste relié par une route, une voie ferrée ou un aérodrome, ou un port relié par l'eau (ou comme un avant-poste)."
 	_origin.item_selected.connect(func(index: int) -> void:
 		GameState.set_expedition_origin(index)
 		_refresh_hint())
@@ -355,7 +355,7 @@ func _refresh_origins() -> void:
 		var link: String = GameState.outpost_link(b)
 		if not link.is_empty():
 			var d: Vector2i = b.anchor - home
-			_origin.add_item("Avant-poste (%+d, %+d) par %s" % [d.x, d.y, link])
+			_origin.add_item("%s (%+d, %+d) par %s" % ["Port" if b.def.harbor else "Avant-poste", d.x, d.y, link])
 	var index: int = GameState.expedition_origin if GameState.expedition_origin < _origin.item_count else 0
 	_origin.select(index)
 	_origin.disabled = _origin.item_count < 2
