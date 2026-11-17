@@ -10,12 +10,19 @@ const BRIDGE_COLOR := Color("6e5236")
 
 
 func _ready() -> void:
+	EventBus.cities_changed.connect(queue_redraw)
 	EventBus.roads_changed.connect(func(_cells: Array[Vector2i]) -> void: queue_redraw())
 	EventBus.game_started.connect(func(_seed: int) -> void: queue_redraw())
 
 
 func _draw() -> void:
-	var roads := GameState.roads
+	for c in GameState.cities:
+		_draw_city(c)
+
+
+## Tracé de la ville [param town] (toutes les villes sont dessinées).
+func _draw_city(town: City) -> void:
+	var roads := town.roads
 	if roads == null or roads.tile_count() == 0:
 		return
 	for c in roads.cells():

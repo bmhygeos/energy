@@ -440,6 +440,17 @@ météo et interface conservés.
 - Un bâtiment construit ou amélioré au ciment se bâtit **deux fois plus
   vite**.
 
+### Palier 6 : Cité des étoiles
+
+- Réservé à la **capitale** (la première ville) : au palier commun
+  Cité-État, avec 15 000 habitants dans la capitale, 80 % de satisfaction et
+  au moins un satellite en orbite, elle devient **Cité des étoiles**, une
+  fois pour toutes.
+- Sa carte de ville passe à 48×48 cases ; son nom de palier s'affiche au
+  bandeau et sur son bloc ; jalon « Cité des étoiles ». Les autres villes
+  restent Cité-État.
+- Au survol du palier (bandeau), ce qui manque encore à la capitale.
+
 ### Fusée et premier satellite
 
 - **Fusée** (cité-État, 600 000 points, après l'électronique et le moteur à
@@ -472,9 +483,24 @@ météo et interface conservés.
 - **Ports** : ils ont la même fonction. Un port relié par l'eau à une tête de
   ligne (ou, comme un avant-poste, par une route, une voie ferrée ou un
   aérodrome) est lui aussi un départ des expéditions.
-- Prévu : un avant-poste ou un port assez loin de la première ville pourra
-  devenir un hameau ou une ville portuaire, seconde ville autonome (plan,
-  V16).
+- **Nouvelles villes** (V16) : un avant-poste ou un port relié, à 60 tuiles
+  ou plus de toute ville, se fonde en ville (ou ville portuaire, « Port-… »)
+  avec l'outil **Améliorer** : 30 colons partent de la ville choisie avec 550
+  nourriture et 120 bois ; l'avant-poste devient le centre de la ville, un
+  port reste le sien. La fiche de l'avant-poste ou du port dit ce qui manque.
+- Chaque ville a son **territoire** (12×12 tuiles au départ), ses zones, ses
+  réseaux, ses bâtiments, sa carte de ville et ses expéditions ; une frontière
+  sépare les territoires sur la carte mondiale.
+- **Stock commun** des villes reliées (leurs routes ou leurs voies se
+  touchent, un port chacune, ou un aérodrome chacune à la cité-État) : chaque
+  heure, les marchandises se répartissent au prorata des capacités. Une ville
+  isolée vit sur ses propres stocks.
+- **Un palier pour l'ensemble** (population totale, satisfaction moyenne) ;
+  recherche, décrets, météo et événements communs ; statistiques et jalons
+  de la cité-État entière.
+- **Liste des villes** au bandeau (dès la deuxième) : la ville choisie est
+  celle des panneaux, de la carte de la ville et des constructions ; un clic
+  sur le bloc ou le territoire d'une ville la choisit.
 
 ### Exploration motorisée et aérienne
 

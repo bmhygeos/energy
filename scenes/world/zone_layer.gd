@@ -20,6 +20,7 @@ const STUBBLE := Color("c8b890")
 
 
 func _ready() -> void:
+	EventBus.cities_changed.connect(queue_redraw)
 	EventBus.game_started.connect(func(_s: int) -> void: queue_redraw())
 	EventBus.zones_changed.connect(func(_c: Array[Vector2i]) -> void: queue_redraw())
 	EventBus.labor_changed.connect(queue_redraw)
@@ -27,7 +28,13 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	var zones := GameState.zones
+	for c in GameState.cities:
+		_draw_city(c)
+
+
+## Tracé de la ville [param town] (toutes les villes sont dessinées).
+func _draw_city(town: City) -> void:
+	var zones := town.zones
 	if zones == null:
 		return
 	for c in zones.all_cells():
@@ -45,7 +52,7 @@ func _draw() -> void:
 			inner.append(center + (p - center) * INSET)
 		inner.append(inner[0])
 		draw_polyline(inner, def.color * Color(1, 1, 1, BORDER_ALPHA), 2.0, true)
-		var workers: int = GameState.labor.workers_at.get(c, 0)
+		var workers: int = town.labor.workers_at.get(c, 0)
 		for k in workers:
 			_draw_worker(center + Vector2((k - (workers - 1) / 2.0) * 14.0, 4.0))
 

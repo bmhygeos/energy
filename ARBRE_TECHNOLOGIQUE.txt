@@ -179,5 +179,4 @@ Palier 5 :
                 ├→ Radioactivité
                 └→ Énergie éolienne
 
-Prévus au plan : avant-poste → hameau et port → ville portuaire (V16),
-vue globe et satellites suivants (V∞).
+Prévus au plan : vue globe et satellites suivants (V∞).

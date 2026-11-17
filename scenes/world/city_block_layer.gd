@@ -1,7 +1,8 @@
 class_name CityBlockLayer
 extends Node2D
-## Bloc de la ville sur la carte mondiale : pavés, toits et nom du palier.
-## Un clic dessus (outil de sélection) ouvre la carte de la ville.
+## Blocs des villes sur la carte mondiale : pavés, toits, nom de la ville et
+## palier. Un clic dessus (outil de sélection) choisit la ville et ouvre sa
+## carte.
 
 const PAVEMENT := Color(0.62, 0.58, 0.52, 0.95)
 const EDGE := Color(0.35, 0.3, 0.26, 1.0)
@@ -12,18 +13,19 @@ const HOUSE_HEIGHT := 10.0
 
 
 func _ready() -> void:
-	for sig: Signal in [EventBus.city_changed, EventBus.tier_changed, EventBus.view_changed]:
+	for sig: Signal in [EventBus.city_changed, EventBus.tier_changed, EventBus.view_changed, EventBus.cities_changed,
+			EventBus.city_selected]:
 		sig.connect(queue_redraw)
 	EventBus.game_started.connect(func(_s: int) -> void: queue_redraw())
 
 
-## Tuiles du bloc (repère de la vue).
-static func cells() -> Array[Vector2i]:
+## Tuiles du bloc de la ville [param c] (repère de la vue).
+static func cells(c: City) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	if GameState.buildings == null:
+	if c == null or c.buildings == null:
 		return result
-	var center: Vector2i = GameState.display_cell(GameState.home)
-	var r: int = GameState.buildings.block_radius
+	var center: Vector2i = GameState.display_cell(c.home)
+	var r: int = c.buildings.block_radius
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):
 			result.append(center + Vector2i(dx, dy))
@@ -33,7 +35,12 @@ static func cells() -> Array[Vector2i]:
 func _draw() -> void:
 	if GameState.view_city:
 		return
-	var block := cells()
+	for c in GameState.cities:
+		_draw_city(c)
+
+
+func _draw_city(c: City) -> void:
+	var block := cells(c)
 	for cell in block:
 		draw_colored_polygon(Iso.diamond(cell), PAVEMENT)
 	for cell in block:
@@ -52,9 +59,9 @@ func _draw() -> void:
 		draw_colored_polygon(top, ROOF)
 	if block.is_empty():
 		return
-	var center := Iso.map_to_world(Vector2(GameState.display_cell(GameState.home)))
+	var center := Iso.map_to_world(Vector2(GameState.display_cell(c.home)))
 	var font := ThemeDB.fallback_font
-	var text := "%s (Tab)" % GameState.tier.name()
+	var text := "%s — %s%s" % [c.name, GameState.tier_name(c), " (Tab)" if c == GameState.selected else ""]
 	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
 	draw_string_outline(font, center + Vector2(-width / 2.0, -HOUSE_HEIGHT - 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, EDGE)
 	draw_string(font, center + Vector2(-width / 2.0, -HOUSE_HEIGHT - 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, LABEL_COLOR)

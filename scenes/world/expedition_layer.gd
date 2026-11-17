@@ -43,7 +43,11 @@ func _draw() -> void:
 	var exploration := GameState.exploration
 	if exploration == null:
 		return
-	for e in exploration.expeditions:
+	# Expéditions de toutes les villes.
+	var trips: Array[Exploration.Expedition] = []
+	for c in GameState.cities:
+		trips.append_array(c.exploration.expeditions)
+	for e in trips:
 		_draw_path(e.path, PATH_COLOR)
 		var k := clampi(floori(e.position), 0, e.path.size() - 1)
 		var next := e.path[mini(k + 1, e.path.size() - 1)]

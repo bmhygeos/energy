@@ -9,12 +9,19 @@ const WIDTH := 6.0
 
 
 func _ready() -> void:
+	EventBus.cities_changed.connect(queue_redraw)
 	EventBus.canals_changed.connect(func(_cells: Array[Vector2i]) -> void: queue_redraw())
 	EventBus.game_started.connect(func(_seed: int) -> void: queue_redraw())
 
 
 func _draw() -> void:
-	var canals: CanalNetwork = GameState.canals
+	for c in GameState.cities:
+		_draw_city(c)
+
+
+## Tracé de la ville [param town] (toutes les villes sont dessinées).
+func _draw_city(town: City) -> void:
+	var canals := town.canals
 	if canals == null or canals.tile_count() == 0:
 		return
 	for c in canals.cells():

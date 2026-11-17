@@ -64,6 +64,7 @@ func _ready() -> void:
 	%EconomyButton.pressed.connect(func() -> void: get_node("../EconomyPanel").toggle())
 	_build_game_menu()
 	_build_view_button()
+	_build_city_picker()
 	EventBus.labor_changed.connect(_refresh_population)
 	EventBus.population_changed.connect(_refresh_population)
 	EventBus.stocks_changed.connect(_refresh_stocks)
@@ -85,6 +86,32 @@ func _unhandled_input(event: InputEvent) -> void:
 			and not get_viewport().gui_get_focus_owner() is LineEdit:
 		GameState.set_view(not GameState.view_city)
 		get_viewport().set_input_as_handled()
+
+
+## Liste des villes du bandeau (dès la deuxième ville) : la ville choisie
+## est celle des panneaux, de la carte de la ville et des constructions.
+func _build_city_picker() -> void:
+	var picker := OptionButton.new()
+	picker.focus_mode = Control.FOCUS_NONE
+	picker.tooltip_text = "Ville choisie : panneaux, carte de la ville et constructions"
+	%StatsButton.add_sibling(picker)
+	%StatsButton.get_parent().move_child(picker, %StatsButton.get_index())
+	var refresh := func() -> void:
+		picker.clear()
+		for c in GameState.cities:
+			picker.add_item("%s (%d)" % [c.name, c.population.count])
+		picker.select(GameState.cities.find(GameState.selected))
+		picker.visible = GameState.cities.size() > 1
+	picker.item_selected.connect(func(index: int) -> void:
+		GameState.select_city(GameState.cities[index])
+		var camera := get_viewport().get_camera_2d()
+		if camera and not GameState.view_city:
+			camera.position = Iso.map_to_world(Vector2(GameState.display_cell(GameState.selected.home))))
+	for sig: Signal in [EventBus.cities_changed, EventBus.city_selected]:
+		sig.connect(refresh)
+	EventBus.population_changed.connect(refresh)
+	EventBus.game_started.connect(func(_s: int) -> void: refresh.call())
+	refresh.call()
 
 
 ## Bouton « Ville / Monde » du bandeau (touche Tab) : passe d'une carte à
@@ -212,9 +239,14 @@ func _refresh_water() -> void:
 func _refresh_tier() -> void:
 	var tier := GameState.tier
 	var population := GameState.population
-	_tier_label.text = tier.name()
+	_tier_label.text = GameState.tier_name(GameState.selected)
 	if tier.is_max():
-		_tier_label.tooltip_text = "Palier de la ville : %s, le dernier" % tier.name()
+		var missing: String = GameState.star_city_missing()
+		_tier_label.tooltip_text = "Palier : %s, le dernier commun" % tier.name()
+		if GameState.cities[0].star:
+			_tier_label.tooltip_text += "\n%s est %s" % [GameState.cities[0].name, CityTier.STAR_NAME]
+		else:
+			_tier_label.tooltip_text += "\n%s (capitale seule) : il manque %s" % [CityTier.STAR_NAME, missing]
 		return
 	_tier_label.tooltip_text = "Palier de la ville : %s\nPalier suivant : %s\n  Habitants : %d / %d\n  Satisfaction : %d %% / %d %%" % [
 		tier.name(), CityTier.NAMES[tier.level], population.count, tier.next_population(),

@@ -2,7 +2,10 @@ class_name Territory
 extends RefCounted
 ## Connaissance et possession des tuiles de la planète : état (inconnue,
 ## explorée, territoire) et gisements prospectés. Stocké sous forme compacte,
-## un octet par tuile des seuls blocs connus. Pure donnée.
+## un octet par tuile des seuls blocs connus. Plusieurs villes : chaque tuile
+## du territoire appartient à une ville (owner) ; les questions « territoire »
+## portent sur la ville active (owner), la connaissance est commune. Pure
+## donnée.
 
 enum State { UNKNOWN, EXPLORED, TERRITORY }
 
@@ -19,6 +22,11 @@ var map: WorldMap
 ## Palier de la ville : seuls les gisements de ce palier ou d'avant sont vus.
 var tier := 1
 var _blocks: Dictionary[Vector2i, PackedByteArray] = {}
+## Ville active (identifiant) : celle dont on demande le territoire et qui
+## annexe.
+var owner := 0
+## Ville propriétaire des tuiles du territoire (absente : la ville 0).
+var _owners: Dictionary[Vector2i, int] = {}
 
 
 func _init(p_map: WorldMap) -> void:
@@ -36,8 +44,21 @@ func is_known(cell: Vector2i) -> bool:
 	return state_at(cell) != State.UNKNOWN
 
 
+## Tuile du territoire de la ville active ?
 func is_territory(cell: Vector2i) -> bool:
+	return state_at(cell) == State.TERRITORY and owner_at(cell) == owner
+
+
+## Tuile du territoire d'une ville, quelle qu'elle soit ?
+func is_owned(cell: Vector2i) -> bool:
 	return state_at(cell) == State.TERRITORY
+
+
+## Ville propriétaire de [param cell] (-1 : hors de tout territoire).
+func owner_at(cell: Vector2i) -> int:
+	if state_at(cell) != State.TERRITORY:
+		return -1
+	return _owners.get(map.wrap_cell(cell), 0)
 
 
 func set_state(cell: Vector2i, state: State) -> void:
@@ -51,11 +72,29 @@ func explore(cells: Array[Vector2i]) -> void:
 			set_state(cell, State.EXPLORED)
 
 
-## Intègre [param cells] au territoire.
+## Intègre [param cells] au territoire de la ville active (sans prendre les
+## tuiles d'une autre ville).
 func annex(cells: Array[Vector2i]) -> void:
+	for cell in cells:
+		if map.has_cell(cell) and owner_at(cell) < 0:
+			set_state(cell, State.TERRITORY)
+			_set_owner(cell, owner)
+
+
+## Donne [param cells] à la ville [param city] (fondation d'une ville), même
+## si elles appartenaient à une autre.
+func transfer(cells: Array[Vector2i], city: int) -> void:
 	for cell in cells:
 		if map.has_cell(cell):
 			set_state(cell, State.TERRITORY)
+			_set_owner(cell, city)
+
+
+func _set_owner(cell: Vector2i, city: int) -> void:
+	if city == 0:
+		_owners.erase(map.wrap_cell(cell))
+	else:
+		_owners[map.wrap_cell(cell)] = city
 
 
 ## Prospection : rend visibles les gisements de [param cells] connues.
@@ -84,12 +123,14 @@ func known_cells() -> Array[Vector2i]:
 
 
 func territory_cells() -> Array[Vector2i]:
-	return _cells_where(State.TERRITORY)
+	return _cells_where(State.TERRITORY).filter(func(c: Vector2i) -> bool: return _owners.get(c, 0) == owner)
 
 
 func count(state: State) -> int:
 	if state == State.UNKNOWN:
 		return map.size.x * map.size.y - _cells_where(-1).size()
+	if state == State.TERRITORY:
+		return territory_cells().size()
 	var total := 0
 	for key: Vector2i in _blocks:
 		for b in _blocks[key]:

@@ -60,6 +60,8 @@ func _ready() -> void:
 		_load_map(GameState.view_map()))
 	EventBus.view_changed.connect(func() -> void: _load_map(GameState.view_map()))
 	EventBus.city_changed.connect(_paint_city)
+	EventBus.city_selected.connect(_paint_city)
+	EventBus.cities_changed.connect(_fog.refresh)
 	EventBus.overlay_changed.connect(func(mode: int) -> void:
 		_decor.modulate.a = 1.0 if mode == OverlayLayer.Mode.NONE else DECOR_DIMMED_ALPHA)
 	EventBus.tiles_changed.connect(func(cells: Array[Vector2i]) -> void:
@@ -209,10 +211,17 @@ func _click(cell: Vector2i) -> void:
 				EventBus.expedition_target_clicked.emit(cell)
 				_expedition_hover = Vector2i(-1, -1)
 		_:
-			# Clic sur le bloc de la ville : la carte de la ville s'ouvre.
-			if cell.x >= 0 and not GameState.view_city and GameState.buildings.in_block(cell):
-				GameState.set_view(true)
-				return
+			# Clic sur le bloc d'une ville : elle est choisie et sa carte s'ouvre ;
+			# clic sur le territoire d'une autre ville : elle est choisie.
+			if cell.x >= 0 and not GameState.view_city:
+				for c in GameState.cities:
+					if c.buildings.in_block(cell):
+						GameState.select_city(c)
+						GameState.set_view(true)
+						return
+				var owner: int = GameState.territory.owner_at(cell)
+				if owner >= 0 and owner != GameState.selected.id:
+					GameState.select_city(GameState.cities[owner])
 			_set_selected(Vector2i(-1, -1) if cell == _selected else cell)
 
 

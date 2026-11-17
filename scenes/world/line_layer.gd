@@ -10,12 +10,19 @@ const POLE_HEIGHT := 18.0
 
 
 func _ready() -> void:
+	EventBus.cities_changed.connect(queue_redraw)
 	EventBus.grid_changed.connect(func(_cells: Array[Vector2i]) -> void: queue_redraw())
 	EventBus.game_started.connect(func(_seed: int) -> void: queue_redraw())
 
 
 func _draw() -> void:
-	var grid := GameState.grid
+	for c in GameState.cities:
+		_draw_city(c)
+
+
+## Tracé de la ville [param town] (toutes les villes sont dessinées).
+func _draw_city(town: City) -> void:
+	var grid := town.grid
 	if grid == null or grid.tile_count() == 0:
 		return
 	var top := Vector2(0.0, -POLE_HEIGHT)

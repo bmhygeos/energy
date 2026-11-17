@@ -45,10 +45,12 @@ func _draw() -> void:
 			if not map.has_cell(cell) or not territory.is_known(cell):
 				continue
 			var d := Iso.diamond(cell)
-			if not territory.is_territory(cell):
+			var owner := territory.owner_at(cell)
+			if owner < 0:
 				draw_colored_polygon(d, FOG_COLOR)
 				continue
+			# Frontière du territoire, et entre deux villes.
 			for offset: Vector2i in EDGES:
-				if not territory.is_territory(cell + offset):
+				if territory.owner_at(cell + offset) != owner:
 					var edge := EDGES[offset]
 					draw_line(d[edge.x], d[edge.y], BORDER_COLOR, BORDER_WIDTH, true)

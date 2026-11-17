@@ -3,6 +3,17 @@ extends Node
 
 ## Planète en longitude / latitude (tuiles), multiple de WorldMap.CHUNK_SIZE.
 const PLANET_SIZE := Vector2i(1024, 512)
+## Palier 6, « Cité des étoiles » : la capitale seule, à la cité-État, avec
+## CityTier.STAR_POPULATION habitants, la satisfaction des paliers et un satellite
+## en orbite ; sa carte de ville passe à STAR_CITY_SIZE cases de côté.
+const STAR_CITY_SIZE := 48
+## Fondation d'une ville sur un avant-poste ou un port relié : distance
+## minimale (tuiles) à toute autre ville, colons partis de la ville active.
+const FOUNDING_DISTANCE := 60
+const COLONISTS := 30
+## Noms des villes, dans l'ordre de leur fondation.
+const CITY_NAMES: PackedStringArray = ["Capitale", "Nouvelle-Rive", "Bellevue", "Portefort", "Hautval", "Sainte-Aube",
+	"Clairmont", "Valsec", "Roche-Neuve", "Mirebois"]
 ## Carte de la ville : plaine (FlatGenerator) dont la partie constructible,
 ## centrée, grandit avec le palier (côté en cases).
 const CITY_MAP_SIZE := Vector2i(64, 64)
@@ -106,42 +117,171 @@ const OIL_PER_FUEL := 1.0
 const ROAD_TIER := 3
 
 var world_map: WorldMap
+
+## Villes de la cité-État ; la ville active (sur laquelle travaillent les
+## fonctions et les variables ci-dessous) et la ville choisie par le joueur.
+var cities: Array[City] = []
+var city: City = City.new()
+var selected: City = city
+
+## Variables de la ville active (voir City).
+var exploration: Exploration:
+	get:
+		return city.exploration
+	set(value):
+		city.exploration = value
+var draft: DraftAnimals:
+	get:
+		return city.draft
+	set(value):
+		city.draft = value
+var home: Vector2i:
+	get:
+		return city.home
+	set(value):
+		city.home = value
+var buildings: BuildingRegistry:
+	get:
+		return city.buildings
+	set(value):
+		city.buildings = value
+var city_map: WorldMap:
+	get:
+		return city.city_map
+	set(value):
+		city.city_map = value
+var city_territory: Territory:
+	get:
+		return city.city_territory
+	set(value):
+		city.city_territory = value
+var city_buildings: BuildingRegistry:
+	get:
+		return city.city_buildings
+	set(value):
+		city.city_buildings = value
+var rails: RailNetwork:
+	get:
+		return city.rails
+	set(value):
+		city.rails = value
+var roads: RoadNetwork:
+	get:
+		return city.roads
+	set(value):
+		city.roads = value
+var ports: PortNetwork:
+	get:
+		return city.ports
+	set(value):
+		city.ports = value
+var grid: PowerGrid:
+	get:
+		return city.grid
+	set(value):
+		city.grid = value
+var canals: CanalNetwork:
+	get:
+		return city.canals
+	set(value):
+		city.canals = value
+var zones: ZoneMap:
+	get:
+		return city.zones
+	set(value):
+		city.zones = value
+var population: Population:
+	get:
+		return city.population
+	set(value):
+		city.population = value
+var labor: Labor:
+	get:
+		return city.labor
+	set(value):
+		city.labor = value
+var stockpile: Stockpile:
+	get:
+		return city.stockpile
+	set(value):
+		city.stockpile = value
+var production: Production:
+	get:
+		return city.production
+	set(value):
+		city.production = value
+var housing: int:
+	get:
+		return city.housing
+	set(value):
+		city.housing = value
+var water_supply: int:
+	get:
+		return city.water_supply
+	set(value):
+		city.water_supply = value
+var coal_burned_today: float:
+	get:
+		return city.coal_burned_today
+	set(value):
+		city.coal_burned_today = value
+var fuel_burned_today: float:
+	get:
+		return city.fuel_burned_today
+	set(value):
+		city.fuel_burned_today = value
+var wood_burned_today: float:
+	get:
+		return city.wood_burned_today
+	set(value):
+		city.wood_burned_today = value
+var pollution: Pollution:
+	get:
+		return city.pollution
+	set(value):
+		city.pollution = value
+var steam_running: bool:
+	get:
+		return city.steam_running
+	set(value):
+		city.steam_running = value
+var _steam_drive: float:
+	get:
+		return city.steam_drive
+	set(value):
+		city.steam_drive = value
+var _steam_mine: float:
+	get:
+		return city.steam_mine
+	set(value):
+		city.steam_mine = value
+var _water_drive: float:
+	get:
+		return city.water_drive
+	set(value):
+		city.water_drive = value
+var _needed_today: PackedFloat32Array:
+	get:
+		return city.needed_today
+	set(value):
+		city.needed_today = value
+var _consumed_today: PackedFloat32Array:
+	get:
+		return city.consumed_today
+	set(value):
+		city.consumed_today = value
+var expedition_origin: int:
+	get:
+		return city.expedition_origin
+	set(value):
+		city.expedition_origin = value
 ## État des tuiles (inconnue, explorée, territoire) et gisements prospectés.
 var territory: Territory
-var exploration: Exploration
 var research: Research
-## Chevaux de trait (écuries).
-var draft: DraftAnimals
-## Centre du village (abscisse ramenée sur la planète).
-var home: Vector2i
-## Bâtiments de la carte mondiale (puits, moulins, ports, gares, centrales…).
-var buildings: BuildingRegistry
-## Carte de la ville et ses bâtiments (logements, ateliers, services…).
-var city_map: WorldMap
-var city_territory: Territory
-var city_buildings: BuildingRegistry
 ## Carte affichée : la ville (vrai) ou le monde.
 var view_city := false
-## Voies ferrées et gares desservies (bourg).
-var rails: RailNetwork
-## Routes (bourg).
-var roads: RoadNetwork
-## Ports : liaisons par l'eau.
-var ports: PortNetwork
-## Réseau électrique (ville).
-var grid: PowerGrid
-## Canaux d'irrigation (recherche Irrigation).
-var canals: CanalNetwork
-## Zones peintes (agriculture, élevage, coupe du bois).
-var zones: ZoneMap
-var population: Population
 ## Palier de la ville (Hameau → Cité-État).
 var tier: CityTier
-## Répartition des actifs entre les zones.
-var labor: Labor
-## Stocks (nourriture, bois), production des zones, compteur de puissance.
-var stockpile: Stockpile
-var production: Production
 var power: PowerMeter
 var weather: Weather
 ## Décrets du gouverneur (bourg).
@@ -151,27 +291,8 @@ var events: CityEvents
 ## Historique journalier (graphiques) et jalons du bac à sable.
 var stats: Statistics
 var milestones: Milestones
-## Logements des maisons terminées.
-var housing := 0
-## Habitants approvisionnés en eau par les puits.
-var water_supply := 0
-## Charbon brûlé dans la journée en cours (chauffage, machines, convois).
-var coal_burned_today := 0.0
-## Carburant et bois de chauffage brûlés dans la journée (pollution).
-var fuel_burned_today := 0.0
-var wood_burned_today := 0.0
-## Pollution de l'air de la cité.
-var pollution: Pollution
 ## Fusées, lancements et satellites (recherche Fusée).
 var space: Space
-## Machines à vapeur alimentées en charbon (la veille), et leurs bonus.
-var steam_running := false
-var _steam_drive := 0.0
-var _steam_mine := 0.0
-var _water_drive := 0.0
-## Besoins et consommation du jour en cours, par marchandise.
-var _needed_today := Stockpile.zeros()
-var _consumed_today := Stockpile.zeros()
 
 
 func _ready() -> void:
@@ -183,69 +304,27 @@ func _ready() -> void:
 func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	Rng.set_seed(seed_value)
 	world_map = WorldMap.new(size, seed_value)
-	home = StartSite.find(world_map.generator)
-	var rect := StartSite.territory_rect(home)
+	var start := StartSite.find(world_map.generator)
+	var rect := StartSite.territory_rect(start)
 	StartSite.ensure(world_map, rect)
 	territory = Territory.new(world_map)
-	var cells: Array[Vector2i] = []
-	for y in range(rect.position.y, rect.end.y):
-		for x in range(rect.position.x, rect.end.x):
-			cells.append(Vector2i(x, y))
-	territory.annex(cells)
-	exploration = Exploration.new(territory)
-	buildings = BuildingRegistry.new(world_map, territory)
-	buildings.block_center = home
-	city_map = WorldMap.new(CITY_MAP_SIZE, 0, FlatGenerator.new(CITY_MAP_SIZE))
-	city_territory = Territory.new(city_map)
-	city_buildings = BuildingRegistry.new(city_map, city_territory)
-	city_buildings.start_ids(CITY_FIRST_ID)
-	view_city = false
-	expedition_origin = 0
-	zones = ZoneMap.new(world_map, territory, buildings)
-	rails = RailNetwork.new(world_map, territory, buildings, home)
-	rails.zones = zones
-	buildings.rails = rails
-	roads = RoadNetwork.new(world_map, territory, buildings, home)
-	roads.zones = zones
-	buildings.roads = roads
-	grid = PowerGrid.new(world_map, territory, buildings, home)
-	grid.zones = zones
-	buildings.lines = grid
-	canals = CanalNetwork.new(world_map, territory, buildings, home)
-	canals.zones = zones
-	buildings.canals = canals
-	population = Population.new()
 	tier = CityTier.new()
-	labor = Labor.new(zones, home)
-	labor.rails = rails
-	labor.roads = roads
-	ports = PortNetwork.new(world_map, territory)
-	labor.ports = ports
-	stockpile = Stockpile.new()
-	production = Production.new(zones, labor)
 	research = Research.new()
-	production.research = research
-	production.canals = canals
-	draft = DraftAnimals.new()
-	production.draft = draft
 	power = PowerMeter.new()
 	weather = Weather.new(seed_value)
 	decrees = Decrees.new()
 	events = CityEvents.new(seed_value)
-	production.events = events
 	stats = Statistics.new()
 	milestones = Milestones.new()
 	milestones.defs = Milestones.standard()
-	_needed_today = Stockpile.zeros()
-	_consumed_today = Stockpile.zeros()
-	steam_running = false
-	coal_burned_today = 0.0
-	fuel_burned_today = 0.0
-	wood_burned_today = 0.0
-	pollution = Pollution.new()
 	space = Space.new(seed_value)
+	view_city = false
+	cities = []
+	_city_groups = []
+	var capital := _new_city(start, CITY_NAMES[0])
+	selected = capital
+	activate(capital)
 	GameClock.reset()
-	_refresh_city_area()
 	_found_village()
 	_refresh_capacities()
 	_update_auto_priorities(0)
@@ -253,11 +332,137 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	EventBus.game_started.emit(seed_value)
 
 
+## Crée une ville centrée sur [param center] (tuile ramenée sur la planète),
+## avec son territoire de départ (TERRITORY_SIZE tuiles de côté, pris aux
+## autres villes s'il le faut), ses réseaux, ses zones, ses habitants et sa
+## carte ; elle devient la ville active.
+func _new_city(center: Vector2i, city_name: String) -> City:
+	var c := City.new()
+	c.id = cities.size()
+	c.name = city_name
+	cities.append(c)
+	activate(c)
+	home = center
+	var rect := StartSite.territory_rect(center)
+	var cells: Array[Vector2i] = []
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			cells.append(world_map.wrap_cell(Vector2i(x, y)))
+	territory.transfer(cells, c.id)
+	exploration = Exploration.new(territory)
+	exploration.tier = tier.level
+	buildings = BuildingRegistry.new(world_map, territory)
+	buildings.block_center = center
+	buildings.start_ids(c.id * 10_000_000 + 1)
+	city_map = WorldMap.new(CITY_MAP_SIZE, 0, FlatGenerator.new(CITY_MAP_SIZE))
+	city_territory = Territory.new(city_map)
+	city_buildings = BuildingRegistry.new(city_map, city_territory)
+	city_buildings.start_ids(c.id * 10_000_000 + CITY_FIRST_ID)
+	expedition_origin = 0
+	zones = ZoneMap.new(world_map, territory, buildings)
+	rails = RailNetwork.new(world_map, territory, buildings, center)
+	rails.zones = zones
+	buildings.rails = rails
+	roads = RoadNetwork.new(world_map, territory, buildings, center)
+	roads.zones = zones
+	buildings.roads = roads
+	grid = PowerGrid.new(world_map, territory, buildings, center)
+	grid.zones = zones
+	buildings.lines = grid
+	canals = CanalNetwork.new(world_map, territory, buildings, center)
+	canals.zones = zones
+	buildings.canals = canals
+	population = Population.new()
+	population.active_share = Population.ACTIVE_SHARE + decrees.active_bonus()
+	labor = Labor.new(zones, center)
+	labor.rails = rails
+	labor.roads = roads
+	ports = PortNetwork.new(world_map, territory)
+	labor.ports = ports
+	stockpile = Stockpile.new()
+	production = Production.new(zones, labor)
+	production.research = research
+	production.canals = canals
+	draft = DraftAnimals.new()
+	production.draft = draft
+	production.events = events
+	_needed_today = Stockpile.zeros()
+	_consumed_today = Stockpile.zeros()
+	pollution = Pollution.new()
+	_refresh_city_area()
+	return c
+
+
+## Ce qui empêche de fonder une ville sur l'avant-poste ou le port [param b]
+## de la ville active (vide : possible).
+func founding_error(b: Building) -> String:
+	if b == null or not (b.def.outpost or b.def.harbor):
+		return "Seul un avant-poste ou un port peut devenir une ville"
+	if b not in buildings.all():
+		return "Choisissez la ville à laquelle il appartient"
+	if outpost_link(b).is_empty():
+		return "%s non relié : une route, une voie ferrée, l'eau ou un aérodrome doit le relier" % b.def.display_name
+	var center := world_map.wrap_cell(b.anchor)
+	for c in cities:
+		var d := rails.cheb(center, c.home)
+		if d < FOUNDING_DISTANCE:
+			return "Trop près de %s (%d tuiles ; au moins %d)" % [c.name, d, FOUNDING_DISTANCE]
+	if population.count < COLONISTS + Population.START:
+		return "Il faut %d habitants à %s pour envoyer %d colons" % [COLONISTS + Population.START, city.name, COLONISTS]
+	for good in [Stockpile.Good.FOOD, Stockpile.Good.WOOD]:
+		if not stockpile.has(good, Stockpile.START[good]):
+			return "%s insuffisant%s pour les colons (%d requis)" % [Stockpile.GOOD_NAMES[good], Stockpile.GOOD_AGREEMENT[good],
+				roundi(Stockpile.START[good])]
+	return ""
+
+
+## Nom de la prochaine ville (« Port-… » pour une ville portuaire).
+func founding_name(b: Building) -> String:
+	var n := CITY_NAMES[cities.size() % CITY_NAMES.size()]
+	return ("Port-%s" % n) if b.def.harbor else n
+
+
+## Fonde une ville sur l'avant-poste ou le port [param b] de la ville active :
+## COLONISTS habitants partent avec des vivres et du bois ; l'avant-poste
+## devient le centre de la ville, un port reste celui de la ville portuaire.
+## Renvoie la ville (null, raison notifiée, si c'est impossible).
+func found_city(b: Building) -> City:
+	var error := founding_error(b)
+	if not error.is_empty():
+		EventBus.notified.emit(error)
+		return null
+	var founder := city
+	population.count -= COLONISTS
+	for good in [Stockpile.Good.FOOD, Stockpile.Good.WOOD]:
+		stockpile.take(good, Stockpile.START[good])
+	buildings.remove(b)
+	EventBus.building_removed.emit(b)
+	var harbor := b.def.harbor
+	var c := _new_city(world_map.wrap_cell(b.anchor), founding_name(b))
+	population.count = COLONISTS
+	if harbor:
+		buildings.adopt(b)
+	_found_village(COLONISTS)
+	_refresh_capacities()
+	_update_auto_priorities(GameClock.tick)
+	_step_labor(GameClock.tick)
+	activate(founder)
+	_refresh_capacities()
+	_update_labor()
+	_link_cities()
+	EventBus.territory_changed.emit()
+	EventBus.cities_changed.emit()
+	EventBus.population_changed.emit()
+	EventBus.stocks_changed.emit()
+	EventBus.notified.emit("%s est fondée : %d colons partent de %s" % [c.name, COLONISTS, founder.name])
+	return c
+
+
 ## Bâtiments de départ, déjà construits au centre de la carte de la ville :
 ## un grenier et assez de maisons pour les habitants.
-func _found_village() -> void:
+func _found_village(settlers := Population.START) -> void:
 	var defs: Array[BuildingDef] = [BuildingDb.get_def(&"granary")]
-	for k in ceili(float(Population.START) / BuildingDb.get_def(&"house").housing):
+	for k in ceili(float(settlers) / BuildingDb.get_def(&"house").housing):
 		defs.append(BuildingDb.get_def(&"house"))
 	for def in defs:
 		var b := city_buildings.place(city_buildings.check_placement(def, free_city_spot(def)))
@@ -286,7 +491,7 @@ func free_city_spot(def: BuildingDef) -> Vector2i:
 ## la ville, bloc de la ville sur la carte mondiale (les zones qui s'y
 ## trouvaient sont effacées).
 func _refresh_city_area() -> void:
-	var side := CITY_SIZES[clampi(tier.level, 1, CITY_SIZES.size()) - 1]
+	var side := STAR_CITY_SIZE if city.star else CITY_SIZES[clampi(tier.level, 1, CITY_SIZES.size()) - 1]
 	var origin := city_center() - Vector2i.ONE * (side / 2)
 	var cells: Array[Vector2i] = []
 	for y in side:
@@ -314,6 +519,18 @@ func all_buildings() -> Array[Building]:
 	var result: Array[Building] = buildings.all()
 	result.append_array(city_buildings.all())
 	return result
+
+
+## Bâtiment affiché en [param cell] : sur la carte de la ville, celui de la
+## ville choisie ; sur la carte mondiale, celui de n'importe quelle ville.
+func shown_building_at(cell: Vector2i) -> Building:
+	if view_city:
+		return selected.city_buildings.building_at(cell)
+	for c in cities:
+		var b := c.buildings.building_at(cell)
+		if b:
+			return b
+	return null
 
 
 ## Registre, carte et territoire de la carte affichée.
@@ -353,7 +570,8 @@ func _reserved_at_start(cell: Vector2i) -> bool:
 ## village et décalée d'un tour de planète, donc toujours positive (les
 ## tuiles (-1, -1) restent libres pour dire « aucune tuile »).
 func display_cell(cell: Vector2i) -> Vector2i:
-	return world_map.unwrap_near(cell, home.x + world_map.size.x)
+	var capital := cities[0].home if not cities.is_empty() else home
+	return world_map.unwrap_near(cell, capital.x + world_map.size.x)
 
 
 ## Graine aléatoire lisible (6 chiffres).
@@ -503,6 +721,8 @@ func build(def: BuildingDef, anchor: Vector2i) -> Building:
 func upgrade_error(b: Building) -> String:
 	if b == null:
 		return "Aucun bâtiment ici"
+	if b.def.outpost or (b.def.harbor and b.def.upgrade == null):
+		return founding_error(b)
 	var next := b.def.upgrade
 	if next == null:
 		return "%s : pas d'amélioration" % b.def.display_name
@@ -533,6 +753,8 @@ func upgrade_building(b: Building) -> bool:
 	if not error.is_empty():
 		EventBus.notified.emit(error)
 		return false
+	if b.def.outpost or b.def.harbor:
+		return found_city(b) != null
 	var next := b.def.upgrade
 	var costs := with_cement(costs_of(next))
 	for good in costs.size():
@@ -1021,9 +1243,6 @@ func food_need() -> float:
 		+ draft.fodder_need()
 
 
-## Départ choisi pour les expéditions : indice dans expedition_origins() (0 :
-## le village).
-var expedition_origin := 0
 
 
 ## Moyen par lequel l'avant-poste ou le port [param b] est relié au village :
@@ -1392,7 +1611,6 @@ func _run_space() -> void:
 					" — il cartographie la planète" if first else ""))
 			else:
 				EventBus.notified.emit("Échec du lancement : la fusée est perdue")
-	_survey()
 
 
 ## Le satellite cartographie ses colonnes du jour (en partant de la longitude
@@ -1717,8 +1935,6 @@ func lean_days(tick: int) -> float:
 ## Événements du jour (à partir du bourg) : fin de ceux en cours, tirage
 ## d'un nouveau et effets immédiats.
 func _run_events(season: int) -> void:
-	for kind in events.end_day():
-		EventBus.notified.emit("Fin de l'événement : %s" % CityEvents.NAMES[kind])
 	if tier.level < EVENTS_TIER:
 		return
 	var nuclear := grid.connected.any(func(b: Building) -> bool:
@@ -1811,8 +2027,11 @@ func set_corvee(enabled: bool) -> void:
 		EventBus.notified.emit(decrees_error())
 		return
 	decrees.corvee = enabled
-	population.active_share = Population.ACTIVE_SHARE + decrees.active_bonus()
-	_update_labor()
+	for c in cities:
+		activate(c)
+		population.active_share = Population.ACTIVE_SHARE + decrees.active_bonus()
+		_update_labor()
+	activate(selected)
 	EventBus.population_changed.emit()
 	EventBus.economy_changed.emit()
 
@@ -1844,7 +2063,144 @@ func hold_feast() -> bool:
 	return true
 
 
+## Groupes de villes reliées (stock commun), recalculés chaque jour : indices
+## dans cities.
+var _city_groups: Array[PackedInt32Array] = []
+
+
+## Deux villes sont reliées si leurs routes ou leurs voies se touchent (ou
+## touchent le bloc de l'autre), si elles ont chacune un port, ou chacune un
+## aérodrome (cité-État).
+func cities_linked(a: City, b: City) -> bool:
+	if _networks_touch(a.roads.lengths, b) or _networks_touch(b.roads.lengths, a) \
+			or _networks_touch(a.rails.reached, b) or _networks_touch(b.rails.reached, a):
+		return true
+	if _has_complete(a, &"harbor") and _has_complete(b, &"harbor"):
+		return true
+	return tier.level >= Exploration.PLANE_TIER and _has_complete(a, &"airfield") and _has_complete(b, &"airfield")
+
+
+## Les tuiles [param tiles] d'un réseau touchent-elles le bloc ou le même
+## réseau de [param other] ?
+func _networks_touch(tiles: Dictionary, other: City) -> bool:
+	var radius := other.buildings.block_radius + 1
+	for cell: Vector2i in tiles:
+		if other.roads.cheb(cell, other.home) <= radius:
+			return true
+		for o in WorldMap.NEIGHBORS_4:
+			var n := world_map.wrap_cell(cell + o)
+			if other.roads.lengths.has(n) or other.rails.reached.has(n):
+				return true
+	return false
+
+
+static func _has_complete(c: City, flag: StringName) -> bool:
+	return c.buildings.all().any(func(b: Building) -> bool: return b.is_complete() and b.def.get(flag))
+
+
+## Recalcule les groupes de villes reliées.
+func _link_cities() -> void:
+	_city_groups.clear()
+	var group_of: Array[int] = []
+	group_of.resize(cities.size())
+	group_of.fill(-1)
+	for i in cities.size():
+		if group_of[i] >= 0:
+			continue
+		var group := PackedInt32Array([i])
+		group_of[i] = _city_groups.size()
+		var k := 0
+		while k < group.size():
+			for j in cities.size():
+				if group_of[j] < 0 and cities_linked(cities[group[k]], cities[j]):
+					group_of[j] = group_of[i]
+					group.append(j)
+			k += 1
+		_city_groups.append(group)
+
+
+## Villes reliées à [param c] (elle comprise).
+func linked_cities(c: City) -> Array[City]:
+	var result: Array[City] = [c]
+	for group in _city_groups:
+		if cities.find(c) in group:
+			result.clear()
+			for i in group:
+				result.append(cities[i])
+	return result
+
+
+## Stock commun des villes reliées : chaque marchandise est répartie entre
+## elles au prorata de leurs capacités.
+func _pool_stocks() -> void:
+	for group in _city_groups:
+		if group.size() < 2:
+			continue
+		for good in Stockpile.COUNT:
+			var amount := 0.0
+			var capacity := 0.0
+			for i in group:
+				amount += cities[i].stockpile.amount[good]
+				capacity += cities[i].stockpile.capacity[good]
+			if capacity <= 0.0:
+				continue
+			for i in group:
+				var stock := cities[i].stockpile
+				stock.amount[good] = amount * stock.capacity[good] / capacity if capacity > 0.0 else 0.0
+
+
+## Le joueur choisit la ville [param c] : panneaux, carte de la ville et
+## constructions portent sur elle.
+func select_city(c: City) -> void:
+	if c == selected or c not in cities:
+		return
+	selected = c
+	activate(c)
+	EventBus.city_selected.emit()
+	EventBus.stocks_changed.emit()
+	EventBus.population_changed.emit()
+	EventBus.labor_changed.emit()
+	EventBus.expeditions_changed.emit()
+
+
+## Rend [param c] active : les variables de GameState et le territoire
+## portent sur elle.
+func activate(c: City) -> void:
+	city = c
+	if territory:
+		territory.owner = c.id
+
+
 func _on_tick(tick: int) -> void:
+	_pool_stocks()
+	for c in cities:
+		activate(c)
+		_city_tick(tick)
+	activate(selected)
+	var totals := Stockpile.zeros()
+	var count := 0
+	var active := 0
+	var employed := 0
+	var unemployed := 0
+	for c in cities:
+		count += c.population.count
+		active += c.population.active()
+		employed += c.labor.employed()
+		unemployed += c.labor.unemployed()
+		for good in Stockpile.COUNT:
+			totals[good] += c.stockpile.amount[good]
+	stats.add(&"population", count)
+	stats.add(&"active", active)
+	stats.add(&"employed", employed)
+	stats.add(&"unemployed", unemployed)
+	for good in Stockpile.COUNT:
+		stats.add(Statistics.STOCK_KEYS[good], totals[good])
+	stats.end_hour()
+
+
+## Heure de la ville active : chantiers, expéditions, travail, production,
+## consommation.
+func _city_tick(tick: int) -> void:
 	var completed := buildings.advance()
 	completed.append_array(city_buildings.advance())
 	if not completed.is_empty():
@@ -1869,13 +2225,6 @@ func _on_tick(tick: int) -> void:
 		_update_labor()
 	_consume(tick - 1)
 	EventBus.stocks_changed.emit()
-	stats.add(&"population", population.count)
-	stats.add(&"active", population.active())
-	stats.add(&"employed", labor.employed())
-	stats.add(&"unemployed", labor.unemployed())
-	for good in Stockpile.COUNT:
-		stats.add(Statistics.STOCK_KEYS[good], stockpile.amount[good])
-	stats.end_hour()
 
 
 ## Consommation de l'heure : besoins du jour répartis sur 24 h. Le chauffage
@@ -1901,6 +2250,74 @@ func _consume(tick: int) -> void:
 
 func _on_day(day: int) -> void:
 	var day_tick := GameClock.tick - 1
+	_link_cities()
+	for c in cities:
+		activate(c)
+		_city_day(day_tick)
+	activate(selected)
+	decrees.end_day()
+	for kind in events.end_day():
+		EventBus.notified.emit("Fin de l'événement : %s" % CityEvents.NAMES[kind])
+	if tier.level >= EVENTS_TIER:
+		var target := cities[events.rng.randi_range(0, cities.size() - 1)]
+		activate(target)
+		_run_events(GameDate.season(day_tick))
+		activate(selected)
+	_survey()
+	_check_star_city()
+	if tier.update(total_population(), mean_satisfaction()):
+		for c in cities:
+			activate(c)
+			exploration.tier = tier.level
+			territory.tier = tier.level
+			_prospect_territory()
+			_refresh_capacities()
+			_refresh_city_area()
+		activate(selected)
+		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
+		if tier.level == CLOTHES_TIER:
+			EventBus.notified.emit("Le bourg a besoin de vêtements : champs de lin, laine des pâturages, atelier de tissage")
+		if tier.level == LIGHT_TIER:
+			EventBus.notified.emit("La ville veut s'éclairer : puits de pétrole, réservoir et raffinerie (recherche Raffinage du pétrole)")
+		if tier.level == SERVICES_TIER:
+			EventBus.notified.emit("La ville veut des biens, des soins et de l'ordre : atelier d'artisans, dispensaire (recherche Médecine) et poste de garde")
+		if tier.level == CITY_STATE_TIER:
+			EventBus.notified.emit("La cité-État veut de l'électricité pour tous, des écoles et des théâtres ; uranium et lithium se prospectent")
+		if tier.level == DECREES_TIER:
+			EventBus.notified.emit("Le gouverneur du bourg prend des décrets (rationnement, corvée, fête) : panneau Décrets (E)")
+		EventBus.tier_changed.emit()
+	var points := 0.0
+	for c in cities:
+		activate(c)
+		points += research_per_day()
+	activate(selected)
+	var finished := research.add_points(points)
+	if finished:
+		EventBus.notified.emit("Recherche terminée : %s" % finished.display_name)
+		for c in cities:
+			activate(c)
+			_refresh_capacities()
+		activate(selected)
+	EventBus.research_changed.emit()
+	_day_stats(day_tick, points)
+	for c in cities:
+		activate(c)
+		production.reset_day()
+		stockpile.reset_day()
+		coal_burned_today = 0.0
+		fuel_burned_today = 0.0
+		wood_burned_today = 0.0
+		_update_auto_priorities(GameClock.tick)
+		_update_labor()
+	activate(selected)
+	EventBus.economy_changed.emit()
+	EventBus.population_changed.emit()
+	_check_milestones(day - 1)
+
+
+## Journée de la ville active : stocks, ateliers, réseaux, besoins,
+## habitants, chevaux.
+func _city_day(day_tick: int) -> void:
 	stockpile.end_day()
 	var regrown := production.end_day(day_tick)
 	for cell in regrown:
@@ -1937,71 +2354,114 @@ func _on_day(day: int) -> void:
 	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing,
 		water_coverage(), tools, clothes, mood(), light, goods, health, order, education, culture, electricity_coverage(),
 		pollution_harm())
-	decrees.end_day()
-	_run_events(GameDate.season(day_tick))
 	_announce_population(before, change, coverage)
-	if tier.update(population.count, population.satisfaction):
-		exploration.tier = tier.level
-		territory.tier = tier.level
-		_prospect_territory()
-		_refresh_capacities()
-		EventBus.notified.emit("Nouveau palier : %s (palier %d)" % [tier.name(), tier.level])
-		_refresh_city_area()
-		if tier.level == CLOTHES_TIER:
-			EventBus.notified.emit("Le bourg a besoin de vêtements : champs de lin, laine des pâturages, atelier de tissage")
-		if tier.level == LIGHT_TIER:
-			EventBus.notified.emit("La ville veut s'éclairer : puits de pétrole, réservoir et raffinerie (recherche Raffinage du pétrole)")
-		if tier.level == SERVICES_TIER:
-			EventBus.notified.emit("La ville veut des biens, des soins et de l'ordre : atelier d'artisans, dispensaire (recherche Médecine) et poste de garde")
-		if tier.level == CITY_STATE_TIER:
-			EventBus.notified.emit("La cité-État veut de l'électricité pour tous, des écoles et des théâtres ; uranium et lithium se prospectent")
-		if tier.level == DECREES_TIER:
-			EventBus.notified.emit("Le gouverneur du bourg prend des décrets (rationnement, corvée, fête) : panneau Décrets (E)")
-		EventBus.tier_changed.emit()
-	var points := research_per_day()
-	var finished := research.add_points(points)
-	if finished:
-		EventBus.notified.emit("Recherche terminée : %s" % finished.display_name)
-		_refresh_capacities()
-	EventBus.research_changed.emit()
 	draft.breed(_pasture_quality())
 	draft.end_day(coverage[Stockpile.Good.FOOD])
-	power.push_day(production.produced_today, PackedFloat32Array([draft.working() * DraftAnimals.WORK_WATTS,
-		_mill_watts(day_tick), grid.hydro, grid.wind_power, grid.solar]))
-	for good in Stockpile.COUNT:
-		stats.add(Statistics.PRODUCED_KEYS[good], production.produced_today[good])
-	stats.add(&"food_lost", stockpile.lost_today[Stockpile.Good.FOOD])
-	stats.add(&"wood_lost", stockpile.lost_today[Stockpile.Good.WOOD])
-	stats.add(&"satisfaction", population.satisfaction * 100.0)
-	stats.add(&"power", power.average())
-	stats.add(&"power_per_capita", power.per_capita(population.count))
-	stats.add(&"territory", territory.count(Territory.State.TERRITORY))
-	stats.add(&"horses", draft.horses)
-	stats.add(&"water", water_coverage() * 100.0)
-	stats.add(&"research", points)
-	stats.add(&"coal_burned", coal_burned_today)
-	stats.add(&"pollution", pollution_index() * 100.0)
-	stats.add(&"clothes", clothes * 100.0)
-	stats.add(&"light", light * 100.0)
-	stats.add(&"electricity", grid.coverage * 100.0)
-	stats.add(&"goods", goods * 100.0)
-	stats.add(&"health", health * 100.0)
-	stats.add(&"order", order * 100.0)
-	stats.add(&"education", education * 100.0)
-	stats.add(&"culture", culture * 100.0)
-	EventBus.economy_changed.emit()
-	coal_burned_today = 0.0
-	fuel_burned_today = 0.0
-	wood_burned_today = 0.0
-	stats.end_day()
-	production.reset_day()
-	stockpile.reset_day()
+	city.last_coverage = {&"water": water_coverage(), &"clothes": clothes, &"light": light, &"electricity": grid.coverage,
+		&"goods": goods, &"health": health, &"order": order, &"education": education, &"culture": culture,
+		&"pollution": pollution_index(), &"coal_burned": coal_burned_today}
 	_needed_today = Stockpile.zeros()
 	_consumed_today = Stockpile.zeros()
-	_update_auto_priorities(GameClock.tick)
-	_update_labor()
-	EventBus.population_changed.emit()
-	_check_milestones(day - 1)
+
+
+## Nom du palier de la ville [param c] (la capitale peut être Cité des
+## étoiles).
+func tier_name(c: City = null) -> String:
+	return CityTier.STAR_NAME if (c if c else city).star else tier.name()
+
+
+## Ce qui manque à la capitale pour devenir Cité des étoiles (vide : atteint
+## ou possible).
+func star_city_missing() -> String:
+	var capital := cities[0]
+	if capital.star:
+		return ""
+	var missing := PackedStringArray()
+	if not tier.is_max():
+		missing.append("le palier %s" % CityTier.NAMES[CityTier.NAMES.size() - 1])
+	if capital.population.count < CityTier.STAR_POPULATION:
+		missing.append("%d habitants à %s (%d)" % [CityTier.STAR_POPULATION, capital.name, capital.population.count])
+	if capital.population.satisfaction < CityTier.SATISFACTION_REQUIRED:
+		missing.append("%d %% de satisfaction" % roundi(CityTier.SATISFACTION_REQUIRED * 100.0))
+	if space.satellites < 1:
+		missing.append("un satellite en orbite")
+	return ", ".join(missing)
+
+
+## La capitale devient Cité des étoiles si tout y est (une fois pour toutes).
+func _check_star_city() -> void:
+	var capital := cities[0]
+	if capital.star or not star_city_missing().is_empty():
+		return
+	capital.star = true
+	activate(capital)
+	_refresh_city_area()
+	activate(selected)
+	EventBus.notified.emit("%s devient %s : la capitale s'ouvre à l'ère spatiale" % [capital.name, CityTier.STAR_NAME])
+	EventBus.tier_changed.emit()
+
+
+## Habitants de toutes les villes.
+func total_population() -> int:
+	var total := 0
+	for c in cities:
+		total += c.population.count
+	return total
+
+
+## Satisfaction moyenne des villes, pondérée par leurs habitants.
+func mean_satisfaction() -> float:
+	var total := total_population()
+	if total <= 0:
+		return selected.population.satisfaction
+	var sum := 0.0
+	for c in cities:
+		sum += c.population.satisfaction * c.population.count
+	return sum / total
+
+
+## Statistiques du jour de la cité-État : production et pertes cumulées,
+## couvertures moyennes pondérées par les habitants, puissance totale.
+func _day_stats(day_tick: int, points: float) -> void:
+	var produced := Stockpile.zeros()
+	var extra := PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 0.0])
+	var food_lost := 0.0
+	var wood_lost := 0.0
+	var horses := 0.0
+	var owned := 0
+	var weighted: Dictionary[StringName, float] = {}
+	var total := maxi(1, total_population())
+	for c in cities:
+		activate(c)
+		for good in Stockpile.COUNT:
+			produced[good] += production.produced_today[good]
+		var parts := [draft.working() * DraftAnimals.WORK_WATTS, _mill_watts(day_tick), grid.hydro, grid.wind_power, grid.solar]
+		for k in parts.size():
+			extra[k] += parts[k]
+		food_lost += stockpile.lost_today[Stockpile.Good.FOOD]
+		wood_lost += stockpile.lost_today[Stockpile.Good.WOOD]
+		horses += draft.horses
+		owned += territory.count(Territory.State.TERRITORY)
+		for key: StringName in c.last_coverage:
+			var w := 1.0 if key == &"coal_burned" else float(c.population.count) / total
+			weighted[key] = weighted.get(key, 0.0) + c.last_coverage[key] * w
+	activate(selected)
+	power.push_day(produced, extra)
+	for good in Stockpile.COUNT:
+		stats.add(Statistics.PRODUCED_KEYS[good], produced[good])
+	stats.add(&"food_lost", food_lost)
+	stats.add(&"wood_lost", wood_lost)
+	stats.add(&"satisfaction", mean_satisfaction() * 100.0)
+	stats.add(&"power", power.average())
+	stats.add(&"power_per_capita", power.per_capita(total_population()))
+	stats.add(&"territory", owned)
+	stats.add(&"horses", horses)
+	stats.add(&"research", points)
+	stats.add(&"coal_burned", weighted.get(&"coal_burned", 0.0))
+	for key: StringName in [&"water", &"clothes", &"light", &"electricity", &"goods", &"health", &"order", &"education",
+			&"culture", &"pollution"]:
+		stats.add(key, weighted.get(key, 0.0) * 100.0)
+	stats.end_day()
 
 
 func _announce_population(before: int, change: int, coverage: PackedFloat32Array) -> void:
@@ -2020,11 +2480,18 @@ func _announce_population(before: int, change: int, coverage: PackedFloat32Array
 func _check_milestones(day: int) -> void:
 	var facts := Milestones.Facts.new()
 	facts.stats = stats
-	facts.buildings = all_buildings()
+	facts.buildings = []
+	for c in cities:
+		facts.buildings.append_array(c.buildings.all())
+		facts.buildings.append_array(c.city_buildings.all())
 	facts.day = day
-	facts.population = population.count
+	facts.population = total_population()
 	facts.tier = tier.level
-	facts.territory = territory.count(Territory.State.TERRITORY)
+	facts.territory = 0
+	for c in cities:
+		territory.owner = c.id
+		facts.territory += territory.count(Territory.State.TERRITORY)
+	territory.owner = city.id
 	facts.horses = draft.horses
 	facts.water_coverage = water_coverage()
 	facts.served_stations = rails.served.size()
@@ -2033,6 +2500,7 @@ func _check_milestones(day: int) -> void:
 	facts.grid_coverage = grid.coverage
 	facts.nuclear_power = grid.nuclear
 	facts.satellites = space.satellites
+	facts.star_city = cities[0].star
 	facts.surveyed = space.surveyed(world_map.size.x)
 	facts.pollution = pollution_index()
 	facts.green_share = (grid.hydro + grid.wind_power + grid.solar) / grid.demand if grid.demand > 0.0 else 0.0

@@ -6,6 +6,10 @@ extends RefCounted
 const NAMES: PackedStringArray = ["Hameau", "Village", "Bourg", "Ville", "Cité-État"]
 ## Population demandée pour chaque palier (le premier est celui du départ).
 const POPULATION: PackedInt32Array = [0, 100, 400, 1500, 5000]
+## Palier 6, propre à la capitale (GameState.STAR_CITY_*) : la cité-État
+## reste le dernier palier commun.
+const STAR_NAME := "Cité des étoiles"
+const STAR_POPULATION := 15000
 ## Satisfaction demandée pour passer au palier suivant.
 const SATISFACTION_REQUIRED := 0.8
 

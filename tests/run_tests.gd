@@ -68,6 +68,8 @@ func _initialize() -> void:
 	_test_space()
 	_test_space_game()
 	_test_cement()
+	_test_cities()
+	_test_star_city()
 	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
@@ -1470,7 +1472,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 27 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 28 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1814,6 +1816,95 @@ func _test_two_maps() -> void:
 	gs.new_game(4242)
 
 
+## Palier 6 : la capitale seule devient Cité des étoiles.
+func _test_star_city() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	_check(not gs.star_city_missing().is_empty() and gs.tier_name() == CityTier.NAMES[0], "au départ : hameau")
+	gs.tier.level = CityTier.NAMES.size()
+	gs.population.count = CityTier.STAR_POPULATION
+	gs.population.satisfaction = 1.0
+	_check(gs.star_city_missing() == "un satellite en orbite", "il manque le satellite")
+	gs.space.satellites = 1
+	gs._check_star_city()
+	_check(gs.cities[0].star and gs.tier_name() == CityTier.STAR_NAME and gs.tier.level == CityTier.NAMES.size(),
+		"capitale Cité des étoiles, palier commun inchangé")
+	_check(gs.city_territory.count(Territory.State.TERRITORY) == gs.STAR_CITY_SIZE * gs.STAR_CITY_SIZE, "carte de la capitale agrandie")
+	var town: City = gs._new_city(gs.world_map.wrap_cell(gs.home + Vector2i(90, 0)), "Autre")
+	_check(not town.star and gs.tier_name(town) == CityTier.NAMES[CityTier.NAMES.size() - 1], "les autres villes restent cité-État")
+	gs.new_game(4242)
+
+
+## Nouvelles villes : fondation sur un avant-poste relié, territoires
+## séparés, stock commun des villes reliées, palier de l'ensemble.
+func _test_cities() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var capital: City = gs.cities[0]
+	var far: Vector2i = gs.display_cell(gs.home) + Vector2i(gs.FOUNDING_DISTANCE + 4, 0)
+	# Une terre constructible au-delà de la distance minimale (pas la mer).
+	for k in 200:
+		var probe: Vector2i = gs.display_cell(gs.home) + Vector2i(gs.FOUNDING_DISTANCE + 4 + k, (k % 7) * 5 - 15)
+		var t: int = gs.world_map.get_terrain(probe)
+		if t == TerrainDef.Type.PLAIN or t == TerrainDef.Type.PRAIRIE:
+			far = probe
+			break
+	var area: Array[Vector2i] = []
+	for dy in range(-8, 9):
+		for dx in range(-8, 9):
+			area.append(gs.world_map.wrap_cell(far + Vector2i(dx, dy)))
+	gs.territory.annex(area)
+	gs.tier.level = 2
+	gs.research._done[&"harness_collar"] = true
+	var outpost_def := BuildingDb.get_def(&"outpost")
+	var outpost: Building = null
+	for dx in range(-3, 4):
+		for dy in range(-3, 4):
+			var p: BuildingRegistry.Placement = gs.buildings.check_placement(outpost_def, far + Vector2i(dx, dy))
+			if outpost == null and p.is_valid() and p.cleared.is_empty():
+				outpost = gs.buildings.place(p)
+				outpost.build_progress = outpost_def.build_hours
+				outpost.status = Building.Status.RUNNING
+	_check(outpost != null, "avant-poste lointain posé")
+	if outpost == null:
+		return
+	_check(gs.founding_error(outpost).contains("non relié"), "fondation : avant-poste relié requis")
+	gs.roads.add_cells(TrackNetwork.l_path(gs.display_cell(gs.home), outpost.anchor + Vector2i(1, 0)))
+	gs.roads.refresh()
+	gs.population.count = 40
+	_check(gs.founding_error(outpost).contains("habitants"), "fondation : assez d'habitants requis")
+	gs.population.count = 100
+	gs.housing = 200
+	var food: float = gs.stockpile.amount[Stockpile.Good.FOOD]
+	var town: City = gs.found_city(outpost)
+	_check(town != null and gs.cities.size() == 2 and town.population.count == gs.COLONISTS
+		and capital.population.count == 100 - gs.COLONISTS, "ville fondée : %d colons" % gs.COLONISTS)
+	_check(capital.stockpile.amount[Stockpile.Good.FOOD] == food - Stockpile.START[Stockpile.Good.FOOD]
+		and town.stockpile.amount[Stockpile.Good.FOOD] == Stockpile.START[Stockpile.Good.FOOD], "vivres des colons")
+	_check(gs.territory.owner_at(town.home) == town.id and gs.territory.owner_at(capital.home) == capital.id,
+		"territoires séparés")
+	_check(town.city_buildings.count() >= 7 and capital.buildings.building_at(outpost.anchor) == null,
+		"l'avant-poste devient la ville : grenier et maisons")
+	_check(gs.selected == capital and gs.city == capital, "la capitale reste choisie")
+	gs.activate(town)
+	_check(not gs.zones.check_cell(ZoneDb.get_def(&"pasture"), capital.home + Vector2i(3, 3)).is_empty(),
+		"pas de zone dans le territoire de l'autre ville")
+	gs.activate(capital)
+	gs._link_cities()
+	_check(gs.cities_linked(capital, town) and gs.linked_cities(town).size() == 2, "villes reliées par la route")
+	capital.stockpile.amount[Stockpile.Good.STONE] = 300.0
+	town.stockpile.amount[Stockpile.Good.STONE] = 0.0
+	gs._pool_stocks()
+	_check(town.stockpile.amount[Stockpile.Good.STONE] > 0.0 and is_equal_approx(
+		capital.stockpile.amount[Stockpile.Good.STONE] + town.stockpile.amount[Stockpile.Good.STONE], 300.0), "stock commun")
+	gs._on_day(1)
+	_check(gs.selected == capital and town.population.count > 0, "journée des deux villes")
+	gs.select_city(town)
+	_check(gs.selected == town and gs.population == town.population, "le joueur choisit la nouvelle ville")
+	gs.new_game(4242)
+	_check(gs.cities.size() == 1, "nouvelle partie : une seule ville")
+
+
 ## Cimenterie : ciment cuit au charbon, il remplace la pierre et accélère les
 ## chantiers.
 func _test_cement() -> void:
@@ -1900,6 +1991,7 @@ func _test_space_game() -> void:
 	_check(pad != null and gs.space.satellites == 1 and gs.stockpile.amount[Stockpile.Good.FUEL] < 2000.0, "lancement depuis la base, carburant brûlé")
 	for k in 70:
 		gs._run_space()
+		gs._survey()
 	_check(gs.territory.is_known(far) and gs.territory.is_prospected(far) and not gs.territory.is_territory(far),
 		"satellite : planète explorée et prospectée, sans annexion")
 	gs.new_game(4242)

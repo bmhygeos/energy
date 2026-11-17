@@ -51,6 +51,8 @@ class Facts:
 	var green_share := 0.0
 	## Satellites en orbite, part de la planète cartographiée (0–1).
 	var satellites := 0
+	## La capitale est Cité des étoiles.
+	var star_city := false
 	var surveyed := 0.0
 	## Indice de pollution de la veille (0–1).
 	var pollution := 1.0
@@ -127,6 +129,9 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.satellites > 0),
 		Def.new(&"mapped", "Planète cartographiée", "Cartographier toute la planète par satellite.",
 			func(f: Facts) -> bool: return f.surveyed >= 1.0),
+		Def.new(&"star_city", CityTier.STAR_NAME, "La capitale devient %s : %d habitants, un satellite en orbite." % [
+			CityTier.STAR_NAME, CityTier.STAR_POPULATION],
+			func(f: Facts) -> bool: return f.star_city),
 		Def.new(&"datacenter", "Intelligence artificielle", "Construire un datacenter (recherche ×100).",
 			func(f: Facts) -> bool: return f.has_building(&"datacenter")),
 	]

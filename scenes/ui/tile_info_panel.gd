@@ -24,6 +24,7 @@ func _ready() -> void:
 		sig.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
 	EventBus.labor_changed.connect(_refresh)
 	EventBus.view_changed.connect(_refresh)
+	EventBus.city_selected.connect(_refresh)
 	EventBus.canals_changed.connect(func(_cells: Array[Vector2i]) -> void: _refresh())
 	EventBus.day_changed.connect(func(_d: int) -> void: _refresh())
 	EventBus.tick_advanced.connect(func(_t: int) -> void:
@@ -38,7 +39,7 @@ func _shown_cell() -> Vector2i:
 
 func _shown_building() -> Building:
 	var cell := _shown_cell()
-	return GameState.view_buildings().building_at(cell) if cell.x >= 0 and GameState.buildings else null
+	return GameState.shown_building_at(cell) if cell.x >= 0 and GameState.buildings else null
 
 
 func _refresh() -> void:
@@ -140,7 +141,7 @@ func _refresh_city(cell: Vector2i) -> void:
 	_panel.modulate.a = 1.0 if cell == _selected else 0.8
 	var b := _shown_building()
 	if b == null:
-		_title.text = "Ville (%s)" % GameState.tier.name()
+		_title.text = "%s (%s)" % [GameState.selected.name, GameState.tier_name(GameState.selected)]
 		_body.text = "Case libre : logements, stockage, ateliers et services s'y construisent.\nLa ville s'agrandit à chaque palier.\nTab : carte mondiale."
 		return
 	_title.text = b.def.display_name
@@ -180,6 +181,10 @@ func _building_lines(b: Building) -> PackedStringArray:
 		lines.append("Relié au village par %s : les expéditions peuvent en partir (menu, Départ)" % link if not link.is_empty()
 			else "Non relié : posez une route ou une voie ferrée reliée au village à côté de lui (aérodrome à la cité-État)"
 				+ (", ou reliez-le par l'eau à un autre port" if b.def.harbor else ""))
+		if b.def.outpost or b.def.upgrade == null:
+			var founding: String = GameState.founding_error(b)
+			lines.append("Fonder %s : %s" % ["une ville portuaire" if b.def.harbor else "une ville",
+				"possible (outil Améliorer, %d colons)" % GameState.COLONISTS if founding.is_empty() else founding])
 	if b.is_complete() and b.def.truck_depot:
 		if b not in GameState.roads.served_depots:
 			lines.append("Sans route : posez une route reliée au village à côté de lui")

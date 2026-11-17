@@ -64,3 +64,7 @@ signal view_changed()
 signal city_changed()
 ## Canaux d'irrigation creusés ou retirés (tuiles du repère de la vue).
 signal canals_changed(cells: Array[Vector2i])
+## Ville fondée (liste des villes changée).
+signal cities_changed()
+## Ville choisie par le joueur changée (GameState.selected).
+signal city_selected()

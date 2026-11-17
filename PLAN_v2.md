@@ -378,9 +378,18 @@ compteur de puissance par habitant :
 - **Port → ville portuaire** (prévu) : de même, un port assez loin de la
   première ville peut devenir une **ville portuaire** autonome, qui commence
   au hameau avec sa pêche et ses liaisons par l'eau.
-- Questions à trancher : distance minimale, nombre de colons, partage du
-  territoire, échanges entre villes (automatiques ou commandés), palier de
-  la cité-État atteint ville par ville ou pour l'ensemble.
+- **Réalisé (V16)**, avec ces choix :
+  - fondation (outil Améliorer sur un avant-poste ou un port relié) à
+    **60 tuiles** ou plus de toute ville, avec **30 colons** partis de la
+    ville choisie, leurs vivres (550 nourriture) et leur bois (120) ;
+  - **territoires séparés** : chaque ville a son territoire (12×12 tuiles au
+    départ, pris à l'autre ville s'il le faut), ses zones, ses réseaux, ses
+    bâtiments, sa carte de ville et ses expéditions ;
+  - **stock commun des villes reliées** (routes ou voies qui se touchent, un
+    port chacune, ou un aérodrome chacune à la cité-État), réparti au prorata
+    des capacités ; une ville isolée vit sur ses stocks ;
+  - **un palier pour l'ensemble**, selon la population totale et la
+    satisfaction moyenne ; recherche, décrets, météo et événements communs.
 
 ### Palier 4 : cimenterie et ciment (réalisé en V15)
 - **Recherche « Cimenterie »** (palier 4 – Ville ; prérequis proposé : Coke,
@@ -429,6 +438,15 @@ au-delà de laquelle la pénalité de trajet commence, section 5) et augmente la
 - Les chiffres sont des valeurs de départ, à équilibrer. Le train et les camions
   reprennent `RailNetwork`, `RoadNetwork`, `Vehicle` et `Logistics` de la v1 ;
   leur énergie (charbon, pétrole) compte dans le compteur de puissance.
+
+### Palier 6 : Cité des étoiles (la capitale seule)
+- **Condition** : palier commun Cité-État atteint, **capitale** à 15 000
+  habitants avec 80 % de satisfaction, et au moins un satellite en orbite.
+- **Effets** (réalisé) : la capitale prend le nom de palier « Cité des
+  étoiles » (bandeau, bloc sur la carte mondiale, jalon) et sa carte de ville
+  passe à 48×48 cases. Les autres villes restent au palier commun,
+  Cité-État. Prépare la suite de l'ère spatiale (vue globe, satellites
+  suivants), à faire.
 
 ### Palier 5 : la fusée et le premier satellite
 - **Recherche de la fusée** : projet de recherche long,
@@ -530,9 +548,10 @@ effectif, vivres).
 | V14 | Deux cartes | Carte de la ville (plaine qui grandit avec le palier : logements, ateliers, services) et carte mondiale (zones, ressources, réseaux, bloc de la ville au centre) ; bouton Ville / Monde et touche Tab — réalisé |
 | V13 | Équilibrage | Rythme de la ville et de la cité-État (outil `simulate_pacing`) : isolation (chauffage ×0,8 / ×0,5 / ×0,4) et mécanisation des mines (×2 / ×3) — en cours |
 | V14 (avant-postes) | Avant-postes | Avant-poste (collier d'attelage), relié par route, voie ferrée ou aérodrome : départ des expéditions ; aérodrome (cité-État) ; ports reliés par l'eau, départs eux aussi — réalisé |
-| V16 | Nouvelles villes | Avant-poste (ou port : ville portuaire) assez loin amélioré en hameau : seconde ville autonome (population, stocks, carte, palier), recherche commune, échanges par les réseaux — prévu |
+| V16 | Nouvelles villes | Avant-poste (ou port : ville portuaire) à 60 tuiles ou plus fondé en ville avec 30 colons ; territoires séparés, stock commun des villes reliées, palier de l'ensemble, recherche commune ; liste des villes au bandeau — réalisé |
 | V15 | Cimenterie | Recherche Cimenterie (palier 4), cimenterie (pierre + charbon → ciment), le ciment remplace la pierre et accélère les chantiers — réalisé |
 | V17 | Fusée | Recherche Fusée, usine de fusées, base de lancement, premier satellite qui cartographie la planète — réalisé (sans vue globe) |
+| V18 | Cité des étoiles | Palier 6 de la capitale seule : 15 000 habitants, satisfaction, un satellite ; carte de ville 48×48, jalon — réalisé |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses

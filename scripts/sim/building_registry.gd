@@ -152,6 +152,16 @@ func remove(b: Building) -> void:
 	_buildings.erase(b.id)
 
 
+## Reprend [param b], venu d'un autre registre (port d'une ville fondée), à
+## sa place, sans vérification ; il reçoit un identifiant de ce registre.
+func adopt(b: Building) -> void:
+	b.id = _next_id
+	_next_id += 1
+	_buildings[b.id] = b
+	for cell in b.cells:
+		_occupancy[map.wrap_cell(cell)] = b.id
+
+
 ## Fait avancer les chantiers de [param hours] heures ; renvoie les bâtiments
 ## qui viennent d'être terminés (mis en service).
 func advance(hours: int = 1) -> Array[Building]:
