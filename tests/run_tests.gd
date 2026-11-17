@@ -1938,8 +1938,8 @@ func _test_heat_mix(gs: Node) -> void:
 	gs.tier.level = 4
 	stock.amount[Stockpile.Good.COAL] = 1000.0
 	stock.amount[Stockpile.Good.FUEL] = 1000.0
-	_check(is_equal_approx(gs.wood_need(winter), heat * 0.1) and is_equal_approx(gs.coal_heat_need(winter), heat * 0.5 / 2.0)
-		and is_equal_approx(gs.fuel_heat_need(winter), heat * 0.4 / gs.FUEL_WOOD_EQUIVALENT), "ville : bois 10 %, charbon 50 %, fioul 40 %")
+	_check(is_equal_approx(gs.wood_need(winter), heat * 0.1) and is_equal_approx(gs.coal_heat_need(winter), heat * 0.4 / 2.0)
+		and is_equal_approx(gs.fuel_heat_need(winter), heat * 0.5 / gs.FUEL_WOOD_EQUIVALENT), "ville : bois 10 %, charbon 40 %, fioul 50 %")
 	stock.amount[Stockpile.Good.FUEL] = 0.0
 	_check(is_equal_approx(gs.coal_heat_need(winter), heat * 0.9 / 2.0) and is_equal_approx(gs.wood_need(winter), heat * 0.1),
 		"sans fioul : le charbon prend sa part")
@@ -1953,12 +1953,12 @@ func _test_heat_mix(gs: Node) -> void:
 	gs.grid.coverage = 1.0
 	_check(not gs.grid.connected.is_empty(), "réseau raccordé pour le chauffage")
 	var mix: PackedFloat32Array = gs.heat_mix()
-	_check(is_equal_approx(mix[0], 0.05) and is_equal_approx(mix[1], 0.2) and is_equal_approx(mix[2], 0.15)
+	_check(is_equal_approx(mix[0], 0.05) and is_equal_approx(mix[1], 0.15) and is_equal_approx(mix[2], 0.2)
 		and is_equal_approx(mix[3], 0.6) and is_equal_approx(gs.electric_heat_watts(winter), heat * 0.6 * gs.WATTS_PER_HEAT_WOOD),
-		"cité-État : bois 5 %, charbon 20 %, fioul 15 %, courant 60 %")
+		"cité-État : bois 5 %, charbon 15 %, fioul 20 %, courant 60 %")
 	gs.grid.coverage = 0.5
 	mix = gs.heat_mix()
-	_check(is_equal_approx(mix[3], 0.3) and is_equal_approx(mix[1], 0.2 + 0.3 * 0.2 / 0.35)
+	_check(is_equal_approx(mix[3], 0.3) and is_equal_approx(mix[1], 0.15 + 0.3 * 0.15 / 0.35)
 		and is_equal_approx(mix[0], 0.05), "courant à moitié : charbon et fioul compensent")
 	stock.amount[Stockpile.Good.WOOD] = 1000.0
 	gs._needed_today = Stockpile.zeros()

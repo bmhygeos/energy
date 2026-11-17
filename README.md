@@ -442,8 +442,8 @@ en hiver) se partage entre les sources du palier :
 |---|---|---|---|---|
 | Hameau, Village | 100 % | — | — | — |
 | Bourg | 50 % | 50 % | — | — |
-| Ville | 10 % | 50 % | 40 % | — |
-| Cité-État | 5 % | 20 % | 15 % | 60 % |
+| Ville | 10 % | 40 % | 50 % | — |
+| Cité-État | 5 % | 15 % | 20 % | 60 % |
 
 - Équivalences pour la chaleur d'un bois : 0,5 charbon, 0,36 carburant, 290 W
   de courant pendant une journée (pompes à chaleur).

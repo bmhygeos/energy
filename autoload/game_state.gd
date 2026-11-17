@@ -34,8 +34,8 @@ const HEAT_SHARES: PackedFloat32Array = [
 	1.0, 0.0, 0.0, 0.0,
 	1.0, 0.0, 0.0, 0.0,
 	0.5, 0.5, 0.0, 0.0,
-	0.1, 0.5, 0.4, 0.0,
-	0.05, 0.2, 0.15, 0.6,
+	0.1, 0.4, 0.5, 0.0,
+	0.05, 0.15, 0.2, 0.6,
 ]
 ## Bois remplacé par unité de charbon (290 MJ contre 150 MJ) et de carburant
 ## (420 MJ) ; courant (W pendant une journée) qui remplace un bois : pompes à
