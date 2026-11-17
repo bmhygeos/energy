@@ -21,6 +21,24 @@ const MOUNTED_SPEED := 1.5
 ## Avec un port : tuiles parcourues par jour sur toute l'eau, mer comprise
 ## (les chevaux restent à quai).
 const SHIP_TILES_PER_DAY := 6.0
+## Moyens de transport : à pied, à cheval (bourg), véhicules à moteur (ville :
+## automobiles et navires à moteur), avion (cité-État : survole tout, mer et
+## montagnes comprises). Véhicules et avions brûlent du carburant.
+enum Transport { FOOT, HORSE, MOTOR, PLANE }
+const TRANSPORT_NAMES: PackedStringArray = ["à pied", "à cheval", "en véhicules à moteur", "en avion"]
+const MOTOR_TIER := 4
+const PLANE_TIER := 5
+## Véhicules à moteur : MOTOR_SPEED fois la marche sur terre ; navires à
+## moteur sur l'eau.
+const MOTOR_SPEED := 3.0
+const MOTOR_SHIP_TILES_PER_DAY := 12.0
+## Avion : tuiles par jour, quel que soit le terrain.
+const PLANE_TILES_PER_DAY := 60.0
+## Carburant par explorateur et par jour (véhicule, avion).
+const MOTOR_FUEL_PER_MEMBER_PER_DAY := 0.5
+const PLANE_FUEL_PER_MEMBER_PER_DAY := 2.0
+## Rayon de vue d'un avion (relevés aériens).
+const AERIAL_SIGHT_RADIUS := 8
 ## Rayon de vue (tuiles) autour de l'expédition ; à partir de la ville, des
 ## cartographes (longues-vues, théodolites) relèvent le pays plus loin.
 const SIGHT_RADIUS := 3
@@ -54,6 +72,9 @@ class Expedition:
 	var speed := 1.0
 	## Partie avec des navires (un port existait au départ).
 	var sailing := false
+	## Moyen de transport, et carburant emporté restant.
+	var transport := Transport.FOOT
+	var fuel := 0.0
 	## Vivres restants.
 	var food := 0.0
 	## Trajet aller, du centre du village (indice 0) vers la cible.
@@ -100,19 +121,49 @@ func _init(p_territory: Territory) -> void:
 	map = territory.map
 
 
-## Vitesse (tuiles par jour) sur [param cell] ; 0 si infranchissable.
-func speed_at(cell: Vector2i) -> float:
-	if ships and map.is_water(cell):
-		return SHIP_TILES_PER_DAY
-	return TILES_PER_DAY.get(map.get_terrain(cell) as TerrainDef.Type, 0.0)
+## Vitesse (tuiles par jour) sur [param cell] en [param transport] (navires
+## si un port existe) ; 0 si infranchissable.
+func speed_at(cell: Vector2i, transport := Transport.FOOT) -> float:
+	return _speed(cell, transport, ships, 1.0)
 
 
 ## Vitesse de [param e] sur [param cell] : ses navires restent les siens même
 ## si le port disparaît en route.
 func _pace(e: Expedition, cell: Vector2i) -> float:
-	if e.sailing and map.is_water(cell):
-		return SHIP_TILES_PER_DAY
-	return TILES_PER_DAY.get(map.get_terrain(cell) as TerrainDef.Type, 0.0) * e.speed
+	return _speed(cell, e.transport, e.sailing, e.speed)
+
+
+## Tuiles par jour sur [param cell] en [param transport], avec ou sans
+## navires [param sailing] ; [param speed] : facteur des chevaux.
+func _speed(cell: Vector2i, transport: Transport, sailing: bool, speed: float) -> float:
+	if transport == Transport.PLANE:
+		return PLANE_TILES_PER_DAY
+	var water := map.is_water(cell)
+	if water and sailing:
+		return MOTOR_SHIP_TILES_PER_DAY if transport == Transport.MOTOR else SHIP_TILES_PER_DAY
+	# Sur terre (et aux gués) : marche, chevaux ou moteur.
+	var walk: float = TILES_PER_DAY.get(map.get_terrain(cell) as TerrainDef.Type, 0.0)
+	return walk * (MOTOR_SPEED if transport == Transport.MOTOR and not water else speed)
+
+
+## Meilleur moyen de transport au palier pour [param members] explorateurs
+## et [param horses] chevaux, carburant non compté.
+func best_transport(members: int, horses: int) -> Transport:
+	if tier >= PLANE_TIER:
+		return Transport.PLANE
+	if tier >= MOTOR_TIER:
+		return Transport.MOTOR
+	return Transport.HORSE if speed_for(members, horses) > 1.0 else Transport.FOOT
+
+
+## Carburant par explorateur et par jour en [param transport].
+static func fuel_rate(transport: Transport) -> float:
+	match transport:
+		Transport.MOTOR:
+			return MOTOR_FUEL_PER_MEMBER_PER_DAY
+		Transport.PLANE:
+			return PLANE_FUEL_PER_MEMBER_PER_DAY
+	return 0.0
 
 
 func members_out() -> int:
@@ -141,15 +192,16 @@ func max_days() -> int:
 
 
 ## Trajet en ligne droite (8-connexité) de [param from] vers [param to],
-## arrêté avant la première tuile infranchissable ou hors de la carte.
-func plan_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+## arrêté avant la première tuile infranchissable en [param transport] ou
+## hors de la carte.
+func plan_path(from: Vector2i, to: Vector2i, transport := Transport.FOOT) -> Array[Vector2i]:
 	var path: Array[Vector2i] = [from]
 	var d := to - from
 	var steps := maxi(absi(d.x), absi(d.y))
 	for k in range(1, steps + 1):
 		var t := float(k) / steps
 		var cell := Vector2i(roundi(from.x + d.x * t), roundi(from.y + d.y * t))
-		if not map.has_cell(cell) or speed_at(cell) <= 0.0:
+		if not map.has_cell(cell) or speed_at(cell, transport) <= 0.0:
 			break
 		path.append(cell)
 	return path
@@ -170,23 +222,28 @@ func food_to_return(e: Expedition) -> float:
 
 ## Durée prévue (jours) de l'aller-retour vers [param target] par le trajet
 ## qui part de [param from].
-func round_trip_days(from: Vector2i, target: Vector2i, speed := 1.0) -> float:
+func round_trip_days(from: Vector2i, target: Vector2i, speed := 1.0, transport := Transport.FOOT) -> float:
 	var e := Expedition.new()
 	e.speed = speed
 	e.sailing = ships
-	e.path = plan_path(from, target)
+	e.transport = transport
+	e.path = plan_path(from, target, transport)
 	return 2.0 * days_back(e, e.path.size() - 1)
 
 
 ## Lance une expédition de [param members] explorateurs avec [param food]
-## vivres de [param from] vers [param target] ; null si le trajet est vide.
-func launch(from: Vector2i, target: Vector2i, members: int, food: float) -> Expedition:
-	var path := plan_path(from, target)
+## vivres de [param from] vers [param target], en [param transport] avec
+## [param fuel] carburant ; null si le trajet est vide.
+func launch(from: Vector2i, target: Vector2i, members: int, food: float, transport := Transport.FOOT,
+		fuel := 0.0) -> Expedition:
+	var path := plan_path(from, target, transport)
 	if path.size() < 2 or members <= 0 or not can_launch():
 		return null
 	var e := Expedition.new()
 	e.members = members
 	e.food = food
+	e.transport = transport
+	e.fuel = fuel
 	e.sailing = ships
 	e.path = path
 	e.target = target
@@ -200,6 +257,7 @@ func step_hour() -> Report:
 	var report := Report.new()
 	for e in expeditions.duplicate():
 		e.food = maxf(0.0, e.food - e.members * FOOD_PER_MEMBER_PER_DAY / GameDate.HOURS_PER_DAY)
+		e.fuel = maxf(0.0, e.fuel - e.members * fuel_rate(e.transport) / GameDate.HOURS_PER_DAY)
 		var step: float = _pace(e, e.cell()) / GameDate.HOURS_PER_DAY
 		if e.returning:
 			e.position = maxf(0.0, e.position - step)
@@ -230,7 +288,7 @@ func sight_radius() -> int:
 ## Annexe au territoire les tuiles en vue de [param e].
 func _reveal(e: Expedition, report: Report) -> void:
 	var center := e.cell()
-	var r := sight_radius()
+	var r := AERIAL_SIGHT_RADIUS if e.transport == Transport.PLANE else sight_radius()
 	var fresh: Array[Vector2i] = []
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):

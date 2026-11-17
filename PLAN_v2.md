@@ -474,6 +474,7 @@ effectif, vivres).
 | V11 (partie 5) | Fin du palier 4 | Retenue des barrages (tuiles noyées en amont), centrale au fioul, capacité des camions (100 travailleurs par dépôt), cartographes (vue des expéditions) — réalisé |
 | V12 | Palier 5 | Éducation, culture, électricité ; électronique, informatique, IA ; nucléaire, éolien, photovoltaïque, lithium, batteries, véhicules électriques ; incident nucléaire — réalisé (sans pollution ni enrichissement séparé) |
 | V12+ | Palier 5, suite | Pollution et santé (indice de la cité, soins), enrichissement de l'uranium, bornes de recharge — réalisé |
+| V14 (suite) | Exploration motorisée | Véhicules à moteur à la ville (×3, navires à moteur), avion à la cité-État (60 tuiles/j, survole tout), contre du carburant — réalisé |
 | V14 | Deux cartes | Carte de la ville (plaine qui grandit avec le palier : logements, ateliers, services) et carte mondiale (zones, ressources, réseaux, bloc de la ville au centre) ; bouton Ville / Monde et touche Tab — réalisé |
 | V13 | Équilibrage | Rythme de la ville et de la cité-État (outil `simulate_pacing`) : isolation (chauffage ×0,8 / ×0,5 / ×0,4) et mécanisation des mines (×2 / ×3) — en cours |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |

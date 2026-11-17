@@ -45,8 +45,10 @@ func _draw() -> void:
 		var top := PackedVector2Array()
 		for p in foot:
 			top.append(p + Vector2(0, -HOUSE_HEIGHT))
-		draw_colored_polygon(PackedVector2Array([foot[1], foot[2], top[2], top[1]]), WALL.darkened(0.15))
-		draw_colored_polygon(PackedVector2Array([foot[2], foot[3], top[3], top[2]]), WALL)
+		# Murs en deux triangles chacun (la triangulation des quadrilatères
+		# échoue parfois).
+		_quad(foot[1], foot[2], top[2], top[1], WALL.darkened(0.15))
+		_quad(foot[2], foot[3], top[3], top[2], WALL)
 		draw_colored_polygon(top, ROOF)
 	if block.is_empty():
 		return
@@ -56,3 +58,8 @@ func _draw() -> void:
 	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
 	draw_string_outline(font, center + Vector2(-width / 2.0, -HOUSE_HEIGHT - 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, EDGE)
 	draw_string(font, center + Vector2(-width / 2.0, -HOUSE_HEIGHT - 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, LABEL_COLOR)
+
+
+func _quad(a: Vector2, b: Vector2, c: Vector2, d: Vector2, color: Color) -> void:
+	draw_primitive(PackedVector2Array([a, b, c]), PackedColorArray([color, color, color]), PackedVector2Array())
+	draw_primitive(PackedVector2Array([a, c, d]), PackedColorArray([color, color, color]), PackedVector2Array())

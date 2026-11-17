@@ -61,6 +61,7 @@ func _initialize() -> void:
 	_test_services_game()
 	_test_city_state_game()
 	_test_two_maps()
+	_test_motor_exploration()
 	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
@@ -1834,6 +1835,41 @@ func _test_two_maps() -> void:
 	_check(b != null and gs.city_buildings.building_at(spot) == b and gs.demolish(spot) and gs.city_buildings.building_at(spot) == null,
 		"maison construite puis démolie sur la carte de la ville")
 	gs.set_view(false)
+	gs.new_game(4242)
+
+
+## Exploration de la ville (véhicules à moteur) et de la cité-État (avion).
+func _test_motor_exploration() -> void:
+	var flat := _sea_map()
+	var e := Exploration.new(flat[1])
+	var from := Vector2i(25, 5)
+	var land := Vector2i(25, 15)
+	var sea := Vector2i(5, 5)
+	var walk := e.round_trip_days(from, land)
+	_check(e.best_transport(3, 0) == Exploration.Transport.FOOT, "hameau : à pied")
+	e.tier = Exploration.MOTOR_TIER
+	_check(e.best_transport(3, 0) == Exploration.Transport.MOTOR
+		and is_equal_approx(e.round_trip_days(from, land, 1.0, Exploration.Transport.MOTOR), walk / Exploration.MOTOR_SPEED),
+		"ville : véhicules à moteur, trois fois la marche")
+	_check(e.plan_path(from, sea, Exploration.Transport.MOTOR)[-1] != sea, "véhicule sans port : arrêt devant la mer")
+	e.tier = Exploration.PLANE_TIER
+	_check(e.best_transport(3, 0) == Exploration.Transport.PLANE and e.plan_path(from, sea, Exploration.Transport.PLANE)[-1] == sea
+		and is_equal_approx(e.round_trip_days(from, sea, 1.0, Exploration.Transport.PLANE), 2.0 * 20.0 / Exploration.PLANE_TILES_PER_DAY),
+		"cité-État : l'avion survole la mer")
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	gs.tier.level = 5
+	gs.exploration.tier = 5
+	gs.stockpile.amount[Stockpile.Good.FUEL] = 0.0
+	_check(gs.expedition_transport(2, 10.0) == Exploration.Transport.FOOT, "sans carburant : à pied")
+	gs.stockpile.capacity[Stockpile.Good.FUEL] = 1000.0
+	gs.stockpile.amount[Stockpile.Good.FUEL] = 15.0
+	_check(gs.expedition_transport(2, 10.0) == Exploration.Transport.MOTOR, "peu de carburant : véhicules plutôt qu'avion")
+	gs.stockpile.amount[Stockpile.Good.FUEL] = 100.0
+	var target: Vector2i = gs.display_cell(gs.home) + Vector2i(30, 0)
+	var trip: Exploration.Expedition = gs.launch_expedition(target, 2, 10.0)
+	_check(trip != null and trip.transport == Exploration.Transport.PLANE and is_equal_approx(trip.fuel, 40.0)
+		and is_equal_approx(gs.stockpile.amount[Stockpile.Good.FUEL], 60.0), "avion : carburant emporté")
 	gs.new_game(4242)
 
 

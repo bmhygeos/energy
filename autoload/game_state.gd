@@ -962,24 +962,47 @@ func food_need() -> float:
 ## (repère de la vue) ; null (raison notifiée) si c'est impossible.
 func launch_expedition(target: Vector2i, members: int, days: float, horses := 0) -> Exploration.Expedition:
 	var error := expedition_error(members, days, horses)
-	if error.is_empty() and exploration.plan_path(display_cell(home), target).size() < 2:
+	var transport := expedition_transport(members, days, horses)
+	if error.is_empty() and exploration.plan_path(display_cell(home), target, transport).size() < 2:
 		error = "Trajet impossible : de l'eau barre le chemin"
 	if not error.is_empty():
 		EventBus.notified.emit(error)
 		return null
 	var food := members * days * Exploration.FOOD_PER_MEMBER_PER_DAY
 	stockpile.take(Stockpile.Good.FOOD, food)
-	var e := exploration.launch(display_cell(home), target, members, food)
+	var fuel := stockpile.take(Stockpile.Good.FUEL, expedition_fuel(transport, members, days))
+	# En véhicule ou en avion, les chevaux restent à l'écurie.
+	if transport >= Exploration.Transport.MOTOR:
+		horses = 0
+	var e := exploration.launch(display_cell(home), target, members, food, transport, fuel)
 	e.horses = horses
 	e.speed = exploration.speed_for(members, horses)
 	draft.away += horses
-	EventBus.notified.emit("Expédition partie : %d explorateur%s%s, %s jours de vivres" % [
-		members, "s" if members > 1 else "", " et %d cheva%s" % [horses, "ux" if horses > 1 else "l"] if horses > 0 else "",
-		Format.decimal(days)])
+	EventBus.notified.emit("Expédition partie %s : %d explorateur%s%s, %s jours de vivres%s" % [
+		Exploration.TRANSPORT_NAMES[transport], members, "s" if members > 1 else "",
+		" et %d cheva%s" % [horses, "ux" if horses > 1 else "l"] if horses > 0 else "",
+		Format.decimal(days), ", %s carburant" % Format.decimal(fuel) if fuel > 0.0 else ""])
 	_update_labor()
 	EventBus.stocks_changed.emit()
 	EventBus.expeditions_changed.emit()
 	return e
+
+
+## Moyen de transport d'une expédition de [param members] explorateurs pour
+## [param days] jours : le meilleur du palier dont le carburant est en stock
+## (avion, puis véhicules à moteur), sinon à cheval ou à pied.
+func expedition_transport(members: int, days: float, horses := 0) -> Exploration.Transport:
+	var best := exploration.best_transport(members, horses)
+	for t in [Exploration.Transport.PLANE, Exploration.Transport.MOTOR]:
+		if best >= t and stockpile.has(Stockpile.Good.FUEL, expedition_fuel(t, members, days)):
+			return t
+	return Exploration.Transport.HORSE if exploration.speed_for(members, horses) > 1.0 else Exploration.Transport.FOOT
+
+
+## Carburant emporté par [param members] explorateurs pour [param days]
+## jours en [param transport].
+func expedition_fuel(transport: Exploration.Transport, members: int, days: float) -> float:
+	return members * days * Exploration.fuel_rate(transport)
 
 
 ## Jours de vivres que portent [param members] explorateurs et
@@ -1024,6 +1047,7 @@ func _step_expeditions() -> void:
 		EventBus.notified.emit("L'expédition fait demi-tour : %s" % Exploration.REASON_TEXTS[e.reason])
 	for e in report.returned:
 		stockpile.add(Stockpile.Good.FOOD, e.food)
+		stockpile.add(Stockpile.Good.FUEL, e.fuel)
 		draft.away = maxi(0, draft.away - e.horses)
 		EventBus.notified.emit("L'expédition est rentrée : %d tuile%s découverte%s" % [
 			e.revealed, "s" if e.revealed > 1 else "", "s" if e.revealed > 1 else ""])

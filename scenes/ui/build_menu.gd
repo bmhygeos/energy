@@ -254,8 +254,10 @@ func _build_territory() -> void:
 		row.add_child(pair[1])
 	_list.add_child(row)
 	_horses_row = HBoxContainer.new()
-	_horses = _spin_box(0, 20, 0, "Chevaux de bât : chacun porte %d fois les vivres d'un explorateur.\nAu bourg, un cheval par explorateur : éclaireurs à cheval, %s fois plus rapides." % [
-		roundi(DraftAnimals.PACK_FACTOR), Format.decimal(Exploration.MOUNTED_SPEED)])
+	_horses = _spin_box(0, 20, 0, "Chevaux de bât : chacun porte %d fois les vivres d'un explorateur.\nAu bourg, un cheval par explorateur : éclaireurs à cheval, %s fois plus rapides.\nÀ la ville, véhicules à moteur (%s fois la marche, navires à %d tuiles par jour, %s carburant par explorateur et par jour) ; à la cité-État, avion (%d tuiles par jour partout, %s carburant). Sans carburant : à cheval ou à pied." % [
+		roundi(DraftAnimals.PACK_FACTOR), Format.decimal(Exploration.MOUNTED_SPEED), Format.decimal(Exploration.MOTOR_SPEED),
+		roundi(Exploration.MOTOR_SHIP_TILES_PER_DAY), Format.decimal(Exploration.MOTOR_FUEL_PER_MEMBER_PER_DAY),
+		roundi(Exploration.PLANE_TILES_PER_DAY), Format.decimal(Exploration.PLANE_FUEL_PER_MEMBER_PER_DAY)])
 	var horses_label := Label.new()
 	horses_label.text = "Chevaux de bât"
 	horses_label.modulate = Color(1, 1, 1, 0.6)
@@ -489,12 +491,15 @@ func _expedition_hint() -> String:
 		return text + "\n[color=%s]%s[/color]" % [ERROR_COLOR, error]
 	if _hovered.x >= 0:
 		var home := GameState.display_cell(GameState.home)
-		var path := GameState.exploration.plan_path(home, _hovered)
+		var transport := GameState.expedition_transport(members, _days.value, int(_horses.value))
+		var path := GameState.exploration.plan_path(home, _hovered, transport)
 		if path.size() < 2:
 			return text + "\n[color=%s]Trajet impossible : de l'eau barre le chemin[/color]" % ERROR_COLOR
 		var speed := GameState.exploration.speed_for(members, int(_horses.value))
-		var trip := GameState.exploration.round_trip_days(home, _hovered, speed)
-		var note := "aller-retour ≈ %s jours%s" % [Format.decimal(trip), " (à cheval)" if speed > 1.0 else ""]
+		var trip := GameState.exploration.round_trip_days(home, _hovered, speed, transport)
+		var fuel: float = GameState.expedition_fuel(transport, members, _days.value)
+		var note := "aller-retour ≈ %s jours %s%s" % [Format.decimal(trip), Exploration.TRANSPORT_NAMES[transport],
+			" (%s carburant)" % Format.decimal(fuel) if fuel > 0.0 else ""]
 		if path[-1] != _hovered:
 			note += " (arrêt devant l'eau)"
 		var color := OK_COLOR if trip <= _days.value else ERROR_COLOR

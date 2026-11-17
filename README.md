@@ -434,6 +434,21 @@ météo et interface conservés.
   (« camions ») indiquent la desserte.
 - **Cartographes** : à la ville, les expéditions voient à 5 tuiles au lieu de 3.
 
+### Exploration motorisée et aérienne
+
+| Palier | Transport | Vitesse | Carburant |
+|---|---|---|---|
+| Hameau, village | À pied | 4 tuiles/j en plaine (1 en montagne) | — |
+| Bourg | À cheval (un cheval par explorateur) | ×1,5 | — |
+| Ville | Véhicules à moteur ; navires à moteur avec un port | ×3 sur terre ; 12 tuiles/j sur l'eau | 0,5 par explorateur et par jour |
+| Cité-État | Avion : survole mer et montagnes | 60 tuiles/j partout ; vue de 8 tuiles | 2 par explorateur et par jour |
+
+- Le carburant est pris au départ pour toute la durée des vivres ; le reste
+  revient au stock au retour. Sans assez de carburant, l'expédition part avec
+  le meilleur moyen disponible (véhicules, puis cheval ou marche).
+- En véhicule ou en avion, les chevaux restent à l'écurie.
+- Un tour de la planète (1 024 tuiles) prend environ 17 jours en avion.
+
 ### Deux cartes : la ville et le monde
 
 - **Carte de la ville** (bouton « Ville » du bandeau, touche Tab, ou clic sur

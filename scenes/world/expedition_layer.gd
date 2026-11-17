@@ -48,7 +48,8 @@ func _draw() -> void:
 		var k := clampi(floori(e.position), 0, e.path.size() - 1)
 		var next := e.path[mini(k + 1, e.path.size() - 1)]
 		var at := Iso.map_to_world(Vector2(e.path[k]).lerp(Vector2(next), e.position - k))
-		var r := exploration.sight_radius() * Iso.HALF.x
+		var r := (Exploration.AERIAL_SIGHT_RADIUS if e.transport == Exploration.Transport.PLANE
+			else exploration.sight_radius()) * Iso.HALF.x
 		draw_set_transform(at, 0.0, Vector2(1.0, 0.5))
 		draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, SIGHT_COLOR, 2.0, true)
 		draw_set_transform(Vector2.ZERO)
