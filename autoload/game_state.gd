@@ -92,6 +92,8 @@ const POLAR_COOLING := 0.6
 ## Atelier d'artisans : bois et fer par unité de biens.
 const GOODS_WOOD := 1.0
 const GOODS_IRON := 0.25
+## Tracteurs : carburant par travailleur agricole et par jour.
+const TRACTOR_FUEL_PER_WORKER := 0.03
 ## Raffinerie : pétrole par unité de carburant.
 const OIL_PER_FUEL := 1.0
 ## Palier à partir duquel la cité pose des routes (bourg).
@@ -1379,6 +1381,38 @@ func _wear_clothes() -> float:
 	return stockpile.take(Stockpile.Good.CLOTHES, need) / need
 
 
+## Travailleurs agricoles (champs, lin, élevage) qui conduisent des tracteurs
+## (recherche Tracteur).
+func tractor_users() -> int:
+	if not research.is_done(&"tractor"):
+		return 0
+	var users := 0
+	for def in ZoneDb.DEFS:
+		if def.quality == ZoneDef.Quality.FERTILITY or def.quality == ZoneDef.Quality.PASTURE:
+			users += labor.assigned[def]
+	return users
+
+
+## Carburant des tracteurs par jour.
+func tractor_fuel_need() -> float:
+	return tractor_users() * TRACTOR_FUEL_PER_WORKER
+
+
+## Tracteurs du jour : prennent leur carburant au stock ; la part obtenue fixe
+## leur bonus du lendemain.
+func _run_tractors() -> void:
+	var need := tractor_fuel_need()
+	if need <= 0.0:
+		production.tractor_fuel = 1.0 if research.is_done(&"tractor") else 0.0
+		return
+	var got := stockpile.take(Stockpile.Good.FUEL, need)
+	fuel_burned_today += got
+	var was := production.tractor_fuel
+	production.tractor_fuel = got / need
+	if was >= 0.999 and production.tractor_fuel < 0.999:
+		EventBus.notified.emit("Carburant insuffisant : les tracteurs tournent à %d %%" % roundi(production.tractor_fuel * 100.0))
+
+
 ## Habitants qui usent des outils : bûcherons (scies, recherche Outils) et
 ## laboureurs des champs, céréales et lin (charrues, recherche Charrue).
 func tool_users() -> int:
@@ -1821,6 +1855,7 @@ func _on_day(day: int) -> void:
 	_run_steam()
 	_run_trains()
 	_run_trucks()
+	_run_tractors()
 	var tools := _wear_tools()
 	var clothes := _wear_clothes()
 	var light := _burn_light()

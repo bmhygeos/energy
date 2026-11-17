@@ -29,6 +29,8 @@ const PLOUGH_HARNESSED_BONUS := 1.3
 const PLOUGH_BONUS := 1.1
 const ROTATION_BONUS := 1.15
 const GEARS_BONUS := 1.15
+## Tracteurs (recherche Tracteur) : champs, lin et élevage, à plein carburant.
+const TRACTOR_BONUS := 0.5
 ## Bourg : laine des troupeaux (fibres par éleveur et par jour, en plus de la
 ## nourriture).
 const WOOL_PER_WORKER := 0.5
@@ -60,6 +62,9 @@ var _forest_max: Dictionary[Vector2i, float] = {}
 var _clearcuts: Dictionary[Vector2i, int] = {}
 ## Outils en stock (scies, charrues) : sans eux, leurs bonus disparaissent.
 var tools_ok := true
+## Part du carburant des tracteurs obtenue la veille (0–1) : leur bonus en
+## dépend.
+var tractor_fuel := 0.0
 ## Bonus du meilleur moulin (à grain) en service sur les champs de céréales
 ## (0 : aucun moulin).
 var mill_bonus := 0.0
@@ -132,6 +137,8 @@ func invention_factor(def: ZoneDef, cell: Vector2i) -> float:
 		factor *= 1.0 + mine_bonus
 	if def.deposit != 0:
 		factor *= mechanization
+	if (def.quality == ZoneDef.Quality.FERTILITY or def.quality == ZoneDef.Quality.PASTURE) and _done(&"tractor"):
+		factor *= 1.0 + TRACTOR_BONUS * tractor_fuel
 	return factor
 
 

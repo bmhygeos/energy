@@ -64,6 +64,7 @@ func _initialize() -> void:
 	_test_motor_exploration()
 	_test_canals()
 	_test_canals_game()
+	_test_tractors()
 	_test_green_grid()
 	_test_camera_bounds()
 	_test_fishing_reach()
@@ -1837,6 +1838,33 @@ func _test_two_maps() -> void:
 	_check(b != null and gs.city_buildings.building_at(spot) == b and gs.demolish(spot) and gs.city_buildings.building_at(spot) == null,
 		"maison construite puis démolie sur la carte de la ville")
 	gs.set_view(false)
+	gs.new_game(4242)
+
+
+## Tracteurs : champs et élevage +50 %, contre du carburant.
+func _test_tractors() -> void:
+	var gs: Node = root.get_node("GameState")
+	gs.new_game(4242)
+	var farm := ZoneDb.get_def(&"agriculture")
+	var pasture := ZoneDb.get_def(&"pasture")
+	var forest := ZoneDb.get_def(&"forestry")
+	var cell: Vector2i = gs.home
+	var before: Array[float] = [gs.production.invention_factor(farm, cell), gs.production.invention_factor(pasture, cell),
+		gs.production.invention_factor(forest, cell)]
+	_check(gs.tractor_fuel_need() == 0.0, "sans la recherche : pas de tracteur")
+	gs.research._done[&"tractor"] = true
+	gs.labor.assigned[farm] = 60
+	gs.labor.assigned[pasture] = 40
+	gs.stockpile.capacity[Stockpile.Good.FUEL] = 100.0
+	gs.stockpile.amount[Stockpile.Good.FUEL] = 1.5
+	_check(is_equal_approx(gs.tractor_fuel_need(), 100 * gs.TRACTOR_FUEL_PER_WORKER), "carburant : par travailleur agricole")
+	gs._run_tractors()
+	_check(is_equal_approx(gs.production.tractor_fuel, 0.5) and gs.stockpile.amount[Stockpile.Good.FUEL] == 0.0,
+		"moitié du carburant : moitié du bonus")
+	gs.production.tractor_fuel = 1.0
+	_check(is_equal_approx(gs.production.invention_factor(farm, cell), before[0] * 1.5)
+		and is_equal_approx(gs.production.invention_factor(pasture, cell), before[1] * 1.5)
+		and is_equal_approx(gs.production.invention_factor(forest, cell), before[2]), "tracteurs : champs et élevage +50 %, pas la forêt")
 	gs.new_game(4242)
 
 

@@ -489,6 +489,11 @@ et se partage entre les sources du palier :
 - Panneau Main-d'œuvre : parts du jour et quantités ; le chauffage électrique
   s'ajoute à la demande du réseau.
 
+**Tracteurs** (recherche Tracteur, ville, après le moteur à explosion ;
+50 000 points) : champs, lin et élevage +50 %, contre 0,03 carburant par
+travailleur agricole et par jour ; sans assez de carburant, le bonus baisse
+d'autant.
+
 **Mécanisation** : les mines et les puits sur gisement (fer, charbon,
 pétrole, cuivre, uranium, lithium) rendent ×2 à la ville (engins à moteur) et
 ×3 à la cité-État (machines électriques).

@@ -88,6 +88,9 @@ Palier 4 — Ville
     Prérequis : Raffinage du pétrole
     Bâtiments : Centrale au fioul, Dépôt de camions
     Effet : Dépôt de camions : les routes reliées portent bien plus loin, contre du carburant (100 travailleurs desservis par dépôt). Centrale au fioul : du courant à partir du carburant.
+* Tracteur  (50 000 points)
+    Prérequis : Moteur à explosion
+    Effet : Champs, lin et élevage +50 %, contre 0,03 carburant par travailleur agricole et par jour (sans carburant, le bonus baisse d'autant).
 * Enseignement supérieur  (50 000 points)
     Prérequis : Méthode expérimentale
     Bâtiments : Université
@@ -146,7 +149,7 @@ Palier 3 :
   Moulin à vent → Moulin à eau
   Assolement → Sylviculture → Charbon de bois
 Palier 4 :
-  Méthode expérimentale ─┬→ Raffinage du pétrole → Moteur à explosion
+  Méthode expérimentale ─┬→ Raffinage du pétrole → Moteur à explosion → Tracteur
                          ├→ Conductivité du cuivre → Hydroélectricité
                          ├→ Enseignement supérieur
                          └→ Médecine
@@ -157,4 +160,4 @@ Palier 5 :
                 ├→ Radioactivité
                 └→ Énergie éolienne
 
-Pas encore dans l'arbre : Tracteur (ville, proposé), recherche de la fusée (ère spatiale).
+Pas encore dans l'arbre : recherche de la fusée (ère spatiale).

@@ -154,7 +154,7 @@ func _play_day(day: int) -> void:
 		if not _has(&"oil_tank"):
 			_build_near(&"oil_tank")
 		if _gs.research.is_done(&"refining") and _count(&"refinery") * BuildingDb.get_def(&"refinery").fuel_per_day \
-				< _gs.light_need() + _gs.fuel_heat_need(GameDate.WINTER):
+				< _gs.light_need() + _gs.fuel_heat_need(GameDate.WINTER) + _gs.tractor_fuel_need():
 			_build_near(&"refinery")
 		if _gs.research.is_done(&"university") and not _has(&"university") and _gs.treasury.money > 1000.0:
 			_build_clearing(&"university")
@@ -184,7 +184,12 @@ func _play_day(day: int) -> void:
 			_build_anywhere(&"electronics_factory")
 		if _gs.research.is_done(&"computing") and not _has(&"computer_center"):
 			_build_anywhere(&"computer_center")
-	if _gs.exploration.can_launch() and day % 10 == 0 and _gs.food_days() > 30.0:
+	# À partir de la ville, les expéditions roulent au carburant : seulement
+	# s'il en reste après un mois de chauffage, d'éclairage et de tracteurs.
+	var spare_fuel: float = _gs.stockpile.amount[Stockpile.Good.FUEL] \
+		- 30.0 * (_gs.light_need() + _gs.fuel_heat_need(GameDate.WINTER) + _gs.tractor_fuel_need())
+	if _gs.exploration.can_launch() and day % 10 == 0 and _gs.food_days() > 30.0 \
+			and (_gs.tier.level < Exploration.MOTOR_TIER or spare_fuel > 300.0):
 		var dir := DIRECTIONS[_expeditions % DIRECTIONS.size()]
 		var reach := 20 + 8 * (_expeditions / DIRECTIONS.size())
 		var horses := 3 if _gs.tier.level >= Exploration.MOUNTED_TIER and _gs.draft.at_home() >= 3 else 0
@@ -300,7 +305,7 @@ func _buy_shortages() -> void:
 	var stock: Stockpile = _gs.stockpile
 	var season := GameDate.season(_clock.tick)
 	var needs := {Stockpile.Good.FOOD: _gs.food_need(), Stockpile.Good.WOOD: _gs.wood_need(season), Stockpile.Good.CLOTHES: _gs.clothes_need(),
-		Stockpile.Good.TOOLS: _gs.tools_need(), Stockpile.Good.FUEL: _gs.light_need() + _gs.fuel_heat_need(season), Stockpile.Good.GOODS: _gs.goods_need(),
+		Stockpile.Good.TOOLS: _gs.tools_need(), Stockpile.Good.FUEL: _gs.light_need() + _gs.fuel_heat_need(season) + _gs.tractor_fuel_need(), Stockpile.Good.GOODS: _gs.goods_need(),
 		Stockpile.Good.COAL: _gs.coal_heat_need(season)}
 	for good: int in needs:
 		var missing: float = needs[good] * BUY_BELOW_DAYS - stock.amount[good]

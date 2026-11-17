@@ -130,6 +130,9 @@ func _refresh() -> void:
 		Format.decimal(GameState.wood_need(season)), {GameDate.SUMMER: " (été)", GameDate.WINTER: " (hiver)"}.get(season, "")]
 	if GameState.coal_heat_need(season) > 0.0:
 		_needs.text += "  ·  charbon %s /j (chauffage)" % Format.decimal(GameState.coal_heat_need(season))
+	if GameState.tractor_fuel_need() > 0.0:
+		_needs.text += "  ·  carburant %s /j (tracteurs, %d %%)" % [Format.decimal(GameState.tractor_fuel_need()),
+			roundi(GameState.production.tractor_fuel * 100.0)]
 	if GameState.fuel_heat_need(season) > 0.0:
 		_needs.text += "  ·  fioul %s /j (chauffage)" % Format.decimal(GameState.fuel_heat_need(season))
 	var mix := GameState.heat_mix()
