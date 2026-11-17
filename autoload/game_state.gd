@@ -41,6 +41,12 @@ const HEAT_SHARES: PackedFloat32Array = [
 ## (420 MJ) ; courant (W pendant une journée) qui remplace un bois : pompes à
 ## chaleur, trois fois l'énergie consommée.
 const COAL_WOOD_EQUIVALENT := 2.0
+## Isolation par palier : maisons en dur, immeubles, chauffage central ; le
+## besoin de chauffage par habitant est multiplié par ce facteur.
+const HEAT_INSULATION: PackedFloat32Array = [1.0, 1.0, 0.8, 0.5, 0.4]
+## Mécanisation par palier : rendement des mines et des puits sur gisement
+## (engins à moteur à la ville, machines électriques à la cité-État).
+const MECHANIZATION: PackedFloat32Array = [1.0, 1.0, 1.0, 2.0, 3.0]
 const FUEL_WOOD_EQUIVALENT := 2.8
 const WATTS_PER_HEAT_WOOD := 290.0
 ## Pollution : part de sa gêne que les soins évitent (dispensaires).
@@ -504,6 +510,7 @@ func _refresh_capacities() -> void:
 	draft.collar = research.is_done(&"harness_collar")
 	production.regrowth_factor = SYLVICULTURE_REGROWTH if research.is_done(&"sylviculture") else 1.0
 	roads.electric = research.is_done(&"electric_vehicle")
+	production.mechanization = MECHANIZATION[clampi(tier.level, 1, MECHANIZATION.size()) - 1]
 
 
 ## Bonus des machines (moulin à eau ; machines à vapeur si alimentées).
@@ -1344,9 +1351,10 @@ func wood_need(season: int) -> float:
 	return heat_need(season) * heat_mix()[Heat.WOOD]
 
 
-## Chauffage du jour pendant [param season], en bois (hiver rude compris).
+## Chauffage du jour pendant [param season], en bois (hiver rude et isolation
+## du palier compris).
 func heat_need(season: int) -> float:
-	return population.wood_need(season) * events.heat_factor()
+	return population.wood_need(season) * events.heat_factor() * HEAT_INSULATION[clampi(tier.level, 1, HEAT_INSULATION.size()) - 1]
 
 
 ## Priorités automatiques d'après les stocks. La nourriture doit tenir

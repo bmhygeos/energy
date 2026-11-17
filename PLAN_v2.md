@@ -474,7 +474,7 @@ effectif, vivres).
 | V11 (partie 5) | Fin du palier 4 | Retenue des barrages (tuiles noyées en amont), centrale au fioul, capacité des camions (100 travailleurs par dépôt), cartographes (vue des expéditions) — réalisé |
 | V12 | Palier 5 | Éducation, culture, électricité ; électronique, informatique, IA ; nucléaire, éolien, photovoltaïque, lithium, batteries, véhicules électriques ; incident nucléaire — réalisé (sans pollution ni enrichissement séparé) |
 | V12+ | Palier 5, suite | Pollution et santé (indice de la cité, soins), enrichissement de l'uranium, bornes de recharge — réalisé |
-| V13 | Équilibrage | Rythme de la ville et de la cité-État (outil `simulate_pacing`) |
+| V13 | Équilibrage | Rythme de la ville et de la cité-État (outil `simulate_pacing`) : isolation (chauffage ×0,8 / ×0,5 / ×0,4) et mécanisation des mines (×2 / ×3) — en cours |
 | V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses

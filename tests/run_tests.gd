@@ -1578,7 +1578,7 @@ func _test_bourg_game() -> void:
 	_check(gs.coal_heat_need(season) == 0.0 and gs.clothes_need() == 0.0, "au hameau : ni charbon ni vêtements")
 	gs.tier.level = 3
 	stock.amount[Stockpile.Good.COAL] = 50.0
-	var heat: float = gs.population.wood_need(season)
+	var heat: float = gs.heat_need(season)
 	_check(is_equal_approx(gs.coal_heat_need(season), heat * 0.5 / gs.COAL_WOOD_EQUIVALENT)
 		and is_equal_approx(gs.wood_need(season), heat * 0.5), "bourg : le charbon chauffe la moitié")
 	stock.amount[Stockpile.Good.WOOD] = 100.0
@@ -1979,8 +1979,19 @@ func _test_pollution(gs: Node) -> void:
 func _test_heat_mix(gs: Node) -> void:
 	var stock: Stockpile = gs.stockpile
 	var winter := GameDate.WINTER
-	var heat: float = gs.heat_need(winter)
+	gs.tier.level = 3
+	gs._refresh_capacities()
+	var coal_mine := ZoneDb.get_def(&"coal_mine")
+	var farm := ZoneDb.get_def(&"agriculture")
+	var cell: Vector2i = gs.home
+	var mine_bourg: float = gs.production.invention_factor(coal_mine, cell)
+	var farm_bourg: float = gs.production.invention_factor(farm, cell)
 	gs.tier.level = 4
+	gs._refresh_capacities()
+	_check(is_equal_approx(gs.production.invention_factor(coal_mine, cell), mine_bourg * 2.0)
+		and is_equal_approx(gs.production.invention_factor(farm, cell), farm_bourg), "ville : mines ×2 (mécanisation), champs inchangés")
+	var heat: float = gs.heat_need(winter)
+	_check(is_equal_approx(heat, gs.population.wood_need(winter) * 0.5), "ville : chauffage ×0,5 (isolation)")
 	stock.amount[Stockpile.Good.COAL] = 1000.0
 	stock.amount[Stockpile.Good.FUEL] = 1000.0
 	_check(is_equal_approx(gs.wood_need(winter), heat * 0.1) and is_equal_approx(gs.coal_heat_need(winter), heat * 0.4 / 2.0)
@@ -1993,6 +2004,8 @@ func _test_heat_mix(gs: Node) -> void:
 	gs.tier.level = 5
 	stock.amount[Stockpile.Good.COAL] = 1000.0
 	stock.amount[Stockpile.Good.FUEL] = 1000.0
+	heat = gs.heat_need(winter)
+	_check(is_equal_approx(heat, gs.population.wood_need(winter) * 0.4), "cité-État : chauffage ×0,4 (isolation)")
 	_place_running(gs, BuildingDb.get_def(&"power_plant"))
 	gs._refresh_grid()
 	gs.grid.coverage = 1.0
@@ -2067,7 +2080,7 @@ func _test_events_game() -> void:
 		gs._run_events(1)
 	_check(gs.events.active.is_empty(), "hameau : pas d'événement")
 	gs.tier.level = 3
-	var heat: float = gs.population.wood_need(GameDate.WINTER)
+	var heat: float = gs.heat_need(GameDate.WINTER)
 	gs.events.active[CityEvents.Kind.HARD_WINTER] = 5
 	_check(is_equal_approx(gs.wood_need(GameDate.WINTER), heat * CityEvents.HARD_WINTER_HEAT), "hiver rude : plus de bois")
 	gs.events.active.clear()

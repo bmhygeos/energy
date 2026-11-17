@@ -13,7 +13,7 @@ extends SceneTree
 ## Lancer : godot --headless -s res://tools/simulate_pacing.gd -- [graine] [années]
 
 const ZONE_ORDER: Array[StringName] = [&"pasture", &"agriculture", &"forestry", &"quarry", &"fishing", &"iron_mine",
-	&"coal_mine", &"oil_well", &"uranium_mine", &"lithium_mine"]
+	&"coal_mine", &"copper_mine", &"oil_well", &"uranium_mine", &"lithium_mine"]
 ## Bourg : carré de lin (demi-côté) au sud-est du village.
 const FLAX_RADIUS := 2
 const FLAX_OFFSET := Vector2i(10, 10)
@@ -37,6 +37,13 @@ const BUY_BELOW_DAYS := 10.0
 const WOOD_STORE_DAYS := 60.0
 ## Logements libres en dessous desquels une maison est construite.
 const HOUSING_MARGIN := 3
+## À partir de la ville, nouvelles maisons seulement si la nourriture produite
+## sur FOOD_TREND_DAYS jours (une année : les récoltes sont saisonnières)
+## couvre le besoin, ou si les réserves tiennent FOOD_RESERVE_SEASONS saisons ;
+## sinon, la ville grandirait sur ses réserves et mourrait de faim.
+const FOOD_TREND_DAYS := 360
+const FOOD_TREND_TIER := 4
+const FOOD_RESERVE_SEASONS := 2
 const DIRECTIONS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1),
 	Vector2i(1, 1), Vector2i(-1, 1), Vector2i(-1, -1), Vector2i(1, -1)]
 
@@ -84,11 +91,12 @@ func _initialize() -> void:
 
 func _print_month(day: int) -> void:
 	var stock: Stockpile = _gs.stockpile
-	print("%4d  %-9s %4d / %-4d  nourr. %5d  bois %5d  pierre %4d  fer %4d  outils %3d  charb. %4d  vêt. %3d  eau %3d %%  sat. %3d %%  terr. %4d  %s" % [
+	print("%4d  %-9s %4d / %-4d  nourr. %5d  bois %5d  pierre %4d  fer %4d  outils %3d  charb. %4d  carb. %4d  vêt. %3d  eau %3d %%  courant %3d %%  pollu. %3d %%  sat. %3d %%  terr. %4d  %s" % [
 		day, _gs.tier.name(), _gs.population.count, _gs.housing,
 		stock.amount[Stockpile.Good.FOOD], stock.amount[Stockpile.Good.WOOD], stock.amount[Stockpile.Good.STONE],
 		stock.amount[Stockpile.Good.IRON], stock.amount[Stockpile.Good.TOOLS], stock.amount[Stockpile.Good.COAL],
-		stock.amount[Stockpile.Good.CLOTHES], roundi(_gs.water_coverage() * 100.0),
+		stock.amount[Stockpile.Good.FUEL], stock.amount[Stockpile.Good.CLOTHES], roundi(_gs.water_coverage() * 100.0),
+		roundi(_gs.grid.coverage * 100.0), roundi(_gs.pollution_index() * 100.0),
 		roundi(_gs.population.satisfaction * 100.0), _gs.territory.count(Territory.State.TERRITORY),
 		_gs.research.current.display_name if _gs.research.current else "-"])
 
@@ -100,8 +108,8 @@ func _play_day(day: int) -> void:
 				break
 	if day == 0:
 		_build_near(&"woodshed")
-	if _gs.housing - _gs.population.count <= HOUSING_MARGIN and not _build_near(&"house", 0, HOUSE_RADIUS) \
-			and not _upgrade_house():
+	if _gs.housing - _gs.population.count <= HOUSING_MARGIN and _food_keeps_up() \
+			and not _build_near(&"house", 0, HOUSE_RADIUS) and not _upgrade_house():
 		_build_anywhere(&"house")
 	var stock: Stockpile = _gs.stockpile
 	# Au bourg, sous le seuil de vente automatique : sinon, les greniers ne
@@ -150,6 +158,11 @@ func _play_day(day: int) -> void:
 			_build_near(&"refinery")
 		if _gs.research.is_done(&"university") and not _has(&"university") and _gs.treasury.money > 1000.0:
 			_build_clearing(&"university")
+		# Courant : une centrale à charbon de plus tant que la demande n'est pas
+		# couverte (le charbon abonde à la ville).
+		if _gs.research.is_done(&"conductivity") and _gs.grid.coverage < 1.0 \
+				and _gs.grid.capacity(GameDate.season(_clock.tick)) < _gs.grid.demand + 1.0:
+			_build_anywhere(&"power_plant")
 		if _count(&"artisans") * BuildingDb.get_def(&"artisans").goods_per_day < _gs.goods_need():
 			_build_anywhere(&"artisans")
 		if _gs.order_coverage() < 1.0 and _count(&"guard_post") * BuildingDb.get_def(&"guard_post").order_coverage < _gs.population.count:
@@ -165,8 +178,6 @@ func _play_day(day: int) -> void:
 			_build_anywhere(&"nuclear_plant")
 		elif _gs.grid.coverage < 1.0 and _gs.research.is_done(&"wind_power"):
 			_build_anywhere(&"wind_turbine")
-		elif _gs.grid.coverage < 1.0 and _gs.research.is_done(&"conductivity"):
-			_build_anywhere(&"power_plant")
 		if _has(&"nuclear_plant") and not _has(&"enrichment_plant"):
 			_build_anywhere(&"enrichment_plant")
 		if _gs.research.is_done(&"electronics") and not _has(&"electronics_factory"):
@@ -187,7 +198,7 @@ func _play_day(day: int) -> void:
 ## repeignent les tuiles valides des précédentes), sauf au centre.
 func _paint_zones() -> void:
 	# Une grande ville va chercher plus loin le bois qu'elle a épuisé.
-	var radius := maxi(ZONE_RADIUS, _gs.population.count / 30)
+	var radius := maxi(ZONE_RADIUS, _gs.population.count / 20)
 	var from := _center - Vector2i.ONE * radius
 	var to := _center + Vector2i.ONE * radius
 	for id in ZONE_ORDER:
@@ -297,6 +308,19 @@ func _upgrade_house() -> bool:
 		if b.def.category == BuildingDef.Category.HOUSING and _gs.upgrade_error(b).is_empty():
 			return _gs.upgrade(b.anchor)
 	return false
+
+
+## La nourriture produite couvre-t-elle le besoin (moyenne de la dernière
+## année), ou les réserves suffisent-elles ? Avant la ville, toujours.
+func _food_keeps_up() -> bool:
+	var produced: PackedFloat32Array = _gs.stats.values(&"food_produced")
+	if _gs.tier.level < FOOD_TREND_TIER or produced.size() < FOOD_TREND_DAYS \
+			or _gs.food_days() >= GameDate.DAYS_PER_SEASON * FOOD_RESERVE_SEASONS:
+		return true
+	var total := 0.0
+	for k in range(produced.size() - FOOD_TREND_DAYS, produced.size()):
+		total += produced[k]
+	return total / FOOD_TREND_DAYS >= _gs.food_need()
 
 
 func _count(id: StringName) -> int:

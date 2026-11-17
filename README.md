@@ -436,7 +436,9 @@ météo et interface conservés.
 ### Chauffage : bois, charbon, fioul, électricité
 
 Le besoin de chauffage (0,2 bois par habitant et par jour, ×0,5 en été, ×2
-en hiver) se partage entre les sources du palier :
+en hiver) baisse avec l'**isolation** des paliers (×0,8 au bourg, ×0,5 à la
+ville, ×0,4 à la cité-État : maisons en dur, immeubles, chauffage central)
+et se partage entre les sources du palier :
 
 | Palier | Bois | Charbon | Fioul (carburant) | Électricité |
 |---|---|---|---|---|
@@ -452,6 +454,10 @@ en hiver) se partage entre les sources du palier :
   sinon par le bois.
 - Panneau Main-d'œuvre : parts du jour et quantités ; le chauffage électrique
   s'ajoute à la demande du réseau.
+
+**Mécanisation** : les mines et les puits sur gisement (fer, charbon,
+pétrole, cuivre, uranium, lithium) rendent ×2 à la ville (engins à moteur) et
+×3 à la cité-État (machines électriques).
 
 ### V12 : palier 5 — cité-État
 

@@ -69,6 +69,8 @@ var sawmill_bonus := 0.0
 var drive_bonus := 0.0
 ## Carrières et mines : bonus des machines à vapeur alimentées.
 var mine_bonus := 0.0
+## Mines et puits sur gisement : mécanisation du palier (engins, foreuses).
+var mechanization := 1.0
 ## Vitesse de repousse des forêts (recherche Sylviculture).
 var regrowth_factor := 1.0
 ## Laine des pâturages (à partir du bourg).
@@ -126,6 +128,8 @@ func invention_factor(def: ZoneDef, cell: Vector2i) -> float:
 		factor *= GEARS_BONUS
 	if def.output == Stockpile.Good.STONE or def.deposit != 0:
 		factor *= 1.0 + mine_bonus
+	if def.deposit != 0:
+		factor *= mechanization
 	return factor
 
 
