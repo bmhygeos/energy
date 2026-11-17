@@ -1007,7 +1007,7 @@ func _test_stockpile() -> void:
 	var stock := Stockpile.new()
 	_check(stock.amount == Stockpile.START and stock.capacity == Stockpile.BASE_CAPACITY, "stocks de départ")
 	stock.amount = Stockpile.zeros()
-	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0])
+	stock.capacity = PackedFloat32Array([100.0, 50.0, 100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0])
 	_check(is_equal_approx(stock.add(Stockpile.Good.WOOD, 70.0), 50.0) and is_equal_approx(stock.lost_today[1], 20.0),
 		"au-delà de la capacité : perdu")
 	_check(is_equal_approx(stock.take(Stockpile.Good.WOOD, 80.0), 50.0) and stock.amount[1] == 0.0, "on ne prend que le stock")
@@ -1472,7 +1472,7 @@ func _test_milestones() -> void:
 	var standard := Milestones.new()
 	standard.defs = Milestones.standard()
 	var ids := standard.defs.map(func(d: Milestones.Def) -> StringName: return d.id)
-	_check(ids.size() == 26 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
+	_check(ids.size() == 27 and &"village" in ids and &"bourg" in ids and &"clothes" in ids, "jalons de la partie : %d" % ids.size())
 	var day_facts := Milestones.Facts.new()
 	day_facts.stats = Statistics.new()
 	day_facts.research = Research.new()
@@ -1858,9 +1858,9 @@ func _test_green_grid() -> void:
 	plants = [plant]
 	grid.refresh(plants)
 	grid.machine_demand = 50000.0
-	grid.run_day(5000, GameDate.SUMMER, 0.0, 0.0, 1.0)
+	grid.run_day(5000, GameDate.SUMMER, 0.0, 0.0, 0.2)
 	_check(is_equal_approx(grid.demand, 150000.0) and is_equal_approx(grid.nuclear, 100000.0)
-		and is_equal_approx(grid.uranium_burnt, 1.0), "nucléaire : limité par l'uranium ; machines dans la demande")
+		and is_equal_approx(grid.nuclear_fuel_burnt, 0.2), "nucléaire : limité par le combustible ; machines dans la demande")
 	grid.nuclear_stopped = true
 	grid.run_day(5000, GameDate.SUMMER, 0.0, 0.0, 10.0)
 	_check(grid.nuclear == 0.0, "incident : centrale à l'arrêt")
@@ -1915,8 +1915,30 @@ func _test_city_state_game() -> void:
 				road.append(cell + o)
 	gs.roads.add_cells(road)
 	gs._refresh_capacities()
-	_check(gs.roads.electric and gs.roads.fuel_need() == 0.0 and gs.roads.electric_watts() > 0.0,
-		"véhicules électriques : du courant au lieu du carburant")
+	_check(gs.roads.electric and gs.roads.fuel_need() > 0.0 and gs.roads.electric_watts() == 0.0,
+		"véhicules électriques sans borne : toujours au carburant")
+	var charger_def := BuildingDb.get_def(&"charger")
+	var charger: Building = null
+	for o in WorldMap.NEIGHBORS_4:
+		var placement: BuildingRegistry.Placement = gs.buildings.check_placement(charger_def, road[0] + o)
+		if charger == null and placement.is_valid():
+			charger = gs.buildings.place(placement)
+			charger.build_progress = charger_def.build_hours
+			charger.status = Building.Status.RUNNING
+	gs._refresh_capacities()
+	_check(charger != null and gs.roads.electric_depots() == 1 and gs.roads.fuel_need() == 0.0 and gs.roads.electric_watts() > 0.0,
+		"borne de recharge : le dépôt roule au courant")
+	stock.capacity[Stockpile.Good.URANIUM] = 100.0
+	stock.amount[Stockpile.Good.URANIUM] = 7.0
+	var enrichment := _place_running(gs, BuildingDb.get_def(&"enrichment_plant"))
+	gs.grid.coverage = 1.0
+	gs._run_enrichment()
+	_check(enrichment != null and is_equal_approx(stock.amount[Stockpile.Good.NUCLEAR_FUEL], 1.0)
+		and is_equal_approx(stock.amount[Stockpile.Good.URANIUM], 2.0), "enrichissement : 5 uranium → 1 combustible")
+	gs.grid.coverage = 0.0
+	gs._run_enrichment()
+	_check(is_equal_approx(stock.amount[Stockpile.Good.NUCLEAR_FUEL], 1.0), "enrichissement sans courant : à l'arrêt")
+	_test_pollution(gs)
 	var e := CityEvents.new(3)
 	var seen := [false, false]
 	for k in 20000:
@@ -1928,6 +1950,29 @@ func _test_city_state_game() -> void:
 	_check(not seen[0] and seen[1], "incident nucléaire : seulement avec une centrale")
 	_test_heat_mix(gs)
 	gs.new_game(4242)
+
+
+## Pollution : accumulation, indice par habitant, gêne atténuée par les soins.
+func _test_pollution(gs: Node) -> void:
+	var air := Pollution.new()
+	air.end_day(0.0, 0.0, 1000.0)
+	_check(air.index(1000) == 0.0, "bois de chauffage seul : air pur")
+	for k in 200:
+		air.end_day(200.0, 0.0, 0.0)
+	_check(is_equal_approx(air.index(1000), (0.2 - Pollution.TOLERANCE) / Pollution.RANGE), "charbon : pollution par habitant")
+	for k in 200:
+		air.end_day(0.0, 0.0, 0.0)
+	_check(air.index(1000) == 0.0, "sans combustion, la pollution se dissipe")
+	gs.population.count = 1000
+	for k in 100:
+		gs.pollution.end_day(1000.0, 0.0, 0.0)
+	var smog: float = gs.pollution_index()
+	_check(smog == 1.0 and gs.pollution_harm() == smog, "pollution sans soins : pleine gêne")
+	_place_running(gs, BuildingDb.get_def(&"dispensary"))
+	_check(is_equal_approx(gs.pollution_harm(), 1.0 - gs.CARE_POLLUTION_SHIELD * 0.5), "dispensaire : la gêne baisse (%s)" % gs.pollution_harm())
+	var p := Population.new()
+	p.end_day(1.0, 1.0, 100, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+	_check(is_equal_approx(p.satisfaction, 1.0 - Population.POLLUTION_WEIGHT), "air irrespirable : satisfaction réduite")
 
 
 ## Chauffage de la ville et de la cité-État : parts, remplacements, courant.

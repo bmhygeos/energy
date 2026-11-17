@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/building_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"charger"
+display_name = "Borne de recharge"
+description = "Prises haute puissance au bord de la route : les camions d'un dépôt roulent à l'électricité."
+category = 2
+tier = 5
+research = &"electric_vehicle"
+build_hours = 24
+iron_cost = 10
+copper_cost = 10
+electronics_cost = 5
+charger = true
+color = Color(0.3, 0.7, 0.5, 1)
+roof_color = Color(0.2, 0.45, 0.35, 1)
+height = 8.0

@@ -485,6 +485,24 @@ en hiver) se partage entre les sources du palier :
   Cité-État, L'atome, Énergie verte (moitié du courant par l'eau, le vent et le
   soleil), Intelligence artificielle.
 
+### V12+ : pollution, enrichissement de l'uranium, bornes de recharge
+
+- **Pollution** (reprise de la v1, à l'échelle de la cité) : chaque unité
+  brûlée émet (charbon 1, carburant 0,8, bois 0,1) ; 90 % de la pollution
+  reste d'un jour à l'autre. L'indice (0–100 %) suit les émissions par
+  habitant : rien sous 0,05 par habitant et par jour, plein à 0,2.
+  - Effets : satisfaction réduite jusqu'à −15 %, épidémies jusqu'à deux fois
+    plus meurtrières. Les dispensaires évitent jusqu'à la moitié de la gêne.
+  - Bandeau (« Pollution ») et statistiques ; jalon « Ciel dégagé » (air pur
+    à la cité-État).
+- **Enrichissement** (Radioactivité) : **usine d'enrichissement** (2×1 ; 150
+  pierre, 100 fer, 20 outils, 30 cuivre, 30 électronique ; 20 kW) : 1
+  combustible nucléaire par jour pour 5 uranium, au prorata du courant servi.
+  La centrale nucléaire brûle ce combustible (0,4 par jour à 200 kW).
+- **Bornes de recharge** (Véhicule électrique ; 10 fer, 10 cuivre, 5
+  électronique) : à côté d'une route reliée, une borne fait rouler au courant
+  les camions d'un dépôt ; les autres dépôts restent au carburant.
+
 ### Ports : pêche au large, navires et transport par l'eau
 
 - **Pêche** : au village, à une tuile du rivage au plus.

@@ -10,4 +10,4 @@ description = "Fission de l'atome : une poignée d'uranium vaut des montagnes de
 tier = 5
 cost = 200000.0
 prerequisites = Array[StringName]([&"conductivity"])
-effect = "Centrale nucléaire : 200 kW pour 2 uranium par jour, près de l'eau ; risque d'incident."
+effect = "Usine d'enrichissement : 5 uranium → 1 combustible nucléaire, contre du courant. Centrale nucléaire : 200 kW pour 0,4 combustible par jour, près de l'eau ; risque d'incident."

@@ -47,6 +47,9 @@ const ORDER_WEIGHT := 0.1
 const EDUCATION_WEIGHT := 0.1
 const CULTURE_WEIGHT := 0.1
 const ELECTRICITY_WEIGHT := 0.15
+## Pollution : satisfaction réduite jusqu'à cette part quand l'air est
+## irrespirable et que personne n'est soigné.
+const POLLUTION_WEIGHT := 0.15
 ## Croissance par jour (part de la population) à pleine satisfaction.
 const GROWTH_PER_DAY := 0.006
 ## Sous ce seuil de satisfaction, des habitants partent (jusqu'à
@@ -77,6 +80,8 @@ var order_coverage := 1.0
 var education_coverage := 1.0
 var culture_coverage := 1.0
 var electricity_coverage := 1.0
+## Gêne de la pollution de la veille (0–1, soins déduits).
+var pollution_harm := 0.0
 var _history: Array[float] = []
 ## Fraction d'habitant accumulée (naissances, départs).
 var _change := 0.0
@@ -115,13 +120,15 @@ func goods_need() -> float:
 ## Clôt la journée avec la couverture des besoins (0–1 ; l'eau et les outils
 ## à partir du village, les vêtements à partir du bourg, l'éclairage, les
 ## biens, la santé et l'ordre à partir de la ville, l'éducation, la culture et
-## l'électricité à partir de la cité-État), les logements et
+## l'électricité à partir de la cité-État), la gêne de la pollution
+## [param p_pollution_harm] (0–1), les logements et
 ## l'humeur [param mood] (impôts, décrets : facteur de la satisfaction du
 ## jour) ; renvoie la variation du nombre d'habitants.
 func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int, p_water_coverage := 1.0,
 		p_tools_coverage := 1.0, p_clothes_coverage := 1.0, mood := 1.0, p_light_coverage := 1.0,
 		p_goods_coverage := 1.0, p_health_coverage := 1.0, p_order_coverage := 1.0,
-		p_education_coverage := 1.0, p_culture_coverage := 1.0, p_electricity_coverage := 1.0) -> int:
+		p_education_coverage := 1.0, p_culture_coverage := 1.0, p_electricity_coverage := 1.0,
+		p_pollution_harm := 0.0) -> int:
 	food_coverage = clampf(p_food_coverage, 0.0, 1.0)
 	wood_coverage = clampf(p_wood_coverage, 0.0, 1.0)
 	water_coverage = clampf(p_water_coverage, 0.0, 1.0)
@@ -134,13 +141,14 @@ func end_day(p_food_coverage: float, p_wood_coverage: float, housing: int, p_wat
 	education_coverage = clampf(p_education_coverage, 0.0, 1.0)
 	culture_coverage = clampf(p_culture_coverage, 0.0, 1.0)
 	electricity_coverage = clampf(p_electricity_coverage, 0.0, 1.0)
+	pollution_harm = clampf(p_pollution_harm, 0.0, 1.0)
 	_history.append((FOOD_WEIGHT * food_coverage + (1.0 - FOOD_WEIGHT) * wood_coverage)
 		* (1.0 - WATER_WEIGHT * (1.0 - water_coverage)) * (1.0 - TOOLS_WEIGHT * (1.0 - tools_coverage))
 		* (1.0 - CLOTHES_WEIGHT * (1.0 - clothes_coverage))
 		* (1.0 - LIGHT_WEIGHT * (1.0 - light_coverage)) * (1.0 - GOODS_WEIGHT * (1.0 - goods_coverage))
 		* (1.0 - HEALTH_WEIGHT * (1.0 - health_coverage)) * (1.0 - ORDER_WEIGHT * (1.0 - order_coverage))
 		* (1.0 - EDUCATION_WEIGHT * (1.0 - education_coverage)) * (1.0 - CULTURE_WEIGHT * (1.0 - culture_coverage))
-		* (1.0 - ELECTRICITY_WEIGHT * (1.0 - electricity_coverage)) * mood)
+		* (1.0 - ELECTRICITY_WEIGHT * (1.0 - electricity_coverage)) * (1.0 - POLLUTION_WEIGHT * pollution_harm) * mood)
 	_history[-1] = clampf(_history[-1], 0.0, 1.0)
 	if _history.size() > SATISFACTION_DAYS:
 		_history.pop_front()

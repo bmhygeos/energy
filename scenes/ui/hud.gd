@@ -313,6 +313,14 @@ func _refresh_stone() -> void:
 				roundi(GameState.education_coverage() * 100.0), roundi(GameState.culture_coverage() * 100.0),
 				roundi(GameState.grid.coverage * 100.0)]
 
+	# Pollution : dès que l'air n'est plus pur.
+	var smog := GameState.pollution_index()
+	if smog > 0.0:
+		_stone_label.text += " · Pollution %d %%" % roundi(smog * 100.0)
+		_stone_label.add_theme_color_override("font_color", WARNING_COLOR)
+		_stone_label.tooltip_text += "\nPollution : %d %% (charbon, fioul et bois brûlés) ; gêne %d %% après les soins : satisfaction réduite, épidémies plus meurtrières" % [
+			roundi(smog * 100.0), roundi(GameState.pollution_harm() * 100.0)]
+
 
 ## Bouton du trésor (à partir du bourg) : pièces ; impôts et commerce
 ## d'hier au survol, panneau Économie au clic.

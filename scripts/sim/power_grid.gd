@@ -17,8 +17,11 @@ const WATTS_PER_INHABITANT := 20.0
 const WATTS_PER_COAL := 1000.0
 ## Puissance moyenne d'un carburant par jour (420 MJ à 30 % de rendement).
 const WATTS_PER_FUEL := 1500.0
-## Puissance moyenne d'un uranium par jour (combustible enrichi).
-const WATTS_PER_URANIUM := 100000.0
+## Puissance moyenne d'une unité de combustible nucléaire (uranium enrichi)
+## par jour.
+const WATTS_PER_NUCLEAR_FUEL := 500000.0
+## Usine d'enrichissement : minerais d'uranium par unité de combustible.
+const ENRICH_URANIUM := 5.0
 ## Forges, tissages et raffineries à pleine couverture : +INDUSTRY_BONUS.
 const INDUSTRY_BONUS := 0.25
 ## Débit des rivières par saison (printemps, été, automne, hiver).
@@ -54,9 +57,9 @@ var solar := 0.0
 var nuclear := 0.0
 ## Courant rendu la nuit par les batteries (W).
 var stored := 0.0
-## Combustibles brûlés le dernier jour.
+## Combustibles brûlés le dernier jour (carburant, combustible nucléaire).
 var fuel_burnt := 0.0
-var uranium_burnt := 0.0
+var nuclear_fuel_burnt := 0.0
 var coverage := 0.0
 
 
@@ -143,9 +146,10 @@ func capacity(season: int) -> float:
 
 ## Bilan du jour pour [param count] habitants pendant [param season] : eau et
 ## vent, soleil de jour, batteries, puis uranium, charbon et fioul dans la
-## limite des stocks [param uranium], [param coal] et [param fuel] (brûlés :
-## uranium_burnt, fuel_burnt) ; renvoie le charbon brûlé.
-func run_day(count: int, season: int, coal: float, fuel := 0.0, uranium := 0.0) -> float:
+## limite des stocks de combustible nucléaire [param nuclear_fuel], de
+## [param coal] et de [param fuel] (brûlés : nuclear_fuel_burnt, fuel_burnt) ;
+## renvoie le charbon brûlé.
+func run_day(count: int, season: int, coal: float, fuel := 0.0, nuclear_fuel := 0.0) -> float:
 	demand = count * WATTS_PER_INHABITANT + machine_demand + heat_demand
 	var water := 0.0
 	var air := 0.0
@@ -187,8 +191,8 @@ func run_day(count: int, season: int, coal: float, fuel := 0.0, uranium := 0.0) 
 	wind_power = green * air / produced if produced > 0.0 else 0.0
 	solar = green - hydro - wind_power
 	var left := demand - green
-	nuclear = minf(minf(left, atom), uranium * WATTS_PER_URANIUM)
-	uranium_burnt = nuclear / WATTS_PER_URANIUM
+	nuclear = minf(minf(left, atom), nuclear_fuel * WATTS_PER_NUCLEAR_FUEL)
+	nuclear_fuel_burnt = nuclear / WATTS_PER_NUCLEAR_FUEL
 	left -= nuclear
 	var burnt := minf(minf(left, thermal), coal * WATTS_PER_COAL)
 	left -= burnt

@@ -99,7 +99,8 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 ## Centrale : puissance à plein régime (W) et source. Les barrages suivent le
 ## débit des saisons, les éoliennes le vent, les champs solaires le soleil (de
 ## jour) ; les centrales brûlent du charbon, du carburant ou de l'uranium
-## (PowerGrid.WATTS_PER_COAL, WATTS_PER_FUEL, WATTS_PER_URANIUM).
+## ou du combustible nucléaire (PowerGrid.WATTS_PER_COAL, WATTS_PER_FUEL,
+## WATTS_PER_NUCLEAR_FUEL).
 @export var power_watts := 0.0
 @export var power_source: PowerSource = PowerSource.HYDRO
 ## Batteries : énergie stockée de jour, rendue la nuit (kWh par jour).
@@ -109,6 +110,12 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var power_demand := 0.0
 ## Usine d'électronique : composants fabriqués par jour (un cuivre chacun).
 @export var electronics_per_day := 0.0
+## Usine d'enrichissement : combustible nucléaire produit par jour
+## (PowerGrid.ENRICH_URANIUM minerais d'uranium chacun ; il lui faut du courant).
+@export var nuclear_fuel_per_day := 0.0
+## Borne de recharge : à côté d'une route reliée, un dépôt de camions roule à
+## l'électricité (véhicules électriques).
+@export var charger := false
 ## Barrage : tuiles noyées en amont à la fin du chantier (la retenue).
 @export var flood_tiles := 0
 ## Dépôt de camions : les routes reliées portent plus loin, contre du carburant.
@@ -224,7 +231,7 @@ func describe_effects() -> PackedStringArray:
 			PowerSource.FUEL:
 				fuel_text = " pour %s carburant par jour à plein régime (après le charbon)" % Format.decimal(power_watts / PowerGrid.WATTS_PER_FUEL)
 			PowerSource.NUCLEAR:
-				fuel_text = " pour %s uranium par jour à plein régime" % Format.decimal(power_watts / PowerGrid.WATTS_PER_URANIUM)
+				fuel_text = " pour %s combustible nucléaire par jour à plein régime" % Format.decimal(power_watts / PowerGrid.WATTS_PER_NUCLEAR_FUEL)
 			PowerSource.WIND:
 				fuel_text = " par grand vent ; crêtes et côtes : plein rendement, ailleurs ×%s" % Format.decimal(PowerGrid.SHELTERED_WIND)
 			PowerSource.SOLAR:
@@ -237,6 +244,11 @@ func describe_effects() -> PackedStringArray:
 		lines.append("Consomme %s d'électricité (sans courant, à l'arrêt)" % PowerMeter.format(power_demand))
 	if electronics_per_day > 0.0:
 		lines.append("Fabrique %s composants électroniques par jour (un cuivre chacun)" % Format.decimal(electronics_per_day))
+	if nuclear_fuel_per_day > 0.0:
+		lines.append("Enrichit %s combustible nucléaire par jour (%d uranium chacun)" % [Format.decimal(nuclear_fuel_per_day),
+			roundi(PowerGrid.ENRICH_URANIUM)])
+	if charger:
+		lines.append("Recharge les camions électriques d'un dépôt (à côté d'une route reliée au village)")
 	if education_coverage > 0:
 		lines.append("Instruit %d habitants" % education_coverage)
 	if culture_coverage > 0:

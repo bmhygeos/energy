@@ -43,6 +43,8 @@ const HEAT_SHARES: PackedFloat32Array = [
 const COAL_WOOD_EQUIVALENT := 2.0
 const FUEL_WOOD_EQUIVALENT := 2.8
 const WATTS_PER_HEAT_WOOD := 290.0
+## Pollution : part de sa gêne que les soins évitent (dispensaires).
+const CARE_POLLUTION_SHIELD := 0.5
 ## Coke : les forges brûlent du charbon (COAL_WOOD_EQUIVALENT fois moins que
 ## de bois) et fabriquent davantage.
 const COKE_FORGE_BONUS := 1.5
@@ -124,6 +126,11 @@ var housing := 0
 var water_supply := 0
 ## Charbon brûlé dans la journée en cours (chauffage, machines, convois).
 var coal_burned_today := 0.0
+## Carburant et bois de chauffage brûlés dans la journée (pollution).
+var fuel_burned_today := 0.0
+var wood_burned_today := 0.0
+## Pollution de l'air de la cité.
+var pollution: Pollution
 ## Machines à vapeur alimentées en charbon (la veille), et leurs bonus.
 var steam_running := false
 ## Entretien payé la veille (sinon, universités à l'arrêt).
@@ -193,6 +200,9 @@ func new_game(seed_value: int, size: Vector2i = PLANET_SIZE) -> void:
 	upkeep_paid = true
 	steam_running = false
 	coal_burned_today = 0.0
+	fuel_burned_today = 0.0
+	wood_burned_today = 0.0
+	pollution = Pollution.new()
 	GameClock.reset()
 	_found_village()
 	_refresh_capacities()
@@ -527,9 +537,12 @@ func _run_steam() -> void:
 ## Dépôts de camions terminés ; les routes en tiennent compte.
 func _refresh_trucks() -> void:
 	roads.depots.clear()
+	roads.chargers.clear()
 	for b in buildings.all():
 		if b.is_complete() and b.def.truck_depot:
 			roads.depots.append(b)
+		if b.is_complete() and b.def.charger:
+			roads.chargers.append(b)
 	roads.refresh()
 	EventBus.roads_changed.emit([] as Array[Vector2i])
 
@@ -562,10 +575,10 @@ func _run_grid(day_tick: int) -> void:
 	grid.heat_demand = electric_heat_watts(season)
 	grid.nuclear_stopped = events.is_active(CityEvents.Kind.NUCLEAR_INCIDENT)
 	var burnt := grid.run_day(population.count, season, stockpile.amount[Stockpile.Good.COAL],
-		stockpile.amount[Stockpile.Good.FUEL], stockpile.amount[Stockpile.Good.URANIUM])
+		stockpile.amount[Stockpile.Good.FUEL], stockpile.amount[Stockpile.Good.NUCLEAR_FUEL])
 	coal_burned_today += stockpile.take(Stockpile.Good.COAL, burnt)
-	stockpile.take(Stockpile.Good.FUEL, grid.fuel_burnt)
-	stockpile.take(Stockpile.Good.URANIUM, grid.uranium_burnt)
+	fuel_burned_today += stockpile.take(Stockpile.Good.FUEL, grid.fuel_burnt)
+	stockpile.take(Stockpile.Good.NUCLEAR_FUEL, grid.nuclear_fuel_burnt)
 
 
 ## Courant demandé par les machines (W) : centres informatiques et datacenters
@@ -704,16 +717,15 @@ func _run_trains() -> void:
 func _run_trucks() -> void:
 	var need := roads.fuel_need()
 	var was := roads.running
-	if roads.electric:
-		# Véhicules électriques : ils roulent si le réseau les sert.
-		roads.running = roads.electric_watts() <= 0.0 or grid.coverage >= EV_MIN_COVERAGE
-	else:
-		roads.running = need <= 0.0 or stockpile.has(Stockpile.Good.FUEL, need)
+	# Camions au carburant et camions électriques (si le réseau les sert).
+	var powered := roads.electric_watts() <= 0.0 or grid.coverage >= EV_MIN_COVERAGE
+	var fuelled := need <= 0.0 or stockpile.has(Stockpile.Good.FUEL, need)
+	roads.running = powered and fuelled
 	if need > 0.0 and roads.running:
-		stockpile.take(Stockpile.Good.FUEL, need)
+		fuel_burned_today += stockpile.take(Stockpile.Good.FUEL, need)
 	if was and not roads.running:
-		EventBus.notified.emit("Plus de courant : les camions électriques s'arrêtent" if roads.electric
-			else "Plus de carburant : les camions s'arrêtent")
+		EventBus.notified.emit("Plus de carburant : les camions s'arrêtent" if not fuelled
+			else "Plus de courant : les camions électriques s'arrêtent")
 	if was != roads.running:
 		roads.refresh()
 		EventBus.roads_changed.emit([] as Array[Vector2i])
@@ -953,7 +965,11 @@ func _run_forges() -> void:
 	if n <= 0.0:
 		return
 	stockpile.take(Stockpile.Good.IRON, n * FORGE_IRON_PER_TOOL)
-	stockpile.take(fuel, n * fuel_per_tool)
+	var burnt := stockpile.take(fuel, n * fuel_per_tool)
+	if fuel == Stockpile.Good.COAL:
+		coal_burned_today += burnt
+	else:
+		wood_burned_today += burnt
 	stockpile.add(Stockpile.Good.TOOLS, n)
 	production.produced_today[Stockpile.Good.TOOLS] += n
 
@@ -1094,6 +1110,37 @@ func _service_coverage(service: Service, from_tier: int) -> float:
 	return minf(1.0, float(service_capacity(service)) / population.count)
 
 
+## Usines d'enrichissement : minerai d'uranium du jour transformé en
+## combustible nucléaire, dans la limite du stock, au prorata du courant servi
+## la veille (sans courant, à l'arrêt).
+func _run_enrichment() -> void:
+	var rate := 0.0
+	for b in buildings.all():
+		if b.is_complete():
+			rate += b.def.nuclear_fuel_per_day
+	rate *= clampf(grid.coverage, 0.0, 1.0)
+	if rate <= 0.0:
+		return
+	var room := stockpile.capacity[Stockpile.Good.NUCLEAR_FUEL] - stockpile.amount[Stockpile.Good.NUCLEAR_FUEL]
+	var n := minf(minf(rate, room), stockpile.amount[Stockpile.Good.URANIUM] / PowerGrid.ENRICH_URANIUM)
+	if n <= 0.0:
+		return
+	stockpile.take(Stockpile.Good.URANIUM, n * PowerGrid.ENRICH_URANIUM)
+	stockpile.add(Stockpile.Good.NUCLEAR_FUEL, n)
+	production.produced_today[Stockpile.Good.NUCLEAR_FUEL] += n
+
+
+## Indice de pollution de l'air (0 : pur, 1 : irrespirable).
+func pollution_index() -> float:
+	return pollution.index(population.count)
+
+
+## Gêne de la pollution pour les habitants : l'indice, moins la part que les
+## soins évitent (à partir de la ville, quand les dispensaires comptent).
+func pollution_harm() -> float:
+	return pollution_index() * (1.0 - CARE_POLLUTION_SHIELD * (health_coverage() if tier.level >= SERVICES_TIER else 0.0))
+
+
 ## Usines d'électronique : cuivre du jour transformé en composants, dans la
 ## limite du stock.
 func _run_electronics() -> void:
@@ -1129,7 +1176,9 @@ func _burn_light() -> float:
 	var demand := _light_demand()
 	if demand <= 0.0:
 		return 1.0
-	return grid.coverage + stockpile.take(Stockpile.Good.FUEL, light_need()) / demand
+	var lamps := stockpile.take(Stockpile.Good.FUEL, light_need())
+	fuel_burned_today += lamps
+	return grid.coverage + lamps / demand
 
 
 ## Entretien par jour des bâtiments terminés (pièces).
@@ -1367,7 +1416,8 @@ func apply_event(kind: int) -> void:
 		CityEvents.Kind.FOREST_FIRE:
 			text += " : %d tuiles brûlées" % _burn_forest()
 		CityEvents.Kind.EPIDEMIC:
-			var deaths := floori(population.count * CityEvents.EPIDEMIC_DEATHS * (1.0 - health_coverage()))
+			var deaths := floori(population.count * CityEvents.EPIDEMIC_DEATHS * (1.0 - health_coverage())
+				* (1.0 + pollution_index()))
 			population.count -= deaths
 			text += " : %d morts%s" % [deaths, ", les dispensaires ont soigné tout le monde" if deaths == 0
 				else " (dispensaires : %d %% des habitants soignés)" % roundi(health_coverage() * 100.0)]
@@ -1574,9 +1624,12 @@ func _consume(tick: int) -> void:
 	var coal := stockpile.take(Stockpile.Good.COAL, heat * mix[Heat.COAL] / COAL_WOOD_EQUIVALENT)
 	var fuel := stockpile.take(Stockpile.Good.FUEL, heat * mix[Heat.FUEL] / FUEL_WOOD_EQUIVALENT)
 	coal_burned_today += coal
+	fuel_burned_today += fuel
 	var warm := coal * COAL_WOOD_EQUIVALENT + fuel * FUEL_WOOD_EQUIVALENT + heat * mix[Heat.ELECTRICITY]
+	var wood := stockpile.take(Stockpile.Good.WOOD, maxf(0.0, heat - warm))
+	wood_burned_today += wood
 	_needed_today[Stockpile.Good.WOOD] += heat
-	_consumed_today[Stockpile.Good.WOOD] += warm + stockpile.take(Stockpile.Good.WOOD, maxf(0.0, heat - warm))
+	_consumed_today[Stockpile.Good.WOOD] += warm + wood
 
 
 func _on_day(day: int) -> void:
@@ -1597,6 +1650,7 @@ func _on_day(day: int) -> void:
 	_run_refineries()
 	_run_artisans()
 	_run_electronics()
+	_run_enrichment()
 	_run_steam()
 	_run_trains()
 	_run_trucks()
@@ -1610,9 +1664,11 @@ func _on_day(day: int) -> void:
 	var order := order_coverage()
 	var education := education_coverage()
 	var culture := culture_coverage()
+	pollution.end_day(coal_burned_today, fuel_burned_today, wood_burned_today)
 	var before := population.count
 	var change := population.end_day(coverage[Stockpile.Good.FOOD], coverage[Stockpile.Good.WOOD], housing,
-		water_coverage(), tools, clothes, mood(), light, goods, health, order, education, culture, electricity_coverage())
+		water_coverage(), tools, clothes, mood(), light, goods, health, order, education, culture, electricity_coverage(),
+		pollution_harm())
 	decrees.end_day()
 	_run_events(GameDate.season(day_tick))
 	_announce_population(before, change, coverage)
@@ -1655,6 +1711,7 @@ func _on_day(day: int) -> void:
 	stats.add(&"water", water_coverage() * 100.0)
 	stats.add(&"research", points)
 	stats.add(&"coal_burned", coal_burned_today)
+	stats.add(&"pollution", pollution_index() * 100.0)
 	stats.add(&"clothes", clothes * 100.0)
 	stats.add(&"light", light * 100.0)
 	stats.add(&"electricity", grid.coverage * 100.0)
@@ -1669,6 +1726,8 @@ func _on_day(day: int) -> void:
 	treasury.reset_day()
 	EventBus.economy_changed.emit()
 	coal_burned_today = 0.0
+	fuel_burned_today = 0.0
+	wood_burned_today = 0.0
 	stats.end_day()
 	production.reset_day()
 	stockpile.reset_day()
@@ -1709,6 +1768,7 @@ func _check_milestones(day: int) -> void:
 	facts.money = treasury.money
 	facts.grid_coverage = grid.coverage
 	facts.nuclear_power = grid.nuclear
+	facts.pollution = pollution_index()
 	facts.green_share = (grid.hydro + grid.wind_power + grid.solar) / grid.demand if grid.demand > 0.0 else 0.0
 	if tier.level >= SERVICES_TIER:
 		facts.services_coverage = minf(population.goods_coverage, minf(population.health_coverage, population.order_coverage))

@@ -10,4 +10,4 @@ description = "Batteries au lithium et moteurs électriques : les camions roulen
 tier = 5
 cost = 150000.0
 prerequisites = Array[StringName]([&"lithium_electrochemistry", &"combustion_engine"])
-effect = "Les camions ne brûlent plus de carburant : ils demandent du courant au réseau."
+effect = "Borne de recharge : à côté d'une route reliée, les camions d'un dépôt roulent au courant au lieu du carburant."

@@ -53,6 +53,8 @@ class Facts:
 	## l'eau, le vent et le soleil.
 	var nuclear_power := 0.0
 	var green_share := 0.0
+	## Indice de pollution de la veille (0–1).
+	var pollution := 1.0
 
 	func has_building(id: StringName) -> bool:
 		return buildings.any(func(b: Building) -> bool: return b.def.id == id and b.is_complete())
@@ -120,6 +122,8 @@ static func standard() -> Array[Def]:
 			func(f: Facts) -> bool: return f.nuclear_power > 0.0),
 		Def.new(&"green", "Énergie verte", "Servir la moitié de la demande d'électricité par l'eau, le vent et le soleil.",
 			func(f: Facts) -> bool: return f.green_share >= 0.5),
+		Def.new(&"clean_air", "Ciel dégagé", "À la cité-État, garder un air pur (pollution nulle).",
+			func(f: Facts) -> bool: return f.tier >= 5 and f.pollution <= 0.0),
 		Def.new(&"datacenter", "Intelligence artificielle", "Construire un datacenter (recherche ×100).",
 			func(f: Facts) -> bool: return f.has_building(&"datacenter")),
 		Def.new(&"market", "Jour de marché", "Construire un marché pour commercer.",

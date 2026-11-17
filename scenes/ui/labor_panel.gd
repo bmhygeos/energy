@@ -175,7 +175,8 @@ func _refresh() -> void:
 	if not roads.served_depots.is_empty():
 		_needs.text += "\nCamions : %d dépôt%s  ·  %d / %d travailleurs desservis  ·  %s%s" % [roads.served_depots.size(),
 			"s" if roads.served_depots.size() > 1 else "", roads.truck_load, roads.capacity(),
-			("courant %s" % PowerMeter.format(roads.electric_watts())) if roads.electric else "carburant %s /j" % Format.decimal(roads.fuel_need()),
+			"carburant %s /j%s" % [Format.decimal(roads.fuel_need()), "  ·  %d électrique%s (bornes), courant %s" % [roads.electric_depots(),
+				"s" if roads.electric_depots() > 1 else "", PowerMeter.format(roads.electric_watts())] if roads.electric else ""],
 			"" if roads.running else "  ·  à l'arrêt"]
 	if GameState.steam_coal_need() > 0.0:
 		_needs.text += "\nMachines à vapeur : charbon %s /j%s" % [Format.decimal(GameState.steam_coal_need()),

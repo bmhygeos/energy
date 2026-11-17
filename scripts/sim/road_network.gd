@@ -43,8 +43,13 @@ var lengths: Dictionary[Vector2i, int] = {}
 var depots: Array[Building] = []
 ## Les camions roulent (assez de carburant ou de courant la veille).
 var running := true
-## Véhicules électriques : les camions roulent au courant.
+## Véhicules électriques (recherche) : les camions des dépôts rechargés
+## roulent au courant, un dépôt par borne de recharge reliée.
 var electric := false
+## Bornes de recharge terminées (posées par GameState avant refresh), et
+## celles qui touchent une route reliée.
+var chargers: Array[Building] = []
+var served_chargers: Array[Building] = []
 ## Dépôts qui touchent une route reliée.
 var served_depots: Array[Building] = []
 ## Tuiles desservies → distance au village par la route, en charrette et en
@@ -84,6 +89,7 @@ func refresh() -> void:
 				lengths[n] = lengths[cell] + 1
 				queue.append(n)
 	served_depots = depots.filter(_touches_road)
+	served_chargers = chargers.filter(_touches_road)
 	_reach = _reach_map(false)
 	_truck_reach.clear()
 	if has_trucks():
@@ -147,9 +153,20 @@ func has_trucks() -> bool:
 
 ## Carburant brûlé par jour par les camions (0 : aucun dépôt desservi).
 func fuel_need() -> float:
-	if served_depots.is_empty() or electric:
+	if served_depots.is_empty():
 		return 0.0
-	return _energy_need()
+	return _energy_need() * (1.0 - electric_share())
+
+
+## Dépôts dont les camions roulent au courant (véhicules électriques et
+## bornes de recharge reliées).
+func electric_depots() -> int:
+	return mini(served_chargers.size(), served_depots.size()) if electric else 0
+
+
+## Part des camions électriques.
+func electric_share() -> float:
+	return float(electric_depots()) / served_depots.size() if not served_depots.is_empty() else 0.0
 
 
 ## Carburant qu'il faudrait aux camions (moteurs à explosion).
@@ -159,9 +176,9 @@ func _energy_need() -> float:
 
 ## Courant demandé par les véhicules électriques (W ; 0 sans eux).
 func electric_watts() -> float:
-	if served_depots.is_empty() or not electric:
+	if served_depots.is_empty():
 		return 0.0
-	return _energy_need() * PowerGrid.WATTS_PER_FUEL * EV_EFFICIENCY
+	return _energy_need() * electric_share() * PowerGrid.WATTS_PER_FUEL * EV_EFFICIENCY
 
 
 ## Tuiles de marche équivalentes à [param length] tuiles de route (en camion :

@@ -167,6 +167,8 @@ func _play_day(day: int) -> void:
 			_build_anywhere(&"wind_turbine")
 		elif _gs.grid.coverage < 1.0 and _gs.research.is_done(&"conductivity"):
 			_build_anywhere(&"power_plant")
+		if _has(&"nuclear_plant") and not _has(&"enrichment_plant"):
+			_build_anywhere(&"enrichment_plant")
 		if _gs.research.is_done(&"electronics") and not _has(&"electronics_factory"):
 			_build_anywhere(&"electronics_factory")
 		if _gs.research.is_done(&"computing") and not _has(&"computer_center"):
