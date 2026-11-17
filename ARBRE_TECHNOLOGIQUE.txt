@@ -5,12 +5,14 @@ Une recherche se lance quand son palier est atteint et ses prérequis terminés.
 Une seule recherche à la fois ; points de recherche par habitant et par jour,
 multipliés par l'atelier (×2), le laboratoire (×5), l'université (×10),
 le centre informatique (×20) et le datacenter (×100).
+Entre parenthèses après chaque bâtiment : la carte où il se construit (ville ou monde).
+31 recherches, de 500 à 400 000 points.
 
 Palier 1 — Hameau
 -----------------
 * Irrigation  (500 points)
     Prérequis : aucun
-    Bâtiments : Canal d'irrigation (réseau, 1 bois par tuile)
+    Débloque : Canal d'irrigation (réseau, monde, 1 bois par tuile)
     Effet : Champs à 3 tuiles ou moins d'une rivière, d'un lac ou d'un puits : rendement +30 %. Canaux d'irrigation : reliés à l'eau, ils portent l'irrigation plus loin, même à travers les champs.
 
 Palier 2 — Village
@@ -20,7 +22,7 @@ Palier 2 — Village
     Effet : Chevaux : vivres portés et portée de l'attelage +50 % (pénalité de distance à partir de 18 tuiles).
 * Métallurgie du fer  (1 500 points)
     Prérequis : aucun
-    Bâtiments : Forge
+    Débloque : Forge (ville)
     Effet : Débloque la forge (fer et bois → outils).
 * Outils  (2 000 points)
     Prérequis : Métallurgie du fer
@@ -39,29 +41,29 @@ Palier 2 — Village
     Effet : Puits : +50 % d'habitants servis.
 * Moulin à vent  (2 500 points)
     Prérequis : Engrenage
-    Bâtiments : Moulin à vent
+    Débloque : Moulin à vent (monde)
     Effet : Débloque le moulin à vent : agriculture +20 %, nourriture qui se gâte moitié moins vite, puissance mécanique.
 
 Palier 3 — Bourg
 ----------------
 * Méthode expérimentale  (6 000 points)
     Prérequis : aucun
-    Bâtiments : Laboratoire
+    Débloque : Laboratoire (ville)
     Effet : Débloque le laboratoire : recherche ×5 pour 400 habitants.
 * Coke  (20 000 points)
     Prérequis : Métallurgie du fer
     Effet : Les forges brûlent du charbon au lieu du bois et fabriquent 50 % d'outils en plus.
 * Moulin à eau  (30 000 points)
     Prérequis : Moulin à vent
-    Bâtiments : Moulin à eau
+    Débloque : Moulin à eau (monde)
     Effet : Débloque le moulin à eau (au bord d'une rivière) : agriculture +30 %, coupe du bois et forges +20 %, puissance mécanique.
 * Machine à vapeur  (25 000 points)
     Prérequis : Coke
-    Bâtiments : Machine à vapeur
+    Débloque : Machine à vapeur (ville)
     Effet : Débloque la machine à vapeur (6 charbon/j) : carrières et mines +50 %, coupe du bois et forges +30 %.
 * Locomotive  (35 000 points)
     Prérequis : Machine à vapeur
-    Bâtiments : Gare
+    Débloque : Gare (monde), Voie ferrée (réseau, monde)
     Effet : Débloque les voies ferrées et les gares : les tuiles autour d'une gare reliée au village se travaillent comme si elles étaient proches.
 * Sylviculture  (15 000 points)
     Prérequis : Assolement
@@ -74,65 +76,65 @@ Palier 4 — Ville
 ----------------
 * Raffinage du pétrole  (45 000 points)
     Prérequis : Méthode expérimentale
-    Bâtiments : Raffinerie
+    Débloque : Raffinerie (ville)
     Effet : Raffinerie : le pétrole devient du carburant, qui éclaire la ville.
 * Conductivité du cuivre  (45 000 points)
     Prérequis : Méthode expérimentale
-    Bâtiments : Centrale à charbon
+    Débloque : Centrale à charbon (monde), Ligne électrique (réseau, monde, 1 cuivre par tuile)
     Effet : Lignes électriques et centrale à charbon : le courant éclaire la ville et accélère les ateliers.
 * Hydroélectricité  (60 000 points)
     Prérequis : Conductivité du cuivre
-    Bâtiments : Barrage
+    Débloque : Barrage (monde)
     Effet : Barrage : du courant sans combustible, qui suit le débit des saisons ; sa retenue noie jusqu'à 8 tuiles en amont.
 * Moteur à explosion  (50 000 points)
     Prérequis : Raffinage du pétrole
-    Bâtiments : Centrale au fioul, Dépôt de camions
+    Débloque : Centrale au fioul (monde), Dépôt de camions (monde)
     Effet : Dépôt de camions : les routes reliées portent bien plus loin, contre du carburant (100 travailleurs desservis par dépôt). Centrale au fioul : du courant à partir du carburant.
 * Tracteur  (50 000 points)
     Prérequis : Moteur à explosion
     Effet : Champs, lin et élevage +50 %, contre 0,03 carburant par travailleur agricole et par jour (sans carburant, le bonus baisse d'autant).
 * Enseignement supérieur  (50 000 points)
     Prérequis : Méthode expérimentale
-    Bâtiments : Université
+    Débloque : Université (ville)
     Effet : Université : recherche ×10 pour 1 000 habitants, contre un entretien en pièces.
 * Médecine  (40 000 points)
     Prérequis : Méthode expérimentale
-    Bâtiments : Dispensaire
+    Débloque : Dispensaire (ville)
     Effet : Dispensaire : soigne 500 habitants contre un entretien en pièces ; les épidémies emportent moins d'habitants.
 
 Palier 5 — Cité-État
 --------------------
 * Électronique  (120 000 points)
     Prérequis : Conductivité du cuivre
-    Bâtiments : Usine d'électronique
+    Débloque : Usine d'électronique (ville)
     Effet : Usine d'électronique : composants (un cuivre chacun), pour les centres de calcul, les champs solaires et les batteries.
 * Informatique  (150 000 points)
     Prérequis : Électronique, Enseignement supérieur
-    Bâtiments : Centre informatique
+    Débloque : Centre informatique (ville)
     Effet : Centre informatique : recherche ×20 pour 2 000 habitants, contre du courant et des pièces.
 * Intelligence artificielle  (400 000 points)
     Prérequis : Informatique
-    Bâtiments : Datacenter
+    Débloque : Datacenter (monde)
     Effet : Datacenter : recherche ×100 pour 10 000 habitants ; gros consommateur de courant, refroidi par l'eau (moins aux latitudes froides).
 * Radioactivité  (200 000 points)
     Prérequis : Conductivité du cuivre
-    Bâtiments : Centrale nucléaire, Usine d'enrichissement
+    Débloque : Usine d'enrichissement (ville), Centrale nucléaire (monde)
     Effet : Usine d'enrichissement : 5 uranium → 1 combustible nucléaire, contre du courant. Centrale nucléaire : 200 kW pour 0,4 combustible par jour, près de l'eau ; risque d'incident.
 * Énergie éolienne  (100 000 points)
     Prérequis : Conductivité du cuivre
-    Bâtiments : Éolienne
+    Débloque : Éolienne (monde)
     Effet : Éolienne : courant qui suit le vent, à plein rendement sur les crêtes et les côtes.
 * Photovoltaïque  (150 000 points)
     Prérequis : Électronique
-    Bâtiments : Champ solaire
+    Débloque : Champ solaire (monde)
     Effet : Champ solaire : courant de jour, d'autant plus près de l'équateur.
 * Électrochimie du lithium  (150 000 points)
     Prérequis : Électronique
-    Bâtiments : Batteries
+    Débloque : Batteries (monde)
     Effet : Batteries : le surplus de jour (soleil, vent, eau) sert la nuit.
 * Véhicule électrique  (150 000 points)
     Prérequis : Électrochimie du lithium, Moteur à explosion
-    Bâtiments : Borne de recharge
+    Débloque : Borne de recharge (monde)
     Effet : Borne de recharge : à côté d'une route reliée, les camions d'un dépôt roulent au courant au lieu du carburant.
 
 Arbre (prérequis → recherche)
@@ -160,4 +162,7 @@ Palier 5 :
                 ├→ Radioactivité
                 └→ Énergie éolienne
 
-Pas encore dans l'arbre : recherche de la fusée (ère spatiale).
+Sans recherche (débloqués par le palier) : maisons, greniers, atelier (×2), écurie, marché,
+tissage, artisans, poste de garde, école, théâtre, ports, routes, etc.
+
+Pas encore dans l'arbre : recherche de la fusée (ère spatiale, V∞).
