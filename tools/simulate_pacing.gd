@@ -33,10 +33,11 @@ const HOUSE_RADIUS := 9
 const WOOD_STORE_DAYS := 60.0
 ## Logements libres en dessous desquels une maison est construite.
 const HOUSING_MARGIN := 3
-## À partir de la ville, nouvelles maisons seulement si la nourriture produite
-## sur FOOD_TREND_DAYS jours (une année : les récoltes sont saisonnières)
-## couvre le besoin, ou si les réserves tiennent FOOD_RESERVE_SEASONS saisons ;
-## sinon, la ville grandirait sur ses réserves et mourrait de faim.
+## À partir de la ville, nouvelles maisons seulement si les réserves de
+## nourriture ne baissent pas d'une année sur l'autre (même date, FOOD_TREND_DAYS
+## jours plus tôt : les récoltes sont saisonnières), ou si elles tiennent
+## FOOD_RESERVE_SEASONS saisons ; sinon, la ville grandirait sur ses réserves
+## et mourrait de faim.
 const FOOD_TREND_DAYS := 360
 const FOOD_TREND_TIER := 4
 const FOOD_RESERVE_SEASONS := 2
@@ -295,17 +296,14 @@ func _upgrade_house() -> bool:
 	return false
 
 
-## La nourriture produite couvre-t-elle le besoin (moyenne de la dernière
-## année), ou les réserves suffisent-elles ? Avant la ville, toujours.
+## Les réserves de nourriture tiennent-elles (pas plus basses qu'un an plus
+## tôt, ou assez pour deux saisons) ? Avant la ville, toujours.
 func _food_keeps_up() -> bool:
-	var produced: PackedFloat32Array = _gs.stats.values(&"food_produced")
-	if _gs.tier.level < FOOD_TREND_TIER or produced.size() < FOOD_TREND_DAYS \
+	var stocks: PackedFloat32Array = _gs.stats.values(&"food_stock")
+	if _gs.tier.level < FOOD_TREND_TIER or stocks.size() < FOOD_TREND_DAYS \
 			or _gs.food_days() >= GameDate.DAYS_PER_SEASON * FOOD_RESERVE_SEASONS:
 		return true
-	var total := 0.0
-	for k in range(produced.size() - FOOD_TREND_DAYS, produced.size()):
-		total += produced[k]
-	return total / FOOD_TREND_DAYS >= _gs.food_need()
+	return stocks[-1] >= stocks[stocks.size() - FOOD_TREND_DAYS]
 
 
 func _count(id: StringName) -> int:
