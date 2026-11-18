@@ -279,7 +279,9 @@ météo et interface conservés.
   - **Laine** : au bourg, chaque éleveur donne aussi 0,5 fibre/j.
   - **Atelier de tissage** (40 bois, 30 pierre, 5 fer) : 4 vêtements/j, une
     fibre chacun.
-  - Fibres (200) et vêtements (150) en stock.
+  - Fibres (200) et vêtements (150) en stock ; la **halle aux draps** (2×1,
+    60 bois, 40 pierre) en stocke 1 000 de plus, et 1 000 biens : de quoi
+    tenir l'hiver, quand le lin ne pousse pas.
 - **Recherches du bourg** :
   | Recherche | Prérequis | Points | Effet |
   |---|---|---|---|

@@ -60,6 +60,10 @@ const CATEGORY_NAMES: PackedStringArray = ["Logement", "Stockage", "Divers"]
 @export var oil_capacity := 0.0
 @export var fuel_capacity := 0.0
 @export var copper_capacity := 0.0
+## Halle aux draps : fibres, vêtements et biens (réserves d'hiver).
+@export var fiber_capacity := 0.0
+@export var clothes_capacity := 0.0
+@export var goods_capacity := 0.0
 ## Forge : outils fabriqués par jour (FORGE_IRON_PER_TOOL fer et
 ## FORGE_WOOD_PER_TOOL bois chacun).
 @export var tools_per_day := 0.0
@@ -344,4 +348,10 @@ func capacity_of(good: int) -> float:
 			return fuel_capacity
 		Stockpile.Good.COPPER:
 			return copper_capacity
+		Stockpile.Good.FIBER:
+			return fiber_capacity
+		Stockpile.Good.CLOTHES:
+			return clothes_capacity
+		Stockpile.Good.GOODS:
+			return goods_capacity
 	return 0.0

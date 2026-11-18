@@ -139,6 +139,11 @@ func _play_day(day: int) -> void:
 			_build_anywhere(&"steam_engine")
 		if stock.amount[Stockpile.Good.COAL] >= 0.9 * stock.capacity[Stockpile.Good.COAL]:
 			_build_anywhere(&"coal_yard")
+		# Réserves d'hiver de vêtements et de fibres : une halle aux draps de plus
+		# tant que les stocks ne tiennent pas une saison.
+		if stock.capacity[Stockpile.Good.CLOTHES] < _gs.clothes_need() * GameDate.DAYS_PER_SEASON \
+				or stock.amount[Stockpile.Good.FIBER] >= 0.9 * stock.capacity[Stockpile.Good.FIBER]:
+			_build_anywhere(&"cloth_hall")
 	if _gs.tier.level >= 4:
 		if not _has(&"oil_tank"):
 			_build_near(&"oil_tank")
@@ -175,12 +180,10 @@ func _play_day(day: int) -> void:
 			_build_anywhere(&"electronics_factory")
 		if _gs.research.is_done(&"computing") and not _has(&"computer_center"):
 			_build_anywhere(&"computer_center")
-	# À partir de la ville, les expéditions roulent au carburant : seulement
-	# s'il en reste après un mois de chauffage, d'éclairage et de tracteurs.
-	var spare_fuel: float = _gs.stockpile.amount[Stockpile.Good.FUEL] \
-		- 30.0 * (_gs.light_need() + _gs.fuel_heat_need(GameDate.WINTER) + _gs.tractor_fuel_need())
-	if _gs.exploration.can_launch() and day % 10 == 0 and _gs.food_days() > 30.0 \
-			and (_gs.tier.level < Exploration.MOTOR_TIER or spare_fuel > 300.0):
+	# Une expédition tous les dix jours, à tous les paliers : le territoire,
+	# donc les champs, doit continuer de grandir. Le jeu choisit le transport
+	# selon le carburant en stock (avion, véhicules, sinon cheval ou marche).
+	if _gs.exploration.can_launch() and day % 10 == 0 and _gs.food_days() > 30.0:
 		var dir := DIRECTIONS[_expeditions % DIRECTIONS.size()]
 		var reach := 20 + 8 * (_expeditions / DIRECTIONS.size())
 		var horses := 3 if _gs.tier.level >= Exploration.MOUNTED_TIER and _gs.draft.at_home() >= 3 else 0
