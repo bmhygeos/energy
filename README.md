@@ -604,7 +604,9 @@ et se partage entre les sources du palier :
 **Tracteurs** (recherche Tracteur, ville, après le moteur à explosion ;
 50 000 points) : champs, lin et élevage +50 %, contre 0,03 carburant par
 travailleur agricole et par jour ; sans assez de carburant, le bonus baisse
-d'autant.
+d'autant. Après la recherche Véhicule électrique, les tracteurs roulent au
+courant (comme les camions) : plus de carburant, une demande sur le réseau, et
+un bonus qui suit la part du courant servie.
 
 **Mécanisation** : les mines et les puits sur gisement (fer, charbon,
 pétrole, cuivre, uranium, lithium) rendent ×2 à la ville (engins à moteur) et
@@ -626,6 +628,7 @@ pétrole, cuivre, uranium, lithium) rendent ×2 à la ville (engins à moteur) e
   | Électronique | Conductivité | 120 000 | **Usine d'électronique** : 10 composants/j, un cuivre chacun |
   | Informatique | Électronique, Enseignement supérieur | 150 000 | **Centre informatique** : recherche ×20 pour 2 000 habitants, 20 kW |
   | Intelligence artificielle | Informatique | 400 000 | **Datacenter** (près de l'eau) : ×100 pour 10 000 habitants, 200 kW (60 % aux pôles : refroidissement) |
+  | Véhicules autonomes | Intelligence artificielle | 450 000 | Mines et puits sur gisement +50 % (en plus de la mécanisation) |
   | Radioactivité | Conductivité | 200 000 | **Centrale nucléaire** (près de l'eau) : 200 kW pour 2 uranium/j |
   | Énergie éolienne | Conductivité | 100 000 | **Éolienne** : 15 kW par grand vent ; crêtes et côtes à plein rendement, ailleurs ×0,6 |
   | Photovoltaïque | Électronique | 150 000 | **Champ solaire** : 30 kW en plein soleil, de jour, × cos(latitude) |

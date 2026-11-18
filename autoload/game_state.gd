@@ -941,7 +941,7 @@ func _run_grid(day_tick: int) -> void:
 ## (moins aux latitudes froides pour ceux qu'il faut refroidir), camions
 ## électriques.
 func machine_demand() -> float:
-	var total := roads.electric_watts()
+	var total := roads.electric_watts() + tractor_watts()
 	var cooling := lerpf(POLAR_COOLING, 1.0, cos(deg_to_rad(world_map.latitude(home.y))))
 	for b in all_buildings():
 		if b.is_complete() and b.def.power_demand > 0.0:
@@ -1755,13 +1755,37 @@ func tractor_users() -> int:
 
 ## Carburant des tracteurs par jour.
 func tractor_fuel_need() -> float:
-	return tractor_users() * TRACTOR_FUEL_PER_WORKER
+	var need := tractor_users() * TRACTOR_FUEL_PER_WORKER
+	# Tracteurs électriques : le carburant ne complète que la part du courant
+	# que le réseau n'a pas servie la veille.
+	return need * (1.0 - clampf(grid.coverage, 0.0, 1.0)) if electric_tractors() else need
+
+
+## Tracteurs électriques (recherche Véhicule électrique) : au courant d'abord,
+## complété au carburant si le réseau ne suffit pas.
+func electric_tractors() -> bool:
+	return research.is_done(&"electric_vehicle")
+
+
+## Courant des tracteurs électriques (W) : l'énergie utile du carburant
+## qu'ils auraient brûlé.
+func tractor_watts() -> float:
+	if not electric_tractors():
+		return 0.0
+	return tractor_users() * TRACTOR_FUEL_PER_WORKER * PowerGrid.WATTS_PER_FUEL * RoadNetwork.EV_EFFICIENCY
 
 
 ## Tracteurs du jour : prennent leur carburant au stock ; la part obtenue fixe
 ## leur bonus du lendemain.
 func _run_tractors() -> void:
+	var powered := clampf(grid.coverage, 0.0, 1.0) if electric_tractors() and tractor_users() > 0 else 0.0
 	var need := tractor_fuel_need()
+	if powered > 0.0:
+		# Au courant pour la part servie, au carburant pour le reste.
+		var fuel := stockpile.take(Stockpile.Good.FUEL, need)
+		fuel_burned_today += fuel
+		production.tractor_fuel = powered + (fuel / need * (1.0 - powered) if need > 0.0 else 0.0)
+		return
 	if need <= 0.0:
 		production.tractor_fuel = 1.0 if research.is_done(&"tractor") else 0.0
 		return

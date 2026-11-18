@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResearchDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/research_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"autonomous_vehicles"
+display_name = "Véhicules autonomes"
+description = "Engins de chantier et camions de mine conduits par l'intelligence artificielle, jour et nuit."
+tier = 5
+cost = 450000.0
+prerequisites = Array[StringName]([&"artificial_intelligence"])
+effect = "Mines et puits sur gisement (fer, charbon, pétrole, cuivre, uranium, lithium) +50 %."

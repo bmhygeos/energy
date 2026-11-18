@@ -31,6 +31,11 @@ const HOUSE_RADIUS := 9
 ## Jours de chauffage d'hiver que les camps d'abattage doivent pouvoir stocker
 ## (au-delà, ils prendraient la place des maisons).
 const WOOD_STORE_DAYS := 60.0
+## Recherches d'énergie passées avant les autres dès qu'elles sont proposées.
+const ENERGY_RESEARCH: Array[StringName] = [&"conductivity", &"radioactivity", &"wind_power", &"electronics",
+	&"lithium_electrochemistry", &"electric_vehicle"]
+## Marge de puissance visée sur la demande du réseau.
+const POWER_MARGIN := 1.15
 ## Logements libres en dessous desquels une maison est construite.
 const HOUSING_MARGIN := 3
 ## À partir de la ville, nouvelles maisons seulement si les réserves de
@@ -88,6 +93,11 @@ func _initialize() -> void:
 
 func _print_month(day: int) -> void:
 	var stock: Stockpile = _gs.stockpile
+	if _gs.tier.level >= 5:
+		print("      énergie : nucléaires %d, enrichissement %d, éoliennes %d, charbon %d ; uranium %d, combustible %d ; demande %d kW, capacité %d kW" % [
+			_count(&"nuclear_plant"), _count(&"enrichment_plant"), _count(&"wind_turbine"), _count(&"power_plant"),
+			stock.amount[Stockpile.Good.URANIUM], stock.amount[Stockpile.Good.NUCLEAR_FUEL], _gs.grid.demand / 1000.0,
+			_gs.grid.capacity(GameDate.season(_clock.tick)) / 1000.0])
 	print("%4d  %-9s %4d / %-4d  nourr. %5d  bois %5d  pierre %4d  fer %4d  outils %3d  charb. %4d  carb. %4d  vêt. %3d  eau %3d %%  courant %3d %%  pollu. %3d %%  sat. %3d %%  terr. %4d  %s" % [
 		day, _gs.tier.name(), _gs.population.count, _gs.housing,
 		stock.amount[Stockpile.Good.FOOD], stock.amount[Stockpile.Good.WOOD], stock.amount[Stockpile.Good.STONE],
@@ -100,9 +110,15 @@ func _print_month(day: int) -> void:
 
 func _play_day(day: int) -> void:
 	if _gs.research.current == null:
+		# Énergie de la cité-État d'abord, puis l'ordre de la liste.
+		var started := false
+		for id in ENERGY_RESEARCH:
+			if not started and _gs.research.is_available(ResearchDb.get_def(id), _gs.research_level()):
+				started = _gs.start_research(ResearchDb.get_def(id))
 		for def in ResearchDb.DEFS:
-			if _gs.start_research(def):
+			if started:
 				break
+			started = _gs.start_research(def)
 	if day == 0:
 		_build_near(&"woodshed")
 	if _gs.housing - _gs.population.count <= HOUSING_MARGIN and _food_keeps_up() \
@@ -155,11 +171,7 @@ func _play_day(day: int) -> void:
 			_build_anywhere(&"cement_works")
 		if _gs.research.is_done(&"university") and not _has(&"university"):
 			_build_anywhere(&"university")
-		# Courant : une centrale à charbon de plus tant que la demande n'est pas
-		# couverte (le charbon abonde à la ville).
-		if _gs.research.is_done(&"conductivity") and _gs.grid.coverage < 1.0 \
-				and _gs.grid.capacity(GameDate.season(_clock.tick)) < _gs.grid.demand + 1.0:
-			_build_anywhere(&"power_plant")
+		_build_power()
 		if _count(&"artisans") * BuildingDb.get_def(&"artisans").goods_per_day < _gs.goods_need():
 			_build_anywhere(&"artisans")
 		if _gs.order_coverage() < 1.0 and _count(&"guard_post") * BuildingDb.get_def(&"guard_post").order_coverage < _gs.population.count:
@@ -171,11 +183,9 @@ func _play_day(day: int) -> void:
 		for service: Array in [[&"school", _gs.education_coverage()], [&"theater", _gs.culture_coverage()]]:
 			if service[1] < 1.0:
 				_build_anywhere(service[0])
-		if _gs.grid.coverage < 1.0 and _gs.research.is_done(&"radioactivity") and not _has(&"nuclear_plant"):
-			_build_anywhere(&"nuclear_plant")
-		elif _gs.grid.coverage < 1.0 and _gs.research.is_done(&"wind_power"):
-			_build_anywhere(&"wind_turbine")
-		if _has(&"nuclear_plant") and not _has(&"enrichment_plant"):
+		# Une usine d'enrichissement (1 combustible par jour) pour 2,5 centrales
+		# nucléaires (0,4 chacune).
+		if _count(&"enrichment_plant") * 2.5 < _count(&"nuclear_plant"):
 			_build_anywhere(&"enrichment_plant")
 		if _gs.research.is_done(&"electronics") and not _has(&"electronics_factory"):
 			_build_anywhere(&"electronics_factory")
@@ -288,6 +298,23 @@ func _build_clearing(id: StringName) -> bool:
 	return false
 
 
+## Courant (ville et cité-État) : tant que la capacité du réseau ne couvre pas
+## la demande avec POWER_MARGIN, une centrale de plus, une à la fois (pas de
+## nouveau chantier tant qu'une centrale se construit) : nucléaire si possible,
+## sinon éolienne, sinon charbon.
+func _build_power() -> void:
+	var grid: PowerGrid = _gs.grid
+	if not _gs.research.is_done(&"conductivity") or grid.demand <= 0.0 \
+			or grid.capacity(GameDate.season(_clock.tick)) >= grid.demand * POWER_MARGIN:
+		return
+	if _gs.buildings.all().any(func(b: Building) -> bool: return b.def.power_watts > 0.0 and not b.is_complete()):
+		return
+	for id: StringName in [&"nuclear_plant", &"wind_turbine", &"power_plant"]:
+		var def := BuildingDb.get_def(id)
+		if def.tier <= _gs.city_level() and (not def.research or _gs.research.is_done(def.research)) and _build_anywhere(id):
+			return
+
+
 ## Plus de place : améliore une maison ; false si aucune ne peut l'être.
 func _upgrade_house() -> bool:
 	for b: Building in _gs.all_buildings():
@@ -303,7 +330,8 @@ func _food_keeps_up() -> bool:
 	if _gs.tier.level < FOOD_TREND_TIER or stocks.size() < FOOD_TREND_DAYS \
 			or _gs.food_days() >= GameDate.DAYS_PER_SEASON * FOOD_RESERVE_SEASONS:
 		return true
-	return stocks[-1] >= stocks[stocks.size() - FOOD_TREND_DAYS]
+	# Au moins une saison de réserve : la ville ne grandit pas sur le fil.
+	return stocks[-1] >= stocks[stocks.size() - FOOD_TREND_DAYS] and _gs.food_days() >= GameDate.DAYS_PER_SEASON
 
 
 func _count(id: StringName) -> int:

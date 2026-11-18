@@ -7,7 +7,7 @@ Une seule recherche à la fois ; points de recherche par habitant et par jour,
 multipliés par l'atelier (×2), le laboratoire (×5), l'université (×10),
 le centre informatique (×20) et le datacenter (×100).
 Entre parenthèses après chaque bâtiment : la carte où il se construit (ville ou monde).
-35 recherches, de 500 à 1 500 000 points.
+36 recherches, de 500 à 1 500 000 points.
 
 Palier 1 — Hameau
 -----------------
@@ -75,7 +75,7 @@ Palier 3 — Bourg
 * Charbon de bois  (20 000 points)
     Prérequis : Sylviculture
     Effet : 20 % du bois coupé chaque jour devient du charbon (3 bois pour 1 charbon), sauf si la réserve de chauffage en bois est trop basse.
-  Sans recherche (palier atteint) : Parc à charbon (ville), Port de pêche (monde), Atelier de tissage (ville)
+  Sans recherche (palier atteint) : Halle aux draps (ville), Parc à charbon (ville), Port de pêche (monde), Atelier de tissage (ville)
 
 Palier 4 — Ville
 ----------------
@@ -126,6 +126,9 @@ Palier 5 — Cité-État
     Prérequis : Informatique
     Débloque : Datacenter (monde)
     Effet : Datacenter : recherche ×100 pour 10 000 habitants ; gros consommateur de courant, refroidi par l'eau (moins aux latitudes froides).
+* Véhicules autonomes  (450 000 points)
+    Prérequis : Intelligence artificielle
+    Effet : Mines et puits sur gisement (fer, charbon, pétrole, cuivre, uranium, lithium) +50 %.
 * Radioactivité  (200 000 points)
     Prérequis : Conductivité du cuivre
     Débloque : Usine d'enrichissement (ville), Centrale nucléaire (monde)
@@ -182,7 +185,7 @@ Palier 4 :
                          └→ Médecine
   Coke → Cimenterie
 Palier 5 :
-  Conductivité ─┬→ Électronique ─┬→ Informatique (+ Enseignement supérieur) → Intelligence artificielle
+  Conductivité ─┬→ Électronique ─┬→ Informatique (+ Enseignement supérieur) → Intelligence artificielle → Véhicules autonomes
                 │                ├→ Photovoltaïque
                 │                ├→ Électrochimie du lithium → Véhicule électrique (+ Moteur à explosion)
                 │                └→ Fusée (+ Moteur à explosion)

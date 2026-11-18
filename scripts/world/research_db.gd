@@ -30,6 +30,7 @@ const DEFS: Array[ResearchDef] = [
 	preload("res://data/research/electronics.tres"),
 	preload("res://data/research/computing.tres"),
 	preload("res://data/research/artificial_intelligence.tres"),
+	preload("res://data/research/autonomous_vehicles.tres"),
 	preload("res://data/research/radioactivity.tres"),
 	preload("res://data/research/wind_power.tres"),
 	preload("res://data/research/photovoltaics.tres"),

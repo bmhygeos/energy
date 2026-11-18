@@ -2164,6 +2164,16 @@ func _test_tractors() -> void:
 	_check(is_equal_approx(gs.production.invention_factor(farm, cell), before[0] * 1.5)
 		and is_equal_approx(gs.production.invention_factor(pasture, cell), before[1] * 1.5)
 		and is_equal_approx(gs.production.invention_factor(forest, cell), before[2]), "tracteurs : champs et élevage +50 %, pas la forêt")
+	gs.research._done[&"electric_vehicle"] = true
+	gs.grid.coverage = 0.8
+	gs.stockpile.amount[Stockpile.Good.FUEL] = 0.0
+	_check(is_equal_approx(gs.tractor_fuel_need(), 100 * gs.TRACTOR_FUEL_PER_WORKER * 0.2) and gs.tractor_watts() > 0.0
+		and gs.machine_demand() >= gs.tractor_watts(), "tracteurs électriques : le carburant ne complète que le courant manquant")
+	gs._run_tractors()
+	_check(is_equal_approx(gs.production.tractor_fuel, 0.8), "sans carburant : la part du courant seule")
+	gs.stockpile.amount[Stockpile.Good.FUEL] = 100.0
+	gs._run_tractors()
+	_check(is_equal_approx(gs.production.tractor_fuel, 1.0), "courant et carburant : plein régime")
 	gs.new_game(4242)
 
 
@@ -2433,6 +2443,11 @@ func _test_heat_mix(gs: Node) -> void:
 		and is_equal_approx(gs.production.invention_factor(farm, cell), farm_bourg), "ville : mines ×2 (mécanisation), champs inchangés")
 	var heat: float = gs.heat_need(winter)
 	_check(is_equal_approx(heat, gs.population.wood_need(winter) * 0.5), "ville : chauffage ×0,5 (isolation)")
+	var mine_city: float = gs.production.invention_factor(coal_mine, cell)
+	gs.research._done[&"autonomous_vehicles"] = true
+	_check(is_equal_approx(gs.production.invention_factor(coal_mine, cell), mine_city * (1.0 + Production.AUTONOMOUS_MINE_BONUS))
+		and is_equal_approx(gs.production.invention_factor(farm, cell), farm_bourg), "véhicules autonomes : mines +50 %, champs inchangés")
+	gs.research._done.erase(&"autonomous_vehicles")
 	stock.amount[Stockpile.Good.COAL] = 1000.0
 	stock.amount[Stockpile.Good.FUEL] = 1000.0
 	_check(is_equal_approx(gs.wood_need(winter), heat * 0.1) and is_equal_approx(gs.coal_heat_need(winter), heat * 0.4 / 2.0)

@@ -29,6 +29,8 @@ const PLOUGH_HARNESSED_BONUS := 1.3
 const PLOUGH_BONUS := 1.1
 const ROTATION_BONUS := 1.15
 const GEARS_BONUS := 1.15
+## Véhicules autonomes (recherche) : mines et puits sur gisement.
+const AUTONOMOUS_MINE_BONUS := 0.5
 ## Tracteurs (recherche Tracteur) : champs, lin et élevage, à plein carburant.
 const TRACTOR_BONUS := 0.5
 ## Bourg : laine des troupeaux (fibres par éleveur et par jour, en plus de la
@@ -137,6 +139,8 @@ func invention_factor(def: ZoneDef, cell: Vector2i) -> float:
 		factor *= 1.0 + mine_bonus
 	if def.deposit != 0:
 		factor *= mechanization
+		if _done(&"autonomous_vehicles"):
+			factor *= 1.0 + AUTONOMOUS_MINE_BONUS
 	if (def.quality == ZoneDef.Quality.FERTILITY or def.quality == ZoneDef.Quality.PASTURE) and _done(&"tractor"):
 		factor *= 1.0 + TRACTOR_BONUS * tractor_fuel
 	return factor

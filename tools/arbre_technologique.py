@@ -39,7 +39,7 @@ Palier 4 :
                          └→ Médecine
   Coke → Cimenterie
 Palier 5 :
-  Conductivité ─┬→ Électronique ─┬→ Informatique (+ Enseignement supérieur) → Intelligence artificielle
+  Conductivité ─┬→ Électronique ─┬→ Informatique (+ Enseignement supérieur) → Intelligence artificielle → Véhicules autonomes
                 │                ├→ Photovoltaïque
                 │                ├→ Électrochimie du lithium → Véhicule électrique (+ Moteur à explosion)
                 │                └→ Fusée (+ Moteur à explosion)
