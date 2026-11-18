@@ -1886,6 +1886,13 @@ func _test_satellites() -> void:
 			order.append(space.kinds[-1])
 	_check(order == [Space.Kind.SURVEY, Space.Kind.WEATHER, Space.Kind.COMMUNICATIONS, Space.Kind.COMMUNICATIONS],
 		"satellites dans l'ordre : observation, météo, communications (%s)" % [order])
+	_check(Space.orbit_of(Space.Kind.SURVEY) == Space.Orbit.POLAR and Space.orbit_of(Space.Kind.WEATHER) == Space.Orbit.SUN_SYNCHRONOUS
+		and Space.orbit_of(Space.Kind.COMMUNICATIONS) == Space.Orbit.GEOSTATIONARY, "orbites : polaire, héliosynchrone, géostationnaire")
+	var fresh := Space.new(1)
+	var low := fresh.next_launch_fuel(0.0)
+	fresh.kinds.assign([Space.Kind.SURVEY, Space.Kind.WEATHER])
+	_check(is_equal_approx(low, Space.LAUNCH_FUEL_EQUATOR) and is_equal_approx(fresh.next_launch_fuel(0.0),
+		Space.LAUNCH_FUEL_EQUATOR * Space.ORBIT_FUEL[Space.Orbit.GEOSTATIONARY]), "orbite géostationnaire : deux fois plus de carburant")
 	var e := CityEvents.new(1)
 	e.active[CityEvents.Kind.DROUGHT] = 5
 	e.active[CityEvents.Kind.HARD_WINTER] = 5

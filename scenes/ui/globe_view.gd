@@ -12,12 +12,15 @@ const TERRITORY_MIX := 0.3
 const CITY_COLOR := Color(1.0, 0.25, 0.2)
 ## Demi-côté (pixels de la texture) du repère d'une ville.
 const CITY_MARK := 2
-const ORBIT_RADIUS := 1.35
-const ORBIT_TILT := 0.9
-## Tours d'orbite par seconde.
-const ORBIT_SPEED := 0.05
+## Tours par seconde affichés, par orbite (Space.Orbit) : les orbites basses
+## tournent vite, la géostationnaire reste au-dessus de la capitale.
+const ORBIT_SPEEDS: PackedFloat32Array = [0.08, 0.06, 0.0]
+const ORBIT_COLORS: Array[Color] = [Color(0.55, 0.85, 1.0, 0.55), Color(1.0, 0.85, 0.45, 0.55), Color(0.75, 0.6, 1.0, 0.55)]
+## Satellites dessinés au plus, et points d'une trajectoire.
+const MAX_SATELLITES := 12
+const RING_POINTS := 128
 const DISTANCE_MIN := 1.6
-const DISTANCE_MAX := 5.0
+const DISTANCE_MAX := 7.0
 ## Radians par pixel glissé.
 const DRAG_SPEED := 0.006
 
@@ -27,6 +30,9 @@ var _camera: Camera3D
 var _planet: MeshInstance3D
 var _material: StandardMaterial3D
 var _satellites: Array[MeshInstance3D] = []
+## Genre de chaque satellite dessiné, et trajectoires (une par satellite).
+var _satellite_kinds: Array[int] = []
+var _rings: Array[MeshInstance3D] = []
 var _status: Label
 var _yaw := 0.0
 var _pitch := 0.0
@@ -67,6 +73,8 @@ func toggle() -> void:
 		return
 	if _dirty:
 		_paint()
+	elif _satellite_kinds.size() != mini(GameState.space.kinds.size(), MAX_SATELLITES):
+		_refresh_satellites()
 	_face(GameState.selected.home)
 	_root.show()
 
@@ -82,12 +90,29 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not _root.visible:
 		return
-	_orbit = fmod(_orbit + delta * ORBIT_SPEED * TAU, TAU)
+	_orbit += delta
 	for k in _satellites.size():
-		var a := _orbit + TAU * k / _satellites.size()
-		var p := Vector3(cos(a), 0.0, sin(a)) * ORBIT_RADIUS
-		_satellites[k].position = Basis(Vector3.RIGHT, ORBIT_TILT + 0.3 * k) * p
+		var orbit := Space.orbit_of(_satellite_kinds[k])
+		var phase := _orbit * ORBIT_SPEEDS[orbit] * TAU + TAU * k / maxf(1.0, _satellites.size())
+		if orbit == Space.Orbit.GEOSTATIONARY:
+			phase = _geostationary_phase()
+		_satellites[k].position = _orbit_basis(orbit, k) * (Vector3(cos(phase), 0.0, sin(phase)) * Space.ORBIT_RADIUS[orbit])
 	_place_camera()
+
+
+## Plan de l'orbite du satellite [param k] : cercle équatorial incliné de
+## l'inclinaison de son orbite, puis tourné en longitude (les orbites basses
+## se répartissent autour de la planète).
+func _orbit_basis(orbit: Space.Orbit, k: int) -> Basis:
+	var node := 0.0 if orbit == Space.Orbit.GEOSTATIONARY else TAU * k / MAX_SATELLITES * 2.5
+	return Basis(Vector3.UP, node) * Basis(Vector3.RIGHT, deg_to_rad(Space.ORBIT_INCLINATION[orbit]))
+
+
+## Angle, sur l'orbite équatoriale, du point situé au-dessus de la capitale
+## (texture : u = longitude, point (sin 2πu, 0, cos 2πu) de la sphère).
+func _geostationary_phase() -> float:
+	var u := (GameState.cities[0].home.x + 0.5) / GameState.world_map.size.x
+	return PI / 2.0 - TAU * u
 
 
 func _build() -> void:
@@ -148,12 +173,12 @@ func _build() -> void:
 	close.pressed.connect(toggle)
 	header.add_child(close)
 	var help := Label.new()
-	help.text = "Glisser : tourner  ·  molette : zoom  ·  V ou Échap : fermer"
+	help.text = "Orbites : polaire (observation, bleu), héliosynchrone (météo, or), géostationnaire (communications, violet)\nGlisser : tourner  ·  molette : zoom  ·  V ou Échap : fermer"
 	help.modulate = Color(1, 1, 1, 0.55)
 	help.anchor_top = 1.0
 	help.anchor_bottom = 1.0
 	help.offset_left = 16.0
-	help.offset_top = -36.0
+	help.offset_top = -56.0
 	_root.add_child(help)
 
 
@@ -205,7 +230,14 @@ static func _put(data: PackedByteArray, width: int, cell: Vector2i, color: Color
 
 
 func _refresh_satellites() -> void:
-	var count: int = mini(GameState.space.satellites, 6)
+	var kinds: Array[int] = GameState.space.kinds
+	var count: int = mini(kinds.size(), MAX_SATELLITES)
+	_satellite_kinds = kinds.slice(0, count)
+	for ring in _rings:
+		ring.queue_free()
+	_rings.clear()
+	for k in count:
+		_rings.append(_make_ring(Space.orbit_of(_satellite_kinds[k]), k))
 	while _satellites.size() < count:
 		var satellite := MeshInstance3D.new()
 		var box := BoxMesh.new()
@@ -220,6 +252,26 @@ func _refresh_satellites() -> void:
 		_satellites.append(satellite)
 	while _satellites.size() > count:
 		_satellites.pop_back().queue_free()
+
+
+## Trajectoire de l'orbite du satellite [param k] (ligne fermée).
+func _make_ring(orbit: Space.Orbit, k: int) -> MeshInstance3D:
+	var mesh := ImmediateMesh.new()
+	var basis := _orbit_basis(orbit, k)
+	mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+	for i in RING_POINTS + 1:
+		var a := TAU * i / RING_POINTS
+		mesh.surface_add_vertex(basis * (Vector3(cos(a), 0.0, sin(a)) * Space.ORBIT_RADIUS[orbit]))
+	mesh.surface_end()
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = ORBIT_COLORS[orbit]
+	var ring := MeshInstance3D.new()
+	ring.mesh = mesh
+	ring.material_override = material
+	_viewport.add_child(ring)
+	return ring
 
 
 ## Tourne la vue vers la tuile [param cell] (texture équirectangulaire posée

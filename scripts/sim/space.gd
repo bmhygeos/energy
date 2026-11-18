@@ -21,6 +21,19 @@ const FAILURE_CHANCE := 0.15
 ## (avant-postes reliés, recherche) ; les suivants s'ajoutent en orbite.
 enum Kind { SURVEY, WEATHER, COMMUNICATIONS }
 const KIND_NAMES: PackedStringArray = ["observation", "météo", "communications"]
+## Orbite de chaque genre : polaire basse (observation : elle passe au-dessus
+## de toute la planète), héliosynchrone (météo : même heure solaire à chaque
+## passage), géostationnaire (communications : immobile au-dessus de la
+## capitale, très haute).
+enum Orbit { POLAR, SUN_SYNCHRONOUS, GEOSTATIONARY }
+const ORBIT_NAMES: PackedStringArray = ["polaire", "héliosynchrone", "géostationnaire"]
+const ORBIT_OF_KIND: Array[Orbit] = [Orbit.POLAR, Orbit.SUN_SYNCHRONOUS, Orbit.GEOSTATIONARY]
+## Carburant d'un lancement vers chaque orbite (facteur de launch_fuel).
+const ORBIT_FUEL: PackedFloat32Array = [1.0, 1.2, 2.0]
+## Altitude (rayons de la planète, vue globe), inclinaison (degrés) et tours
+## par minute de jeu affichés.
+const ORBIT_RADIUS: PackedFloat32Array = [1.18, 1.3, 2.2]
+const ORBIT_INCLINATION: PackedFloat32Array = [90.0, 98.0, 0.0]
 ## Satellite de communications : bonus de la recherche.
 const COMMUNICATIONS_RESEARCH := 0.1
 ## Voyage sur la Lune (palier 6) : jours de travail de la fusée lunaire
@@ -121,6 +134,17 @@ func next_kind() -> Kind:
 		if kind not in kinds:
 			return kind as Kind
 	return Kind.COMMUNICATIONS
+
+
+## Orbite du satellite de genre [param kind].
+static func orbit_of(kind: int) -> Orbit:
+	return ORBIT_OF_KIND[clampi(kind, 0, ORBIT_OF_KIND.size() - 1)]
+
+
+## Carburant du prochain lancement à la latitude [param latitude] : selon la
+## latitude de la base et l'orbite visée.
+func next_launch_fuel(latitude: float) -> float:
+	return launch_fuel(latitude) * ORBIT_FUEL[orbit_of(next_kind())]
 
 
 ## Un satellite de ce genre est-il en orbite ?

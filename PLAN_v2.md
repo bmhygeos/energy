@@ -485,6 +485,11 @@ au-delà de laquelle la pénalité de trajet commence, section 5) et augmente la
   sécheresse, épizootie, incendie), **communications** (tout avant-poste ou
   port devient un départ d'expédition, recherche +10 %) ; les suivants
   s'ajoutent en orbite. Jalon « Constellation ».
+- **Orbites** (réalisées, V22) : chaque genre a son orbite et son coût de
+  lancement : observation en orbite **polaire** basse (carburant ×1), météo
+  en orbite **héliosynchrone** (×1,2), communications en orbite
+  **géostationnaire**, immobile au-dessus de la capitale (×2). La vue globe
+  dessine chaque satellite sur son orbite, avec sa trajectoire.
 
 ## 8. Gouvernance (à partir du palier 3)
 **Pas d'extérieur** : la cité ne commerce avec personne ; tout ce dont elle a
@@ -571,7 +576,8 @@ effectif, vivres).
 | V19 | Vue globe | Planète en 3D dès le premier satellite : tuiles connues, territoires, villes, satellites en orbite ; bouton Globe, touche V — réalisé |
 | V20 | Satellites | Météo (prévisions, intempéries atténuées) et communications (avant-postes reliés, recherche +10 %) ; jalon Constellation — réalisé |
 | V21 | Palier 6 : fusion et Lune | Recherches du palier 6 (capitale Cité des étoiles) : fusion nucléaire (centrale à fusion), voyage sur la Lune (fusée lunaire, alunissage) — réalisé |
-| V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites |
+| V22 | Orbites | Orbite par genre de satellite (polaire, héliosynchrone, géostationnaire), carburant selon l'orbite, trajectoires dans la vue globe — réalisé |
+| V∞ | Ère spatiale | Recherche de la fusée, base de lancement, premier satellite qui révèle la planète, vue globe 3D, orbites — réalisé (V17 à V22) |
 
 **Version jouable minimale** à la fin de V4 : un hameau qui doit passer ses
 premiers hivers grâce à ses champs, son élevage et sa coupe de bois.

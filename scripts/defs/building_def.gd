@@ -283,8 +283,9 @@ func describe_effects() -> PackedStringArray:
 	if rocket_factory:
 		lines.append("Assemble une fusée en %d jours de travail (fer, électronique, cuivre ; à l'arrêt sans courant)" % Space.ROCKET_WORK_DAYS)
 	if launch_pad:
-		lines.append("Lance les fusées prêtes : %d à %d carburant selon la latitude (moins près de l'équateur), %d %% d'échecs" % [
-			roundi(Space.LAUNCH_FUEL_EQUATOR), roundi(Space.LAUNCH_FUEL_POLE), roundi(Space.FAILURE_CHANCE * 100.0)])
+		lines.append("Lance les fusées prêtes : %d à %d carburant selon la latitude (moins près de l'équateur), ×%s vers l'orbite géostationnaire ; %d %% d'échecs" % [
+			roundi(Space.LAUNCH_FUEL_EQUATOR), roundi(Space.LAUNCH_FUEL_POLE), Format.decimal(Space.ORBIT_FUEL[Space.Orbit.GEOSTATIONARY]),
+			roundi(Space.FAILURE_CHANCE * 100.0)])
 	if fishing_reach > 0:
 		lines.append("Pêche jusqu'à %d tuiles du rivage" % fishing_reach)
 	if harbor:

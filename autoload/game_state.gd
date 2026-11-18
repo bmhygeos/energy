@@ -1616,14 +1616,15 @@ func _run_space() -> void:
 			else:
 				EventBus.notified.emit("Échec de la mission lunaire : la fusée est perdue, les usines en construisent une autre")
 	if pad and space.rockets > 0:
-		var fuel := Space.launch_fuel(world_map.latitude(world_map.wrap_cell(pad.anchor).y))
+		var fuel := space.next_launch_fuel(world_map.latitude(world_map.wrap_cell(pad.anchor).y))
 		if stockpile.has(Stockpile.Good.FUEL, fuel):
 			fuel_burned_today += stockpile.take(Stockpile.Good.FUEL, fuel)
 			var first := space.satellites == 0
 			if space.launch():
 				var kind: int = space.kinds[-1]
 				events.forecast = space.has(Space.Kind.WEATHER)
-				EventBus.notified.emit("Lancement réussi : satellite %s en orbite%s" % [Space.KIND_NAMES[kind], {
+				EventBus.notified.emit("Lancement réussi : satellite %s en orbite %s%s" % [Space.KIND_NAMES[kind],
+					Space.ORBIT_NAMES[Space.orbit_of(kind)], {
 					Space.Kind.SURVEY: " — il cartographie la planète" if first else "",
 					Space.Kind.WEATHER: " — prévisions météo, intempéries atténuées",
 					Space.Kind.COMMUNICATIONS: " — avant-postes et ports reliés, recherche +%d %%" % roundi(Space.COMMUNICATIONS_RESEARCH * 100.0),

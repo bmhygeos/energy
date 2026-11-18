@@ -450,7 +450,14 @@ météo et interface conservés.
      n'ont plus que la moitié de leurs effets ;
   3. **communications** : tout avant-poste ou port devient un départ
      d'expédition (relié « par satellite »), recherche +10 %.
-- Les lancements suivants ajoutent des satellites en orbite (vue globe).
+- **Orbites** : observation en orbite polaire basse (carburant ×1), météo en
+  orbite héliosynchrone (×1,2), communications en orbite géostationnaire,
+  au-dessus de la capitale (×2). Le carburant d'un lancement dépend aussi de
+  la latitude de la base (300 à l'équateur, 600 aux pôles, avant le facteur
+  de l'orbite).
+- Les lancements suivants ajoutent des satellites en orbite. La vue globe
+  dessine chaque satellite sur son orbite, avec sa trajectoire colorée
+  (bleu, or, violet).
   Panneau Main-d'œuvre : satellites par genre ; fiche de la base de
   lancement : prochain satellite. Jalon « Constellation ».
 

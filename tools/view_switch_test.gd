@@ -45,10 +45,12 @@ func _initialize() -> void:
 			globe = n
 	globe.toggle()
 	_check(globe != null and not globe.is_open(), "globe : fermé sans satellite")
-	gs.space.satellites = 1
+	gs.space.satellites = 3
+	gs.space.kinds.assign([Space.Kind.SURVEY, Space.Kind.WEATHER, Space.Kind.COMMUNICATIONS])
 	globe.toggle()
-	await process_frame
-	_check(globe.is_open(), "globe : ouvert avec un satellite")
+	for k in 3:
+		await process_frame
+	_check(globe.is_open() and globe._satellites.size() == 3 and globe._rings.size() == 3, "globe : trois satellites sur leurs orbites")
 	globe.toggle()
 	_check(not globe.is_open(), "globe : refermé")
 	print("%s" % ("Passage ville / monde et globe : OK" if _failures == 0 else "%d échec(s)" % _failures))

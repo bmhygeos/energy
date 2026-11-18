@@ -178,10 +178,12 @@ func _building_lines(b: Building) -> PackedStringArray:
 		if not GameState.machines_powered():
 			lines.append("À l'arrêt : courant insuffisant")
 	if b.is_complete() and b.def.launch_pad:
-		var fuel := Space.launch_fuel(GameState.world_map.latitude(GameState.world_map.wrap_cell(b.anchor).y))
+		var fuel: float = GameState.space.next_launch_fuel(GameState.world_map.latitude(GameState.world_map.wrap_cell(b.anchor).y))
 		lines.append("Lancement : %d carburant à cette latitude ; fusées prêtes : %d ; satellites : %d" % [
 			roundi(fuel), GameState.space.rockets, GameState.space.satellites])
-		lines.append("Prochain satellite : %s" % Space.KIND_NAMES[GameState.space.next_kind()])
+		var next: int = GameState.space.next_kind()
+		lines.append("Prochain satellite : %s, en orbite %s (carburant ×%s)" % [Space.KIND_NAMES[next],
+			Space.ORBIT_NAMES[Space.orbit_of(next)], Format.decimal(Space.ORBIT_FUEL[Space.orbit_of(next)])])
 	if b.is_complete() and (b.def.outpost or b.def.harbor):
 		var link: String = GameState.outpost_link(b)
 		lines.append("Relié au village par %s : les expéditions peuvent en partir (menu, Départ)" % link if not link.is_empty()

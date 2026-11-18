@@ -185,7 +185,7 @@ func _refresh() -> void:
 	if space and (space.progress > 0.0 or space.rockets > 0 or space.launches > 0 or space.lunar_project):
 		var orbit := PackedStringArray()
 		for kind in space.kinds:
-			orbit.append(Space.KIND_NAMES[kind])
+			orbit.append("%s (%s)" % [Space.KIND_NAMES[kind], Space.ORBIT_NAMES[Space.orbit_of(kind)]])
 		_needs.text += "\nEspace : fusée %d %%  ·  prêtes %d  ·  lancements %d  ·  satellites %d%s%s" % [
 			roundi(space.progress / Space.ROCKET_WORK_DAYS * 100.0), space.rockets, space.launches, space.satellites,
 			" (%s)" % ", ".join(orbit) if not orbit.is_empty() else "",
